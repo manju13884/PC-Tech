@@ -1,10 +1,9 @@
 import { createServer } from 'http'
+import { readFileSync } from 'fs'
+import { pbkdf2Sync } from 'crypto'
 
 const PORT = process.env.PORT || 4000
-const validCredentials = {
-  username: 'superadmin',
-  password: 'superadmin',
-}
+const authConfig = JSON.parse(readFileSync(new URL('./auth-config.json', import.meta.url), 'utf8'))
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': 'http://127.0.0.1:5173',
@@ -18,6 +17,18 @@ const sendJson = (res, status, payload) => {
     ...CORS_HEADERS,
   })
   res.end(JSON.stringify(payload))
+}
+
+const verifyPassword = (password, user) => {
+  const derivedHash = pbkdf2Sync(
+    password,
+    Buffer.from(user.salt, 'hex'),
+    user.iterations,
+    user.keyLength,
+    'sha256',
+  ).toString('hex')
+
+  return derivedHash === user.passwordHash
 }
 
 const server = createServer((req, res) => {
@@ -39,14 +50,12 @@ const server = createServer((req, res) => {
     req.on('end', () => {
       try {
         const data = JSON.parse(body)
+        const user = authConfig.users.find((entry) => entry.username === data.username)
 
-        if (
-          data.username === validCredentials.username &&
-          data.password === validCredentials.password
-        ) {
+        if (user && verifyPassword(data.password, user)) {
           return sendJson(res, 200, {
             authenticated: true,
-            username: validCredentials.username,
+            username: user.username,
           })
         }
 
