@@ -19,13 +19,15 @@ const verifyPassword = (password: string, user: { salt: string; iterations: numb
   return derivedHash === user.passwordHash
 }
 
+const allowedOrigin = process.env.CORS_ORIGIN || 'https://www.polarcanvas.in'
+
 const authMiddleware = () => ({
   name: 'auth-middleware',
   configureServer(server: { middlewares: { use: (path: string, handler: (req: any, res: any, next: any) => void) => void } }) {
     server.middlewares.use('/api/login', (req, res, next) => {
       if (req.method === 'OPTIONS') {
         res.writeHead(204, {
-          'Access-Control-Allow-Origin': 'http://127.0.0.1:5173',
+          'Access-Control-Allow-Origin': allowedOrigin,
           'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type',
         })
@@ -51,7 +53,7 @@ const authMiddleware = () => ({
           if (user && verifyPassword(data.password, user)) {
             res.writeHead(200, {
               'Content-Type': 'application/json',
-              'Access-Control-Allow-Origin': 'http://127.0.0.1:5173',
+              'Access-Control-Allow-Origin': allowedOrigin,
             })
             res.end(JSON.stringify({ authenticated: true, username: user.username }))
             return
@@ -59,13 +61,13 @@ const authMiddleware = () => ({
 
           res.writeHead(401, {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': 'http://127.0.0.1:5173',
+            'Access-Control-Allow-Origin': allowedOrigin,
           })
           res.end(JSON.stringify({ error: 'Invalid username or password' }))
         } catch {
           res.writeHead(400, {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': 'http://127.0.0.1:5173',
+            'Access-Control-Allow-Origin': allowedOrigin,
           })
           res.end(JSON.stringify({ error: 'Invalid request body' }))
         }
@@ -75,6 +77,7 @@ const authMiddleware = () => ({
 })
 
 export default defineConfig({
+  base: '/',
   plugins: [react(), authMiddleware()],
   server: {
     port: 5173,

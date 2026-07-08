@@ -1,0 +1,4 @@
+### Get Customers
+GET https://www.zohoapis.in/books/v3/contacts?organization_id=60014809844
+Authorization: 1000.XXXXXXXX
+Content-Type: application/json
