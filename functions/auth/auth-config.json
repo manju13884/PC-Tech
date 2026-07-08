@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "username": "superadmin",
+      "passwordHash": "80cef81b2230e13afc8f93713f3b2c0ebd08852bd358fabcf605b5dc3f61d37890150657ea7da5e0965c97e37146dc7978c92d8a22a33bb5f84f2edbc97bc4e1",
+      "salt": "0592b57259a1a2fd9781ef6658abced3",
+      "iterations": 310000,
+      "keyLength": 64,
+      "algorithm": "pbkdf2-sha256"
+    }
+  ]
+}
