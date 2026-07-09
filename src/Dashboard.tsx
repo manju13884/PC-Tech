@@ -50,6 +50,7 @@ const menuGroups: MenuGroup[] = [
 
 export default function Dashboard({ username, onLogout }: { username: string; onLogout: () => void }) {
   const [selectedKey, setSelectedKey] = useState(menuGroups[0].items[0].key)
+  const [customerName, setCustomerName] = useState('')
 
   const selectedItem = menuGroups
     .flatMap((group) => group.items)
@@ -108,9 +109,20 @@ export default function Dashboard({ username, onLogout }: { username: string; on
               )}
               {selectedItem.key === 'coc' && (
                 <div>
-                  <p>
-                    The Certificate of Compliance confirms your packaging meets the required manufacturing and material standards.
-                  </p>
+                  <label htmlFor="customer-name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Customer Name
+                  </label>
+                  <select
+                    id="customer-name"
+                    value={customerName}
+                    onChange={(event) => setCustomerName(event.target.value)}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
+                  >
+                    <option value="">Select customer</option>
+                    <option value="PolarCanvas">PolarCanvas</option>
+                    <option value="ABC Packaging">ABC Packaging</option>
+                    <option value="Northwind Supplies">Northwind Supplies</option>
+                  </select>
                 </div>
               )}
               {selectedItem.key === 'coa' && (
