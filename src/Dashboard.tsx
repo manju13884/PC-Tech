@@ -631,9 +631,11 @@ export default function Dashboard({ username, onLogout }: { username: string; on
         </aside>
 
         <section className="dashboard-content">
-          <div className="dashboard-card">
-            <h2>{selectedItem.title}</h2>
-            <p>{selectedItem.description}</p>
+          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' ? ' document-form-page' : ''}`}>
+            <header className="dashboard-page-heading">
+              <h2>{selectedItem.title}</h2>
+              <p>{selectedItem.description}</p>
+            </header>
             <div className="dashboard-details">
               {selectedItem.key === 'corrugated-box-price' && (
                 <div>
@@ -643,70 +645,68 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                 </div>
               )}
               {selectedItem.key === 'coc' && (
-                <div>
-                  <label htmlFor="customer-name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                    Customer Name
-                  </label>
-                  <select
-                    id="customer-name"
-                    value={customerId}
-                    onChange={(event) => {
-                      setCustomerId(event.target.value)
-                      setPreviewTemplate(null)
-                      setPreviewError('')
-                    }}
-                    disabled={customersLoading || Boolean(customersError)}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
-                  >
-                    <option value="">
-                      {customersLoading
-                        ? 'Loading customers...'
-                        : customersError
-                          ? 'Unable to load customers'
-                          : 'Select customer'}
-                    </option>
-                    {customers.map((customer) => (
-                      <option key={customer.customer_id} value={customer.customer_id}>
-                        {formatCustomerOption(customer)}
+                <div className="coc-form">
+                  <div className="coc-form-field">
+                    <label htmlFor="customer-name">Customer Name</label>
+                    <select
+                      id="customer-name"
+                      value={customerId}
+                      onChange={(event) => {
+                        setCustomerId(event.target.value)
+                        setPreviewTemplate(null)
+                        setPreviewError('')
+                      }}
+                      disabled={customersLoading || Boolean(customersError)}
+                    >
+                      <option value="">
+                        {customersLoading
+                          ? 'Loading customers...'
+                          : customersError
+                            ? 'Unable to load customers'
+                            : 'Select customer'}
                       </option>
-                    ))}
-                  </select>
+                      {customers.map((customer) => (
+                        <option key={customer.customer_id} value={customer.customer_id}>
+                          {formatCustomerOption(customer)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   {customersError && (
                     <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
                       {customersError}
                     </p>
                   )}
-                  <label htmlFor="invoice-number" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.5rem', fontWeight: 600 }}>
-                    Invoice Number
-                  </label>
-                  <select
-                    id="invoice-number"
-                    value={invoiceId}
-                    onChange={(event) => {
-                      setInvoiceId(event.target.value)
-                      setPreviewTemplate(null)
-                      setPreviewError('')
-                    }}
-                    disabled={!customerId || invoicesLoading || Boolean(invoicesError)}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
-                  >
-                    <option value="">
-                      {!customerId
-                        ? 'Select customer first'
-                        : invoicesLoading
-                          ? 'Loading invoices...'
-                          : invoicesError
-                            ? 'Unable to load invoices'
-                            : invoices.length === 0
-                              ? 'No invoices found'
-                              : 'Select invoice'}
-                    </option>
-                    {invoices.map((invoice) => (
-                      <option key={invoice.invoice_id} value={invoice.invoice_id}>
-                        {invoice.invoice_number}
+                  <div className="coc-form-field">
+                    <label htmlFor="invoice-number">Invoice Number</label>
+                    <select
+                      id="invoice-number"
+                      value={invoiceId}
+                      onChange={(event) => {
+                        setInvoiceId(event.target.value)
+                        setPreviewTemplate(null)
+                        setPreviewError('')
+                      }}
+                      disabled={!customerId || invoicesLoading || Boolean(invoicesError)}
+                    >
+                      <option value="">
+                        {!customerId
+                          ? 'Select customer first'
+                          : invoicesLoading
+                            ? 'Loading invoices...'
+                            : invoicesError
+                              ? 'Unable to load invoices'
+                              : invoices.length === 0
+                                ? 'No invoices found'
+                                : 'Select invoice'}
                       </option>
-                    ))}
-                  </select>
+                      {invoices.map((invoice) => (
+                        <option key={invoice.invoice_id} value={invoice.invoice_id}>
+                          {invoice.invoice_number}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   {invoicesError && (
                     <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
                       {invoicesError}
@@ -764,70 +764,68 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                 </div>
               )}
               {selectedItem.key === 'packing-slip' && (
-                <div>
-                  <label htmlFor="packing-customer-name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
-                    Customer Name
-                  </label>
-                  <select
-                    id="packing-customer-name"
-                    value={packingCustomerId}
-                    onChange={(event) => {
-                      setPackingCustomerId(event.target.value)
-                      setPackingPreviewTemplate(null)
-                      setPackingPreviewError('')
-                    }}
-                    disabled={customersLoading || Boolean(customersError)}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
-                  >
-                    <option value="">
-                      {customersLoading
-                        ? 'Loading customers...'
-                        : customersError
-                          ? 'Unable to load customers'
-                          : 'Select customer'}
-                    </option>
-                    {customers.map((customer) => (
-                      <option key={customer.customer_id} value={customer.customer_id}>
-                        {formatCustomerOption(customer)}
+                <div className="coc-form">
+                  <div className="coc-form-field">
+                    <label htmlFor="packing-customer-name">Customer Name</label>
+                    <select
+                      id="packing-customer-name"
+                      value={packingCustomerId}
+                      onChange={(event) => {
+                        setPackingCustomerId(event.target.value)
+                        setPackingPreviewTemplate(null)
+                        setPackingPreviewError('')
+                      }}
+                      disabled={customersLoading || Boolean(customersError)}
+                    >
+                      <option value="">
+                        {customersLoading
+                          ? 'Loading customers...'
+                          : customersError
+                            ? 'Unable to load customers'
+                            : 'Select customer'}
                       </option>
-                    ))}
-                  </select>
+                      {customers.map((customer) => (
+                        <option key={customer.customer_id} value={customer.customer_id}>
+                          {formatCustomerOption(customer)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   {customersError && (
                     <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
                       {customersError}
                     </p>
                   )}
-                  <label htmlFor="packing-invoice-number" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.5rem', fontWeight: 600 }}>
-                    Invoice Number
-                  </label>
-                  <select
-                    id="packing-invoice-number"
-                    value={packingInvoiceId}
-                    onChange={(event) => {
-                      setPackingInvoiceId(event.target.value)
-                      setPackingPreviewTemplate(null)
-                      setPackingPreviewError('')
-                    }}
-                    disabled={!packingCustomerId || packingInvoicesLoading || Boolean(packingInvoicesError)}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
-                  >
-                    <option value="">
-                      {!packingCustomerId
-                        ? 'Select customer first'
-                        : packingInvoicesLoading
-                          ? 'Loading invoices...'
-                          : packingInvoicesError
-                            ? 'Unable to load invoices'
-                            : packingInvoices.length === 0
-                              ? 'No invoices found'
-                              : 'Select invoice'}
-                    </option>
-                    {packingInvoices.map((invoice) => (
-                      <option key={invoice.invoice_id} value={invoice.invoice_id}>
-                        {invoice.invoice_number}
+                  <div className="coc-form-field">
+                    <label htmlFor="packing-invoice-number">Invoice Number</label>
+                    <select
+                      id="packing-invoice-number"
+                      value={packingInvoiceId}
+                      onChange={(event) => {
+                        setPackingInvoiceId(event.target.value)
+                        setPackingPreviewTemplate(null)
+                        setPackingPreviewError('')
+                      }}
+                      disabled={!packingCustomerId || packingInvoicesLoading || Boolean(packingInvoicesError)}
+                    >
+                      <option value="">
+                        {!packingCustomerId
+                          ? 'Select customer first'
+                          : packingInvoicesLoading
+                            ? 'Loading invoices...'
+                            : packingInvoicesError
+                              ? 'Unable to load invoices'
+                              : packingInvoices.length === 0
+                                ? 'No invoices found'
+                                : 'Select invoice'}
                       </option>
-                    ))}
-                  </select>
+                      {packingInvoices.map((invoice) => (
+                        <option key={invoice.invoice_id} value={invoice.invoice_id}>
+                          {invoice.invoice_number}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   {packingInvoicesError && (
                     <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
                       {packingInvoicesError}

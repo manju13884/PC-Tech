@@ -420,6 +420,85 @@ main.dashboard-shell {
   line-height: 1.75;
 }
 
+.document-form-page .dashboard-page-heading {
+  max-width: 760px;
+}
+
+.document-form-page .dashboard-page-heading h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.35rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.document-form-page .dashboard-page-heading p {
+  margin: 0.3rem 0 0;
+  color: #64748b;
+  font-size: 0.925rem;
+  line-height: 1.45;
+}
+
+.document-form-page .dashboard-details {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top-color: #edf0f4;
+}
+
+.coc-form {
+  width: min(100%, 760px);
+}
+
+.coc-form-field + .coc-form-field {
+  margin-top: 0.875rem;
+}
+
+.coc-form-field label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.coc-form-field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.625rem 2.5rem 0.625rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #1e293b;
+  font: inherit;
+  font-size: 0.925rem;
+  line-height: 1.3;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.coc-form-field select:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.coc-form-field select:focus {
+  border-color: #60a5fa;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+.coc-form-field select:disabled {
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+  background-color: #f8fafc;
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+.coc-form > .coc-action-row {
+  margin-top: 1rem;
+}
+
 .dashboard-details {
   min-width: 0;
   margin-top: 1.5rem;
