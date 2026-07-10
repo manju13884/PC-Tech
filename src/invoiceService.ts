@@ -3,6 +3,19 @@ export interface Invoice {
   invoice_number: string
 }
 
+export interface InvoiceDetail extends Invoice {
+  date: string
+  customer_name: string
+  po_number: string
+  line_items: InvoiceLineItem[]
+}
+
+export interface InvoiceLineItem {
+  name: string
+  description: string
+  quantity: string
+}
+
 let loading = false
 let error: string | null = null
 
@@ -39,6 +52,35 @@ function isInvoice(value: unknown): value is Invoice {
     typeof invoice.invoice_id === 'string' &&
     typeof invoice.invoice_number === 'string'
   )
+}
+
+function isInvoiceDetail(value: unknown): value is InvoiceDetail {
+  const invoice = value as Partial<InvoiceDetail>
+
+  return (
+    isInvoice(value) &&
+    typeof invoice.date === 'string' &&
+    typeof invoice.customer_name === 'string' &&
+    typeof invoice.po_number === 'string' &&
+    Array.isArray(invoice.line_items)
+  )
+}
+
+export async function getInvoiceById(invoiceId: string): Promise<InvoiceDetail> {
+  const params = new URLSearchParams({ invoice_id: invoiceId })
+  const response = await fetch(`/api/invoices?${params.toString()}`)
+
+  if (!response.ok) {
+    throw new Error(await getResponseError(response, `Unable to load invoice (${response.status})`))
+  }
+
+  const data: unknown = await response.json()
+
+  if (!isInvoiceDetail(data)) {
+    throw new Error('Invoice response was invalid')
+  }
+
+  return data
 }
 
 export function isInvoicesLoading(): boolean {

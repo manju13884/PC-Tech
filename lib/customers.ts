@@ -27,8 +27,15 @@ interface ZohoContactsResponse {
   }
 }
 
-function buildContactsEndpoint(): string {
-  return '/contacts'
+const CONTACTS_PER_PAGE = 200
+
+function buildContactsEndpoint(page: number): string {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(CONTACTS_PER_PAGE),
+  })
+
+  return `/contacts?${params.toString()}`
 }
 
 function normalizeText(value: unknown): string {
@@ -78,18 +85,28 @@ function mapContactToCustomer(contact: ZohoContact): CustomerSummary | null {
 }
 
 export async function getZohoCustomers(env?: ZohoEnv): Promise<CustomerSummary[]> {
-  const payload = await zohoGet(buildContactsEndpoint(), env)
+  const contacts: unknown[] = []
+  let page = 1
+  let hasMorePage = true
 
-  if (!payload || typeof payload !== 'object') {
-    return []
+  while (hasMorePage) {
+    const payload = await zohoGet(buildContactsEndpoint(page), env)
+
+    if (!payload || typeof payload !== 'object') {
+      break
+    }
+
+    const responsePayload = payload as ZohoContactsResponse
+    const pageContacts = Array.isArray(responsePayload.contacts)
+      ? responsePayload.contacts
+      : Array.isArray(responsePayload.data)
+        ? responsePayload.data
+        : []
+
+    contacts.push(...pageContacts)
+    hasMorePage = responsePayload.page_context?.has_more_page ?? pageContacts.length === CONTACTS_PER_PAGE
+    page += 1
   }
-
-  const responsePayload = payload as ZohoContactsResponse
-  const contacts = Array.isArray(responsePayload.contacts)
-    ? responsePayload.contacts
-    : Array.isArray(responsePayload.data)
-      ? responsePayload.data
-      : []
 
   return contacts
     .filter((item): item is ZohoContact => Boolean(item) && typeof item === 'object')

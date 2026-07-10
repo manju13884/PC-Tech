@@ -256,8 +256,13 @@ function extractErrorMessage(payload) {
 __name(extractErrorMessage, "extractErrorMessage");
 
 // ../lib/customers.ts
-function buildContactsEndpoint() {
-  return "/contacts";
+var CONTACTS_PER_PAGE = 200;
+function buildContactsEndpoint(page) {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(CONTACTS_PER_PAGE)
+  });
+  return `/contacts?${params.toString()}`;
 }
 __name(buildContactsEndpoint, "buildContactsEndpoint");
 function normalizeText(value) {
@@ -297,12 +302,20 @@ function mapContactToCustomer(contact) {
 }
 __name(mapContactToCustomer, "mapContactToCustomer");
 async function getZohoCustomers(env) {
-  const payload = await zohoGet(buildContactsEndpoint(), env);
-  if (!payload || typeof payload !== "object") {
-    return [];
+  const contacts = [];
+  let page = 1;
+  let hasMorePage = true;
+  while (hasMorePage) {
+    const payload = await zohoGet(buildContactsEndpoint(page), env);
+    if (!payload || typeof payload !== "object") {
+      break;
+    }
+    const responsePayload = payload;
+    const pageContacts = Array.isArray(responsePayload.contacts) ? responsePayload.contacts : Array.isArray(responsePayload.data) ? responsePayload.data : [];
+    contacts.push(...pageContacts);
+    hasMorePage = responsePayload.page_context?.has_more_page ?? pageContacts.length === CONTACTS_PER_PAGE;
+    page += 1;
   }
-  const responsePayload = payload;
-  const contacts = Array.isArray(responsePayload.contacts) ? responsePayload.contacts : Array.isArray(responsePayload.data) ? responsePayload.data : [];
   return contacts.filter((item) => Boolean(item) && typeof item === "object").filter(isActiveCustomer).map(mapContactToCustomer).filter((item) => item !== null);
 }
 __name(getZohoCustomers, "getZohoCustomers");
@@ -353,6 +366,40 @@ function normalizeText2(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 __name(normalizeText2, "normalizeText");
+function normalizeFieldName(value) {
+  return normalizeText2(value).replace(/^cf_/i, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+}
+__name(normalizeFieldName, "normalizeFieldName");
+function normalizeCustomFieldValue(value) {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  return typeof value === "number" ? String(value) : "";
+}
+__name(normalizeCustomFieldValue, "normalizeCustomFieldValue");
+function getCustomPoNumber(invoice) {
+  const poFieldNames = /* @__PURE__ */ new Set(["po", "ponumber", "purchaseorder", "purchaseordernumber", "customerpo"]);
+  const customField = invoice.custom_fields?.find((field) => poFieldNames.has(normalizeFieldName(field.label)) || poFieldNames.has(normalizeFieldName(field.api_name)));
+  const customFieldValue = normalizeCustomFieldValue(customField?.value);
+  if (customFieldValue) {
+    return customFieldValue;
+  }
+  for (const [fieldName, value] of Object.entries(invoice.custom_field_hash ?? {})) {
+    if (poFieldNames.has(normalizeFieldName(fieldName))) {
+      return normalizeCustomFieldValue(value);
+    }
+  }
+  return "";
+}
+__name(getCustomPoNumber, "getCustomPoNumber");
+function mapLineItem(lineItem) {
+  return {
+    name: normalizeText2(lineItem.name),
+    description: normalizeText2(lineItem.description),
+    quantity: normalizeCustomFieldValue(lineItem.quantity)
+  };
+}
+__name(mapLineItem, "mapLineItem");
 function mapInvoice(invoice) {
   const invoiceId = invoice.invoice_id != null ? String(invoice.invoice_id) : "";
   const invoiceNumber = normalizeText2(invoice.invoice_number);
@@ -365,6 +412,38 @@ function mapInvoice(invoice) {
   };
 }
 __name(mapInvoice, "mapInvoice");
+function mapInvoiceDetail(invoice) {
+  const summary = mapInvoice(invoice);
+  if (!summary) {
+    return null;
+  }
+  const salesOrders = Array.isArray(invoice.salesorders) ? invoice.salesorders : invoice.salesorders ? [invoice.salesorders] : [];
+  const salesOrderPoNumbers = salesOrders.map((salesOrder) => normalizeText2(salesOrder.reference_number)).filter(Boolean);
+  return {
+    ...summary,
+    date: normalizeText2(invoice.date),
+    customer_name: normalizeText2(invoice.customer_name),
+    po_number: getCustomPoNumber(invoice) || salesOrderPoNumbers.join(",") || normalizeText2(invoice.reference_number) || normalizeText2(invoice.purchaseorder) || normalizeText2(invoice.po_number),
+    line_items: Array.isArray(invoice.line_items) ? invoice.line_items.map(mapLineItem) : []
+  };
+}
+__name(mapInvoiceDetail, "mapInvoiceDetail");
+async function getZohoInvoiceById(invoiceId, env) {
+  if (!invoiceId) {
+    return null;
+  }
+  const payload = await zohoGet(`/invoices/${encodeURIComponent(invoiceId)}`, env);
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const responsePayload = payload;
+  const invoice = responsePayload.invoice ?? responsePayload.data;
+  if (!invoice || typeof invoice !== "object") {
+    return null;
+  }
+  return mapInvoiceDetail(invoice);
+}
+__name(getZohoInvoiceById, "getZohoInvoiceById");
 async function getZohoInvoicesByCustomer(customerId, env) {
   if (!customerId) {
     return [];
@@ -391,7 +470,12 @@ __name(getZohoInvoicesByCustomer, "getZohoInvoicesByCustomer");
 async function onRequestGet2(context) {
   try {
     const url = new URL(context.request.url);
+    const invoiceId = url.searchParams.get("invoice_id") ?? "";
     const customerId = url.searchParams.get("customer_id") ?? "";
+    if (invoiceId) {
+      const invoice = await getZohoInvoiceById(invoiceId, context.env);
+      return invoice ? Response.json(invoice, { status: 200 }) : Response.json({ error: "Invoice not found" }, { status: 404 });
+    }
     return Response.json(await getZohoInvoicesByCustomer(customerId, context.env), { status: 200 });
   } catch (error) {
     return Response.json(
@@ -949,7 +1033,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-2VS8oj/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-JDGwdT/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -981,7 +1065,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-2VS8oj/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-JDGwdT/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

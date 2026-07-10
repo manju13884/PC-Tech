@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { renderAsync } from 'docx-preview'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
-import { getInvoicesByCustomer, getInvoicesError, type Invoice } from './invoiceService'
+import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice } from './invoiceService'
+import { loadCocTemplate } from './lib/templateLoader'
 
 interface MenuItem {
   key: string
@@ -35,16 +37,16 @@ const menuGroups: MenuGroup[] = [
           'View or generate a Certificate of Compliance for corrugated packaging materials and manufacturing standards.',
       },
       {
-        key: 'coa',
-        title: 'COA (Certificate of Analysis)',
-        description:
-          'Access the Certificate of Analysis for quality assurance and material test results.',
-      },
-      {
         key: 'packing-slip',
         title: 'Packing Slip',
         description:
           'Create packing slips for shipments and documentation required during order fulfillment.',
+      },
+      {
+        key: 'coa',
+        title: 'COA (Certificate of Analysis)',
+        description:
+          'Access the Certificate of Analysis for quality assurance and material test results.',
       },
     ],
   },
@@ -52,6 +54,60 @@ const menuGroups: MenuGroup[] = [
 
 function formatCustomerOption(customer: Customer): string {
   return `${customer.customer_name} - ${customer.gst_number || 'GST not available'}`
+}
+
+function alignCocRegistrationLine(previewElement: HTMLElement) {
+  const registrationLine = Array.from(previewElement.querySelectorAll('p')).find((paragraph) => {
+    const text = paragraph.textContent ?? ''
+    return text.includes('CIN:') && text.includes('GST:')
+  })
+
+  if (!registrationLine) {
+    return
+  }
+
+  const text = registrationLine.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+  const parts = text.match(/^(CIN:.*?)(GST:.*)$/)
+
+  if (!parts) {
+    return
+  }
+
+  const cin = document.createElement('span')
+  const gst = document.createElement('span')
+
+  cin.textContent = parts[1].trim()
+  gst.textContent = parts[2].trim()
+  registrationLine.replaceChildren(cin, gst)
+  registrationLine.classList.add('coc-registration-line')
+}
+
+function fitCocPreview(previewElement: HTMLElement) {
+  const wrapper = previewElement.querySelector<HTMLElement>('.docx-wrapper')
+
+  if (!wrapper) {
+    return
+  }
+
+  wrapper.style.setProperty('zoom', '1')
+  const availableWidth = previewElement.clientWidth
+  const documentWidth = wrapper.scrollWidth
+  const scale = documentWidth > availableWidth ? availableWidth / documentWidth : 1
+
+  wrapper.style.setProperty('zoom', String(scale))
+}
+
+function applyCocPageBorder(previewElement: HTMLElement) {
+  for (const page of previewElement.querySelectorAll<HTMLElement>('section.docx')) {
+    page.style.setProperty('border', '0', 'important')
+    page.style.setProperty('box-shadow', '0 0 10px rgba(0, 0, 0, 0.18)', 'important')
+    page.style.setProperty('box-sizing', 'border-box', 'important')
+
+    const frame = document.createElement('div')
+    frame.className = 'coc-page-frame'
+    frame.setAttribute('aria-hidden', 'true')
+    page.appendChild(frame)
+  }
 }
 
 export default function Dashboard({ username, onLogout }: { username: string; onLogout: () => void }) {
@@ -64,6 +120,11 @@ export default function Dashboard({ username, onLogout }: { username: string; on
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [invoicesLoading, setInvoicesLoading] = useState(false)
   const [invoicesError, setInvoicesError] = useState<string | null>(null)
+  const [templateReady, setTemplateReady] = useState(false)
+  const [previewTemplate, setPreviewTemplate] = useState<ArrayBuffer | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState('')
+  const previewRef = useRef<HTMLDivElement>(null)
 
   const selectedItem = menuGroups
     .flatMap((group) => group.items)
@@ -71,6 +132,8 @@ export default function Dashboard({ username, onLogout }: { username: string; on
 
   useEffect(() => {
     if (selectedKey !== 'coc') {
+      setPreviewTemplate(null)
+      setPreviewError('')
       return
     }
 
@@ -97,6 +160,50 @@ export default function Dashboard({ username, onLogout }: { username: string; on
       isCurrent = false
     }
   }, [selectedKey])
+
+  useEffect(() => {
+    if (!previewTemplate || !previewRef.current) {
+      return
+    }
+
+    let isCurrent = true
+    let previewResizeObserver: ResizeObserver | null = null
+    const previewElement = previewRef.current
+
+    previewElement.replaceChildren()
+    setPreviewLoading(true)
+    setPreviewError('')
+
+    renderAsync(previewTemplate, previewElement, undefined, {
+      breakPages: true,
+      renderHeaders: true,
+      renderFooters: true,
+    })
+      .then(() => {
+        if (isCurrent) {
+          alignCocRegistrationLine(previewElement)
+          applyCocPageBorder(previewElement)
+          fitCocPreview(previewElement)
+          previewResizeObserver = new ResizeObserver(() => fitCocPreview(previewElement))
+          previewResizeObserver.observe(previewElement)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setPreviewError('Unable to preview COC template')
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setPreviewLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+      previewResizeObserver?.disconnect()
+    }
+  }, [previewTemplate])
 
   useEffect(() => {
     setInvoiceId('')
@@ -132,6 +239,57 @@ export default function Dashboard({ username, onLogout }: { username: string; on
     }
   }, [customerId, selectedKey])
 
+  useEffect(() => {
+    if (selectedKey !== 'coc') {
+      return
+    }
+
+    let isCurrent = true
+
+    async function checkTemplate() {
+      try {
+        await loadCocTemplate()
+
+        if (isCurrent) {
+          setTemplateReady(true)
+        }
+      } catch {
+        if (isCurrent) {
+          setTemplateReady(false)
+        }
+      }
+    }
+
+    checkTemplate()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [selectedKey])
+
+  async function generateCoc() {
+    const selectedInvoice = invoices.find((invoice) => invoice.invoice_id === invoiceId)
+
+    if (!selectedInvoice) {
+      return
+    }
+
+    try {
+      const invoice = await getInvoiceById(selectedInvoice.invoice_id)
+      const template = await loadCocTemplate()
+      const { generateCocTemplate } = await import('./lib/cocGenerator')
+      setPreviewTemplate(generateCocTemplate(template, {
+        invoiceDate: invoice.date,
+        customer: invoice.customer_name,
+        poNumber: invoice.po_number,
+        invoiceNumber: invoice.invoice_number,
+        items: invoice.line_items,
+      }))
+    } catch {
+      setPreviewError('Unable to generate COC preview')
+    }
+  }
+
   return (
     <main className="dashboard-shell">
       <header className="dashboard-header">
@@ -143,6 +301,10 @@ export default function Dashboard({ username, onLogout }: { username: string; on
           />
         </div>
         <div className="dashboard-header-actions">
+          <div className="portal-identity" aria-label="PolarCanvas Tech Portal">
+            <span>PolarCanvas</span>
+            <em>Tech Portal</em>
+          </div>
           <span className="dashboard-welcome">Welcome, {username}</span>
           <button className="logout-button" onClick={onLogout}>
             Logout
@@ -191,7 +353,11 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                   <select
                     id="customer-name"
                     value={customerId}
-                    onChange={(event) => setCustomerId(event.target.value)}
+                    onChange={(event) => {
+                      setCustomerId(event.target.value)
+                      setPreviewTemplate(null)
+                      setPreviewError('')
+                    }}
                     disabled={customersLoading || Boolean(customersError)}
                     style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
                   >
@@ -219,7 +385,11 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                   <select
                     id="invoice-number"
                     value={invoiceId}
-                    onChange={(event) => setInvoiceId(event.target.value)}
+                    onChange={(event) => {
+                      setInvoiceId(event.target.value)
+                      setPreviewTemplate(null)
+                      setPreviewError('')
+                    }}
                     disabled={!customerId || invoicesLoading || Boolean(invoicesError)}
                     style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
                   >
@@ -244,6 +414,25 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                     <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
                       {invoicesError}
                     </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={generateCoc}
+                    disabled={!invoiceId || !templateReady}
+                    style={{ marginTop: '1rem', padding: '0.65rem 1rem', borderRadius: '0.4rem', border: 0, background: '#2563eb', color: '#fff', cursor: invoiceId && templateReady ? 'pointer' : 'not-allowed', opacity: invoiceId && templateReady ? 1 : 0.55 }}
+                  >
+                    Generate COC
+                  </button>
+                  {(previewTemplate || previewError) && (
+                    <div className="coc-preview">
+                      {previewLoading && (
+                        <p style={{ margin: 0, padding: '1rem', background: '#fff' }}>Loading COC preview...</p>
+                      )}
+                      {previewError && (
+                        <p style={{ margin: 0, padding: '1rem', color: '#b42318', background: '#fff' }}>{previewError}</p>
+                      )}
+                      <div ref={previewRef} className="coc-preview-document" />
+                    </div>
                   )}
                 </div>
               )}

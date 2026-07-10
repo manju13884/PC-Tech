@@ -1,9 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// .wrangler/tmp/pages-RALo7P/functionsWorker-0.4103279962123526.mjs
-var __defProp2 = Object.defineProperty;
-var __name2 = /* @__PURE__ */ __name((target, value) => __defProp2(target, "name", { value, configurable: true }), "__name");
+// ../lib/zoho.ts
 var ZOHO_REGION_URLS = {
   in: {
     tokenUrl: "https://accounts.zoho.in/oauth/v2/token",
@@ -14,9 +12,6 @@ var ZohoRequestError = class extends Error {
   static {
     __name(this, "ZohoRequestError");
   }
-  static {
-    __name2(this, "ZohoRequestError");
-  }
   status;
   code;
   constructor(message, details) {
@@ -26,7 +21,7 @@ var ZohoRequestError = class extends Error {
     this.code = details.code;
   }
 };
-var getEnv = /* @__PURE__ */ __name2((name, env) => {
+var getEnv = /* @__PURE__ */ __name((name, env) => {
   const configuredValue = env?.[name]?.trim();
   if (configuredValue) {
     return configuredValue;
@@ -39,16 +34,16 @@ var getEnv = /* @__PURE__ */ __name2((name, env) => {
   const globalEnv = globalThis.env;
   return globalEnv?.[name]?.trim();
 }, "getEnv");
-var getZohoRegion = /* @__PURE__ */ __name2((env) => getEnv("ZOHO_REGION", env)?.toLowerCase() || "in", "getZohoRegion");
-var getZohoUrls = /* @__PURE__ */ __name2((env) => {
+var getZohoRegion = /* @__PURE__ */ __name((env) => getEnv("ZOHO_REGION", env)?.toLowerCase() || "in", "getZohoRegion");
+var getZohoUrls = /* @__PURE__ */ __name((env) => {
   const region = getZohoRegion(env);
   return ZOHO_REGION_URLS[region] ?? ZOHO_REGION_URLS.in;
 }, "getZohoUrls");
-var logZohoDiagnostic = /* @__PURE__ */ __name2((message, details) => {
+var logZohoDiagnostic = /* @__PURE__ */ __name((message, details) => {
   console.info("[zoho]", message, details);
 }, "logZohoDiagnostic");
-var isZohoOrgIdNumeric = /* @__PURE__ */ __name2((env) => /^\d+$/.test(getEnv("ZOHO_ORG_ID", env) ?? ""), "isZohoOrgIdNumeric");
-var getRawEnv = /* @__PURE__ */ __name2((name, env) => {
+var isZohoOrgIdNumeric = /* @__PURE__ */ __name((env) => /^\d+$/.test(getEnv("ZOHO_ORG_ID", env) ?? ""), "isZohoOrgIdNumeric");
+var getRawEnv = /* @__PURE__ */ __name((name, env) => {
   if (env?.[name]) {
     return env[name];
   }
@@ -59,7 +54,7 @@ var getRawEnv = /* @__PURE__ */ __name2((name, env) => {
   const globalEnv = globalThis.env;
   return globalEnv?.[name];
 }, "getRawEnv");
-var logTokenRequestDiagnostic = /* @__PURE__ */ __name2((tokenUrl, body, env) => {
+var logTokenRequestDiagnostic = /* @__PURE__ */ __name((tokenUrl, body, env) => {
   const rawRefreshToken = getRawEnv("ZOHO_REFRESH_TOKEN", env) ?? "";
   const trimmedRefreshToken = rawRefreshToken.trim();
   logZohoDiagnostic("access-token request prepared", {
@@ -147,7 +142,6 @@ async function getAccessToken(env) {
   return cachedAccessToken;
 }
 __name(getAccessToken, "getAccessToken");
-__name2(getAccessToken, "getAccessToken");
 async function zohoRequest(endpoint, env) {
   const normalizedEndpoint = endpoint.startsWith("http") ? endpoint : `${getZohoUrls(env).booksUrl}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
   const url = new URL(normalizedEndpoint);
@@ -199,17 +193,14 @@ async function zohoRequest(endpoint, env) {
   return payload;
 }
 __name(zohoRequest, "zohoRequest");
-__name2(zohoRequest, "zohoRequest");
 async function zohoGet(endpoint, env) {
   return zohoRequest(endpoint, env);
 }
 __name(zohoGet, "zohoGet");
-__name2(zohoGet, "zohoGet");
 function formatZohoOAuthError(details) {
   return `Zoho OAuth token request failed (${details.status}): ${details.code}: ${details.message}`;
 }
 __name(formatZohoOAuthError, "formatZohoOAuthError");
-__name2(formatZohoOAuthError, "formatZohoOAuthError");
 function getZohoOAuthErrorDetails(status, payload) {
   const errorCode = payload.error || "unknown_error";
   const errorMessage = payload.error_description || payload.message || "Unable to obtain a Zoho access token";
@@ -220,7 +211,6 @@ function getZohoOAuthErrorDetails(status, payload) {
   };
 }
 __name(getZohoOAuthErrorDetails, "getZohoOAuthErrorDetails");
-__name2(getZohoOAuthErrorDetails, "getZohoOAuthErrorDetails");
 function getZohoApiErrorDetails(status, payload) {
   return {
     status,
@@ -229,7 +219,6 @@ function getZohoApiErrorDetails(status, payload) {
   };
 }
 __name(getZohoApiErrorDetails, "getZohoApiErrorDetails");
-__name2(getZohoApiErrorDetails, "getZohoApiErrorDetails");
 function extractErrorCode(payload) {
   if (payload && typeof payload === "object") {
     const errorPayload = payload;
@@ -243,7 +232,6 @@ function extractErrorCode(payload) {
   return "unknown_error";
 }
 __name(extractErrorCode, "extractErrorCode");
-__name2(extractErrorCode, "extractErrorCode");
 function extractErrorMessage(payload) {
   if (typeof payload === "string") {
     return payload;
@@ -266,7 +254,8 @@ function extractErrorMessage(payload) {
   return "Unknown Zoho API error";
 }
 __name(extractErrorMessage, "extractErrorMessage");
-__name2(extractErrorMessage, "extractErrorMessage");
+
+// ../lib/customers.ts
 var CONTACTS_PER_PAGE = 200;
 function buildContactsEndpoint(page) {
   const params = new URLSearchParams({
@@ -276,12 +265,10 @@ function buildContactsEndpoint(page) {
   return `/contacts?${params.toString()}`;
 }
 __name(buildContactsEndpoint, "buildContactsEndpoint");
-__name2(buildContactsEndpoint, "buildContactsEndpoint");
 function normalizeText(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 __name(normalizeText, "normalizeText");
-__name2(normalizeText, "normalizeText");
 function isActiveCustomer(contact) {
   const contactType = normalizeText(contact.contact_type).toLowerCase();
   if (contactType && contactType !== "customer") {
@@ -300,7 +287,6 @@ function isActiveCustomer(contact) {
   return true;
 }
 __name(isActiveCustomer, "isActiveCustomer");
-__name2(isActiveCustomer, "isActiveCustomer");
 function mapContactToCustomer(contact) {
   const customerId = contact.contact_id != null ? String(contact.contact_id) : "";
   const customerName = normalizeText(contact.contact_name);
@@ -315,7 +301,6 @@ function mapContactToCustomer(contact) {
   };
 }
 __name(mapContactToCustomer, "mapContactToCustomer");
-__name2(mapContactToCustomer, "mapContactToCustomer");
 async function getZohoCustomers(env) {
   const contacts = [];
   let page = 1;
@@ -334,7 +319,8 @@ async function getZohoCustomers(env) {
   return contacts.filter((item) => Boolean(item) && typeof item === "object").filter(isActiveCustomer).map(mapContactToCustomer).filter((item) => item !== null);
 }
 __name(getZohoCustomers, "getZohoCustomers");
-__name2(getZohoCustomers, "getZohoCustomers");
+
+// api/customers.ts
 function jsonResponse(payload, status) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -344,7 +330,6 @@ function jsonResponse(payload, status) {
   });
 }
 __name(jsonResponse, "jsonResponse");
-__name2(jsonResponse, "jsonResponse");
 async function onRequestGet(context) {
   try {
     return jsonResponse(await getZohoCustomers(context.env), 200);
@@ -365,7 +350,8 @@ async function onRequestGet(context) {
   }
 }
 __name(onRequestGet, "onRequestGet");
-__name2(onRequestGet, "onRequestGet");
+
+// ../lib/invoices.ts
 var INVOICES_PER_PAGE = 200;
 function buildInvoicesEndpoint(customerId, page) {
   const params = new URLSearchParams({
@@ -376,17 +362,14 @@ function buildInvoicesEndpoint(customerId, page) {
   return `/invoices?${params.toString()}`;
 }
 __name(buildInvoicesEndpoint, "buildInvoicesEndpoint");
-__name2(buildInvoicesEndpoint, "buildInvoicesEndpoint");
 function normalizeText2(value) {
   return typeof value === "string" ? value.trim() : "";
 }
-__name(normalizeText2, "normalizeText2");
-__name2(normalizeText2, "normalizeText");
+__name(normalizeText2, "normalizeText");
 function normalizeFieldName(value) {
   return normalizeText2(value).replace(/^cf_/i, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
 }
 __name(normalizeFieldName, "normalizeFieldName");
-__name2(normalizeFieldName, "normalizeFieldName");
 function normalizeCustomFieldValue(value) {
   if (typeof value === "string") {
     return value.trim();
@@ -394,7 +377,6 @@ function normalizeCustomFieldValue(value) {
   return typeof value === "number" ? String(value) : "";
 }
 __name(normalizeCustomFieldValue, "normalizeCustomFieldValue");
-__name2(normalizeCustomFieldValue, "normalizeCustomFieldValue");
 function getCustomPoNumber(invoice) {
   const poFieldNames = /* @__PURE__ */ new Set(["po", "ponumber", "purchaseorder", "purchaseordernumber", "customerpo"]);
   const customField = invoice.custom_fields?.find((field) => poFieldNames.has(normalizeFieldName(field.label)) || poFieldNames.has(normalizeFieldName(field.api_name)));
@@ -410,7 +392,6 @@ function getCustomPoNumber(invoice) {
   return "";
 }
 __name(getCustomPoNumber, "getCustomPoNumber");
-__name2(getCustomPoNumber, "getCustomPoNumber");
 function mapLineItem(lineItem) {
   return {
     name: normalizeText2(lineItem.name),
@@ -419,7 +400,6 @@ function mapLineItem(lineItem) {
   };
 }
 __name(mapLineItem, "mapLineItem");
-__name2(mapLineItem, "mapLineItem");
 function mapInvoice(invoice) {
   const invoiceId = invoice.invoice_id != null ? String(invoice.invoice_id) : "";
   const invoiceNumber = normalizeText2(invoice.invoice_number);
@@ -432,7 +412,6 @@ function mapInvoice(invoice) {
   };
 }
 __name(mapInvoice, "mapInvoice");
-__name2(mapInvoice, "mapInvoice");
 function mapInvoiceDetail(invoice) {
   const summary = mapInvoice(invoice);
   if (!summary) {
@@ -449,7 +428,6 @@ function mapInvoiceDetail(invoice) {
   };
 }
 __name(mapInvoiceDetail, "mapInvoiceDetail");
-__name2(mapInvoiceDetail, "mapInvoiceDetail");
 async function getZohoInvoiceById(invoiceId, env) {
   if (!invoiceId) {
     return null;
@@ -466,7 +444,6 @@ async function getZohoInvoiceById(invoiceId, env) {
   return mapInvoiceDetail(invoice);
 }
 __name(getZohoInvoiceById, "getZohoInvoiceById");
-__name2(getZohoInvoiceById, "getZohoInvoiceById");
 async function getZohoInvoicesByCustomer(customerId, env) {
   if (!customerId) {
     return [];
@@ -488,7 +465,8 @@ async function getZohoInvoicesByCustomer(customerId, env) {
   return invoices.filter((item) => Boolean(item) && typeof item === "object").map(mapInvoice).filter((item) => item !== null);
 }
 __name(getZohoInvoicesByCustomer, "getZohoInvoicesByCustomer");
-__name2(getZohoInvoicesByCustomer, "getZohoInvoicesByCustomer");
+
+// api/invoices.ts
 async function onRequestGet2(context) {
   try {
     const url = new URL(context.request.url);
@@ -508,8 +486,9 @@ async function onRequestGet2(context) {
     );
   }
 }
-__name(onRequestGet2, "onRequestGet2");
-__name2(onRequestGet2, "onRequestGet");
+__name(onRequestGet2, "onRequestGet");
+
+// api/login.ts
 async function onRequestPost(context) {
   try {
     const body = await context.request.json();
@@ -541,7 +520,8 @@ async function onRequestPost(context) {
   }
 }
 __name(onRequestPost, "onRequestPost");
-__name2(onRequestPost, "onRequestPost");
+
+// ../.wrangler/tmp/pages-R0Sf5J/functionsRoutes-0.6516149652622856.mjs
 var routes = [
   {
     routePath: "/api/customers",
@@ -565,6 +545,8 @@ var routes = [
     modules: [onRequestPost]
   }
 ];
+
+// ../node_modules/path-to-regexp/dist.es2015/index.js
 function lexer(str) {
   var tokens = [];
   var i = 0;
@@ -649,7 +631,6 @@ function lexer(str) {
   return tokens;
 }
 __name(lexer, "lexer");
-__name2(lexer, "lexer");
 function parse(str, options) {
   if (options === void 0) {
     options = {};
@@ -660,18 +641,18 @@ function parse(str, options) {
   var key = 0;
   var i = 0;
   var path = "";
-  var tryConsume = /* @__PURE__ */ __name2(function(type) {
+  var tryConsume = /* @__PURE__ */ __name(function(type) {
     if (i < tokens.length && tokens[i].type === type)
       return tokens[i++].value;
   }, "tryConsume");
-  var mustConsume = /* @__PURE__ */ __name2(function(type) {
+  var mustConsume = /* @__PURE__ */ __name(function(type) {
     var value2 = tryConsume(type);
     if (value2 !== void 0)
       return value2;
     var _a2 = tokens[i], nextType = _a2.type, index = _a2.index;
     throw new TypeError("Unexpected ".concat(nextType, " at ").concat(index, ", expected ").concat(type));
   }, "mustConsume");
-  var consumeText = /* @__PURE__ */ __name2(function() {
+  var consumeText = /* @__PURE__ */ __name(function() {
     var result2 = "";
     var value2;
     while (value2 = tryConsume("CHAR") || tryConsume("ESCAPED_CHAR")) {
@@ -679,7 +660,7 @@ function parse(str, options) {
     }
     return result2;
   }, "consumeText");
-  var isSafe = /* @__PURE__ */ __name2(function(value2) {
+  var isSafe = /* @__PURE__ */ __name(function(value2) {
     for (var _i = 0, delimiter_1 = delimiter; _i < delimiter_1.length; _i++) {
       var char2 = delimiter_1[_i];
       if (value2.indexOf(char2) > -1)
@@ -687,7 +668,7 @@ function parse(str, options) {
     }
     return false;
   }, "isSafe");
-  var safePattern = /* @__PURE__ */ __name2(function(prefix2) {
+  var safePattern = /* @__PURE__ */ __name(function(prefix2) {
     var prev = result[result.length - 1];
     var prevText = prefix2 || (prev && typeof prev === "string" ? prev : "");
     if (prev && !prevText) {
@@ -750,14 +731,12 @@ function parse(str, options) {
   return result;
 }
 __name(parse, "parse");
-__name2(parse, "parse");
 function match(str, options) {
   var keys = [];
   var re = pathToRegexp(str, keys, options);
   return regexpToFunction(re, keys, options);
 }
 __name(match, "match");
-__name2(match, "match");
 function regexpToFunction(re, keys, options) {
   if (options === void 0) {
     options = {};
@@ -771,7 +750,7 @@ function regexpToFunction(re, keys, options) {
       return false;
     var path = m[0], index = m.index;
     var params = /* @__PURE__ */ Object.create(null);
-    var _loop_1 = /* @__PURE__ */ __name2(function(i2) {
+    var _loop_1 = /* @__PURE__ */ __name(function(i2) {
       if (m[i2] === void 0)
         return "continue";
       var key = keys[i2 - 1];
@@ -790,17 +769,14 @@ function regexpToFunction(re, keys, options) {
   };
 }
 __name(regexpToFunction, "regexpToFunction");
-__name2(regexpToFunction, "regexpToFunction");
 function escapeString(str) {
   return str.replace(/([.+*?=^!:${}()[\]|/\\])/g, "\\$1");
 }
 __name(escapeString, "escapeString");
-__name2(escapeString, "escapeString");
 function flags(options) {
   return options && options.sensitive ? "" : "i";
 }
 __name(flags, "flags");
-__name2(flags, "flags");
 function regexpToRegexp(path, keys) {
   if (!keys)
     return path;
@@ -821,7 +797,6 @@ function regexpToRegexp(path, keys) {
   return path;
 }
 __name(regexpToRegexp, "regexpToRegexp");
-__name2(regexpToRegexp, "regexpToRegexp");
 function arrayToRegexp(paths, keys, options) {
   var parts = paths.map(function(path) {
     return pathToRegexp(path, keys, options).source;
@@ -829,12 +804,10 @@ function arrayToRegexp(paths, keys, options) {
   return new RegExp("(?:".concat(parts.join("|"), ")"), flags(options));
 }
 __name(arrayToRegexp, "arrayToRegexp");
-__name2(arrayToRegexp, "arrayToRegexp");
 function stringToRegexp(path, keys, options) {
   return tokensToRegexp(parse(path, options), keys, options);
 }
 __name(stringToRegexp, "stringToRegexp");
-__name2(stringToRegexp, "stringToRegexp");
 function tokensToRegexp(tokens, keys, options) {
   if (options === void 0) {
     options = {};
@@ -890,7 +863,6 @@ function tokensToRegexp(tokens, keys, options) {
   return new RegExp(route, flags(options));
 }
 __name(tokensToRegexp, "tokensToRegexp");
-__name2(tokensToRegexp, "tokensToRegexp");
 function pathToRegexp(path, keys, options) {
   if (path instanceof RegExp)
     return regexpToRegexp(path, keys);
@@ -899,7 +871,8 @@ function pathToRegexp(path, keys, options) {
   return stringToRegexp(path, keys, options);
 }
 __name(pathToRegexp, "pathToRegexp");
-__name2(pathToRegexp, "pathToRegexp");
+
+// ../node_modules/wrangler/templates/pages-template-worker.ts
 var escapeRegex = /[.+?^${}()|[\]\\]/g;
 function* executeRequest(request) {
   const requestPath = new URL(request.url).pathname;
@@ -950,14 +923,13 @@ function* executeRequest(request) {
   }
 }
 __name(executeRequest, "executeRequest");
-__name2(executeRequest, "executeRequest");
 var pages_template_worker_default = {
   async fetch(originalRequest, env, workerContext) {
     let request = originalRequest;
     const handlerIterator = executeRequest(request);
     let data = {};
     let isFailOpen = false;
-    const next = /* @__PURE__ */ __name2(async (input, init) => {
+    const next = /* @__PURE__ */ __name(async (input, init) => {
       if (input !== void 0) {
         let url = input;
         if (typeof input === "string") {
@@ -984,7 +956,7 @@ var pages_template_worker_default = {
           },
           env,
           waitUntil: workerContext.waitUntil.bind(workerContext),
-          passThroughOnException: /* @__PURE__ */ __name2(() => {
+          passThroughOnException: /* @__PURE__ */ __name(() => {
             isFailOpen = true;
           }, "passThroughOnException")
         };
@@ -1012,14 +984,16 @@ var pages_template_worker_default = {
     }
   }
 };
-var cloneResponse = /* @__PURE__ */ __name2((response) => (
+var cloneResponse = /* @__PURE__ */ __name((response) => (
   // https://fetch.spec.whatwg.org/#null-body-status
   new Response(
     [101, 204, 205, 304].includes(response.status) ? null : response.body,
     response
   )
 ), "cloneResponse");
-var drainBody = /* @__PURE__ */ __name2(async (request, env, _ctx, middlewareCtx) => {
+
+// ../node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
+var drainBody = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
   try {
     return await middlewareCtx.next(request, env);
   } finally {
@@ -1035,6 +1009,8 @@ var drainBody = /* @__PURE__ */ __name2(async (request, env, _ctx, middlewareCtx
   }
 }, "drainBody");
 var middleware_ensure_req_body_drained_default = drainBody;
+
+// ../node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
 function reduceError(e) {
   return {
     name: e?.name,
@@ -1044,8 +1020,7 @@ function reduceError(e) {
   };
 }
 __name(reduceError, "reduceError");
-__name2(reduceError, "reduceError");
-var jsonError = /* @__PURE__ */ __name2(async (request, env, _ctx, middlewareCtx) => {
+var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
   try {
     return await middlewareCtx.next(request, env);
   } catch (e) {
@@ -1057,17 +1032,20 @@ var jsonError = /* @__PURE__ */ __name2(async (request, env, _ctx, middlewareCtx
   }
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
+
+// ../.wrangler/tmp/bundle-ZtIfl4/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
 ];
 var middleware_insertion_facade_default = pages_template_worker_default;
+
+// ../node_modules/wrangler/templates/middleware/common.ts
 var __facade_middleware__ = [];
 function __facade_register__(...args) {
   __facade_middleware__.push(...args.flat());
 }
 __name(__facade_register__, "__facade_register__");
-__name2(__facade_register__, "__facade_register__");
 function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
   const [head, ...tail] = middlewareChain;
   const middlewareCtx = {
@@ -1079,7 +1057,6 @@ function __facade_invokeChain__(request, env, ctx, dispatch, middlewareChain) {
   return head(request, env, ctx, middlewareCtx);
 }
 __name(__facade_invokeChain__, "__facade_invokeChain__");
-__name2(__facade_invokeChain__, "__facade_invokeChain__");
 function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
   return __facade_invokeChain__(request, env, ctx, dispatch, [
     ...__facade_middleware__,
@@ -1087,11 +1064,9 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
   ]);
 }
 __name(__facade_invoke__, "__facade_invoke__");
-__name2(__facade_invoke__, "__facade_invoke__");
+
+// ../.wrangler/tmp/bundle-ZtIfl4/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
-  static {
-    __name(this, "___Facade_ScheduledController__");
-  }
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
     this.cron = cron;
@@ -1100,7 +1075,7 @@ var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   scheduledTime;
   cron;
   static {
-    __name2(this, "__Facade_ScheduledController__");
+    __name(this, "__Facade_ScheduledController__");
   }
   #noRetry;
   noRetry() {
@@ -1117,7 +1092,7 @@ function wrapExportedHandler(worker) {
   for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__) {
     __facade_register__(middleware);
   }
-  const fetchDispatcher = /* @__PURE__ */ __name2(function(request, env, ctx) {
+  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx) {
     if (worker.fetch === void 0) {
       throw new Error("Handler does not export a fetch() function.");
     }
@@ -1126,7 +1101,7 @@ function wrapExportedHandler(worker) {
   return {
     ...worker,
     fetch(request, env, ctx) {
-      const dispatcher = /* @__PURE__ */ __name2(function(type, init) {
+      const dispatcher = /* @__PURE__ */ __name(function(type, init) {
         if (type === "scheduled" && worker.scheduled !== void 0) {
           const controller = new __Facade_ScheduledController__(
             Date.now(),
@@ -1142,7 +1117,6 @@ function wrapExportedHandler(worker) {
   };
 }
 __name(wrapExportedHandler, "wrapExportedHandler");
-__name2(wrapExportedHandler, "wrapExportedHandler");
 function wrapWorkerEntrypoint(klass) {
   if (__INTERNAL_WRANGLER_MIDDLEWARE__ === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__.length === 0) {
     return klass;
@@ -1151,7 +1125,7 @@ function wrapWorkerEntrypoint(klass) {
     __facade_register__(middleware);
   }
   return class extends klass {
-    #fetchDispatcher = /* @__PURE__ */ __name2((request, env, ctx) => {
+    #fetchDispatcher = /* @__PURE__ */ __name((request, env, ctx) => {
       this.env = env;
       this.ctx = ctx;
       if (super.fetch === void 0) {
@@ -1159,7 +1133,7 @@ function wrapWorkerEntrypoint(klass) {
       }
       return super.fetch(request);
     }, "#fetchDispatcher");
-    #dispatcher = /* @__PURE__ */ __name2((type, init) => {
+    #dispatcher = /* @__PURE__ */ __name((type, init) => {
       if (type === "scheduled" && super.scheduled !== void 0) {
         const controller = new __Facade_ScheduledController__(
           Date.now(),
@@ -1182,7 +1156,6 @@ function wrapWorkerEntrypoint(klass) {
   };
 }
 __name(wrapWorkerEntrypoint, "wrapWorkerEntrypoint");
-__name2(wrapWorkerEntrypoint, "wrapWorkerEntrypoint");
 var WRAPPED_ENTRY;
 if (typeof middleware_insertion_facade_default === "object") {
   WRAPPED_ENTRY = wrapExportedHandler(middleware_insertion_facade_default);
@@ -1190,180 +1163,8 @@ if (typeof middleware_insertion_facade_default === "object") {
   WRAPPED_ENTRY = wrapWorkerEntrypoint(middleware_insertion_facade_default);
 }
 var middleware_loader_entry_default = WRAPPED_ENTRY;
-
-// node_modules/wrangler/templates/middleware/middleware-ensure-req-body-drained.ts
-var drainBody2 = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
-  try {
-    return await middlewareCtx.next(request, env);
-  } finally {
-    try {
-      if (request.body !== null && !request.bodyUsed) {
-        const reader = request.body.getReader();
-        while (!(await reader.read()).done) {
-        }
-      }
-    } catch (e) {
-      console.error("Failed to drain the unused request body.", e);
-    }
-  }
-}, "drainBody");
-var middleware_ensure_req_body_drained_default2 = drainBody2;
-
-// node_modules/wrangler/templates/middleware/middleware-miniflare3-json-error.ts
-function reduceError2(e) {
-  return {
-    name: e?.name,
-    message: e?.message ?? String(e),
-    stack: e?.stack,
-    cause: e?.cause === void 0 ? void 0 : reduceError2(e.cause)
-  };
-}
-__name(reduceError2, "reduceError");
-var jsonError2 = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx) => {
-  try {
-    return await middlewareCtx.next(request, env);
-  } catch (e) {
-    const error = reduceError2(e);
-    return Response.json(error, {
-      status: 500,
-      headers: { "MF-Experimental-Error-Stack": "true" }
-    });
-  }
-}, "jsonError");
-var middleware_miniflare3_json_error_default2 = jsonError2;
-
-// .wrangler/tmp/bundle-n1cXiD/middleware-insertion-facade.js
-var __INTERNAL_WRANGLER_MIDDLEWARE__2 = [
-  middleware_ensure_req_body_drained_default2,
-  middleware_miniflare3_json_error_default2
-];
-var middleware_insertion_facade_default2 = middleware_loader_entry_default;
-
-// node_modules/wrangler/templates/middleware/common.ts
-var __facade_middleware__2 = [];
-function __facade_register__2(...args) {
-  __facade_middleware__2.push(...args.flat());
-}
-__name(__facade_register__2, "__facade_register__");
-function __facade_invokeChain__2(request, env, ctx, dispatch, middlewareChain) {
-  const [head, ...tail] = middlewareChain;
-  const middlewareCtx = {
-    dispatch,
-    next(newRequest, newEnv) {
-      return __facade_invokeChain__2(newRequest, newEnv, ctx, dispatch, tail);
-    }
-  };
-  return head(request, env, ctx, middlewareCtx);
-}
-__name(__facade_invokeChain__2, "__facade_invokeChain__");
-function __facade_invoke__2(request, env, ctx, dispatch, finalMiddleware) {
-  return __facade_invokeChain__2(request, env, ctx, dispatch, [
-    ...__facade_middleware__2,
-    finalMiddleware
-  ]);
-}
-__name(__facade_invoke__2, "__facade_invoke__");
-
-// .wrangler/tmp/bundle-n1cXiD/middleware-loader.entry.ts
-var __Facade_ScheduledController__2 = class ___Facade_ScheduledController__2 {
-  constructor(scheduledTime, cron, noRetry) {
-    this.scheduledTime = scheduledTime;
-    this.cron = cron;
-    this.#noRetry = noRetry;
-  }
-  scheduledTime;
-  cron;
-  static {
-    __name(this, "__Facade_ScheduledController__");
-  }
-  #noRetry;
-  noRetry() {
-    if (!(this instanceof ___Facade_ScheduledController__2)) {
-      throw new TypeError("Illegal invocation");
-    }
-    this.#noRetry();
-  }
-};
-function wrapExportedHandler2(worker) {
-  if (__INTERNAL_WRANGLER_MIDDLEWARE__2 === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__2.length === 0) {
-    return worker;
-  }
-  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__2) {
-    __facade_register__2(middleware);
-  }
-  const fetchDispatcher = /* @__PURE__ */ __name(function(request, env, ctx) {
-    if (worker.fetch === void 0) {
-      throw new Error("Handler does not export a fetch() function.");
-    }
-    return worker.fetch(request, env, ctx);
-  }, "fetchDispatcher");
-  return {
-    ...worker,
-    fetch(request, env, ctx) {
-      const dispatcher = /* @__PURE__ */ __name(function(type, init) {
-        if (type === "scheduled" && worker.scheduled !== void 0) {
-          const controller = new __Facade_ScheduledController__2(
-            Date.now(),
-            init.cron ?? "",
-            () => {
-            }
-          );
-          return worker.scheduled(controller, env, ctx);
-        }
-      }, "dispatcher");
-      return __facade_invoke__2(request, env, ctx, dispatcher, fetchDispatcher);
-    }
-  };
-}
-__name(wrapExportedHandler2, "wrapExportedHandler");
-function wrapWorkerEntrypoint2(klass) {
-  if (__INTERNAL_WRANGLER_MIDDLEWARE__2 === void 0 || __INTERNAL_WRANGLER_MIDDLEWARE__2.length === 0) {
-    return klass;
-  }
-  for (const middleware of __INTERNAL_WRANGLER_MIDDLEWARE__2) {
-    __facade_register__2(middleware);
-  }
-  return class extends klass {
-    #fetchDispatcher = /* @__PURE__ */ __name((request, env, ctx) => {
-      this.env = env;
-      this.ctx = ctx;
-      if (super.fetch === void 0) {
-        throw new Error("Entrypoint class does not define a fetch() function.");
-      }
-      return super.fetch(request);
-    }, "#fetchDispatcher");
-    #dispatcher = /* @__PURE__ */ __name((type, init) => {
-      if (type === "scheduled" && super.scheduled !== void 0) {
-        const controller = new __Facade_ScheduledController__2(
-          Date.now(),
-          init.cron ?? "",
-          () => {
-          }
-        );
-        return super.scheduled(controller);
-      }
-    }, "#dispatcher");
-    fetch(request) {
-      return __facade_invoke__2(
-        request,
-        this.env,
-        this.ctx,
-        this.#dispatcher,
-        this.#fetchDispatcher
-      );
-    }
-  };
-}
-__name(wrapWorkerEntrypoint2, "wrapWorkerEntrypoint");
-var WRAPPED_ENTRY2;
-if (typeof middleware_insertion_facade_default2 === "object") {
-  WRAPPED_ENTRY2 = wrapExportedHandler2(middleware_insertion_facade_default2);
-} else if (typeof middleware_insertion_facade_default2 === "function") {
-  WRAPPED_ENTRY2 = wrapWorkerEntrypoint2(middleware_insertion_facade_default2);
-}
-var middleware_loader_entry_default2 = WRAPPED_ENTRY2;
 export {
-  __INTERNAL_WRANGLER_MIDDLEWARE__2 as __INTERNAL_WRANGLER_MIDDLEWARE__,
-  middleware_loader_entry_default2 as default
+  __INTERNAL_WRANGLER_MIDDLEWARE__,
+  middleware_loader_entry_default as default
 };
-//# sourceMappingURL=functionsWorker-0.4103279962123526.js.map
+//# sourceMappingURL=functionsWorker-0.5070347824078996.mjs.map

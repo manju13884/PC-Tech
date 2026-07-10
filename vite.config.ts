@@ -3,7 +3,7 @@ import { pbkdf2Sync } from 'node:crypto'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { getZohoCustomers } from './lib/customers'
-import { getZohoInvoicesByCustomer } from './lib/invoices'
+import { getZohoInvoiceById, getZohoInvoicesByCustomer } from './lib/invoices'
 
 const authConfig = JSON.parse(
   readFileSync(new URL('./server/auth-config.json', import.meta.url), 'utf8'),
@@ -111,7 +111,14 @@ const apiMiddleware = () => ({
 
       try {
         const url = new URL(req.url ?? '', 'http://localhost')
+        const invoiceId = url.searchParams.get('invoice_id') ?? ''
         const customerId = url.searchParams.get('customer_id') ?? ''
+
+        if (invoiceId) {
+          const invoice = await getZohoInvoiceById(invoiceId)
+          sendJson(res, invoice ? 200 : 404, invoice ?? { error: 'Invoice not found' })
+          return
+        }
 
         sendJson(res, 200, await getZohoInvoicesByCustomer(customerId))
       } catch (error) {
