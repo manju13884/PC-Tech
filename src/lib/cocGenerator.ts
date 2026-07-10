@@ -206,7 +206,12 @@ function alignLetterheadRegistration(zip: PizZip) {
       continue
     }
 
-    const updatedXml = xml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (paragraph) => {
+    const pageCenteredWatermarkXml = xml.includes('WordPictureWatermark')
+      ? xml
+          .replace(/mso-position-horizontal-relative:margin/g, 'mso-position-horizontal-relative:page')
+          .replace(/mso-position-vertical-relative:margin/g, 'mso-position-vertical-relative:page')
+      : xml
+    const updatedXml = pageCenteredWatermarkXml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (paragraph) => {
       if (paragraph.includes('<w:drawing>')) {
         return paragraph.replace('<w:pPr>', '<w:pPr><w:jc w:val="center"/>')
       }

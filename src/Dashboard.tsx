@@ -91,6 +91,19 @@ function centerCocLetterhead(previewElement: HTMLElement) {
   }
 }
 
+function centerRenderedCocWatermark(previewElement: HTMLElement) {
+  for (const page of previewElement.querySelectorAll<HTMLElement>('section.docx')) {
+    const watermark = page.querySelector<SVGElement>('header svg')
+
+    if (!watermark) {
+      continue
+    }
+
+    page.appendChild(watermark)
+    watermark.classList.add('coc-centered-watermark')
+  }
+}
+
 function fitCocPreview(previewElement: HTMLElement) {
   const wrapper = previewElement.querySelector<HTMLElement>('.docx-wrapper')
 
@@ -229,6 +242,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
       .then(() => {
         if (isCurrent) {
           centerCocLetterhead(previewElement)
+          centerRenderedCocWatermark(previewElement)
           alignCocRegistrationLine(previewElement)
           applyCocPageBorder(previewElement)
           styleCocItemTable(previewElement)

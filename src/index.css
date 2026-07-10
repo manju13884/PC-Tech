@@ -433,6 +433,27 @@ main.dashboard-shell {
   pointer-events: none;
 }
 
+.coc-preview-document section.docx > header,
+.coc-preview-document section.docx > article,
+.coc-preview-document section.docx > footer {
+  position: relative;
+  z-index: 1;
+}
+
+.coc-preview-document .coc-centered-watermark {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  z-index: 0 !important;
+  width: 451.1pt !important;
+  max-width: 72% !important;
+  height: 556.6pt !important;
+  max-height: 72% !important;
+  margin: 0 !important;
+  transform: translate(-50%, -50%) !important;
+  pointer-events: none;
+}
+
 .coc-preview-document .coc-item-table {
   width: 100% !important;
   margin-right: 0;
