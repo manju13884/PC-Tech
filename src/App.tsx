@@ -1,11 +1,13 @@
 import { FormEvent, useState } from 'react'
 import Dashboard from './Dashboard'
 
+const SESSION_USERNAME_KEY = 'pc-tech-session-username'
+
 function App() {
-  const [username, setUsername] = useState('')
+  const [username, setUsername] = useState(() => sessionStorage.getItem(SESSION_USERNAME_KEY) ?? '')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
-  const [authenticated, setAuthenticated] = useState(false)
+  const [authenticated, setAuthenticated] = useState(() => Boolean(sessionStorage.getItem(SESSION_USERNAME_KEY)))
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -27,6 +29,10 @@ function App() {
 
       const data = await response.json()
       if (data.authenticated) {
+        const authenticatedUsername = typeof data.username === 'string' ? data.username : username
+
+        sessionStorage.setItem(SESSION_USERNAME_KEY, authenticatedUsername)
+        setUsername(authenticatedUsername)
         setAuthenticated(true)
         setMessage('')
       }
@@ -36,6 +42,7 @@ function App() {
   }
 
   const handleLogout = () => {
+    sessionStorage.removeItem(SESSION_USERNAME_KEY)
     setAuthenticated(false)
     setUsername('')
     setPassword('')

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
+import { Calculator, ChevronRight, ClipboardList, FileCheck2, FlaskConical, type LucideIcon } from 'lucide-react'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice } from './invoiceService'
 import { loadCocTemplate } from './lib/templateLoader'
@@ -8,6 +9,7 @@ interface MenuItem {
   key: string
   title: string
   description: string
+  icon: LucideIcon
 }
 
 interface MenuGroup {
@@ -24,6 +26,7 @@ const menuGroups: MenuGroup[] = [
         title: 'Corrugated Box Price Calculator',
         description:
           'Estimate the cost of corrugated boxes based on size, material, and quantity for your packaging needs.',
+        icon: Calculator,
       },
     ],
   },
@@ -35,18 +38,21 @@ const menuGroups: MenuGroup[] = [
         title: 'COC (Certificate of Compliance)',
         description:
           'View or generate a Certificate of Compliance for corrugated packaging materials and manufacturing standards.',
+        icon: FileCheck2,
       },
       {
         key: 'packing-slip',
         title: 'Packing Slip',
         description:
           'Create packing slips for shipments and documentation required during order fulfillment.',
+        icon: ClipboardList,
       },
       {
         key: 'coa',
         title: 'COA (Certificate of Analysis)',
         description:
           'Access the Certificate of Analysis for quality assurance and material test results.',
+        icon: FlaskConical,
       },
     ],
   },
@@ -422,12 +428,21 @@ export default function Dashboard({ username, onLogout }: { username: string; on
               <h3>{group.title}</h3>
               <ul className="menu-list">
                 {group.items.map((item) => (
-                  <li
-                    key={item.key}
-                    className={`menu-item ${item.key === selectedKey ? 'active' : ''}`}
-                    onClick={() => setSelectedKey(item.key)}
-                  >
-                    <span>{item.title}</span>
+                  <li key={item.key}>
+                    <button
+                      type="button"
+                      className={`menu-item ${item.key === selectedKey ? 'active' : ''}`}
+                      onClick={() => setSelectedKey(item.key)}
+                      aria-current={item.key === selectedKey ? 'page' : undefined}
+                    >
+                      <span className="menu-item-main">
+                        <span className="menu-item-icon" aria-hidden="true">
+                          <item.icon size={18} strokeWidth={1.8} />
+                        </span>
+                        <span>{item.title}</span>
+                      </span>
+                      <ChevronRight className="menu-item-chevron" size={16} aria-hidden="true" />
+                    </button>
                     {item.key === selectedKey && <span>✓</span>}
                   </li>
                 ))}

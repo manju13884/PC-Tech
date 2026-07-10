@@ -302,25 +302,89 @@ main.dashboard-shell {
 }
 
 .menu-item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  min-height: 42px;
-  background: transparent;
+  width: 100%;
+  min-height: 46px;
+  padding: 0.45rem 0.6rem;
   border: 0;
   border-radius: 4px;
-  padding: 0.65rem 0.75rem;
+  background: transparent;
   color: #20263d;
+  font-size: 0.875rem;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
+}
+
+.menu-list > li > span {
+  display: none;
+}
+
+.menu-item::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: transparent;
+  content: '';
+}
+
+.menu-item-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.7rem;
+  text-align: left;
+}
+
+.menu-item-icon {
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #e1e5ee;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #687086;
+}
+
+.menu-item-chevron {
+  flex: 0 0 auto;
+  color: #98a2b3;
+  transition: transform 0.15s ease, color 0.15s ease;
 }
 
 .menu-item:hover,
 .menu-item.active {
   background: #e8edff;
   color: #1e5bd7;
-  transform: none;
+}
+
+.menu-item:hover .menu-item-icon,
+.menu-item.active .menu-item-icon {
+  border-color: #b9c9f7;
+  color: #1e5bd7;
+}
+
+.menu-item.active::before {
+  background: #2563eb;
+}
+
+.menu-item:hover .menu-item-chevron,
+.menu-item.active .menu-item-chevron {
+  color: #2563eb;
+  transform: translateX(2px);
+}
+
+.menu-item:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .dashboard-content {
