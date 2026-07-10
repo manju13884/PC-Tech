@@ -111,9 +111,9 @@ main.dashboard-shell {
 }
 
 .dashboard-header .site-logo {
-  width: 117px;
-  max-height: 78px;
-  object-fit: contain;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
   margin-bottom: 0;
 }
 
@@ -194,8 +194,8 @@ main.dashboard-shell {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  min-height: 96px;
-  height: 96px;
+  min-height: 80px;
+  height: 80px;
   padding: 0.5rem 1rem;
   box-sizing: border-box;
   background: #20263d;
@@ -207,6 +207,7 @@ main.dashboard-shell {
 .dashboard-brand {
   display: flex;
   align-items: center;
+  gap: 0.35rem;
 }
 
 .dashboard-header-actions {
@@ -218,22 +219,24 @@ main.dashboard-shell {
 .portal-identity {
   display: flex;
   align-items: baseline;
-  gap: 0.45rem;
-  padding-right: 1rem;
-  border-right: 1px solid rgba(255, 255, 255, 0.22);
+  gap: 0.55rem;
+  padding-right: 0;
+  border-right: 0;
   color: #ffffff;
   white-space: nowrap;
 }
 
 .portal-identity span {
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 700;
 }
 
 .portal-identity em {
   color: #9ec5ff;
-  font-size: 0.82rem;
-  font-weight: 500;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-style: italic;
 }
 
 .dashboard-welcome {
@@ -263,7 +266,7 @@ main.dashboard-shell {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   gap: 0;
-  height: calc(100vh - 96px);
+  height: calc(100vh - 80px);
   min-height: 0;
 }
 
@@ -645,14 +648,10 @@ main.dashboard-shell {
     border-right: 0;
   }
 
-  .portal-identity span {
-    display: none;
-  }
-
   .dashboard-grid {
     grid-template-columns: 1fr;
     height: auto;
-    min-height: calc(100vh - 96px);
+    min-height: calc(100vh - 80px);
   }
 
   .dashboard-menu,

@@ -399,15 +399,15 @@ export default function Dashboard({ username, onLogout }: { username: string; on
         <div className="dashboard-brand">
           <img
             className="site-logo"
-            src="/assets/logo.png"
-            alt="PolarCanvas logo"
+            src="/assets/PC-Bord-Logo-only-transparent.png"
+            alt="PolarCanvas bird logo"
           />
-        </div>
-        <div className="dashboard-header-actions">
           <div className="portal-identity" aria-label="PolarCanvas Tech Portal">
-            <span>PolarCanvas</span>
+            <span>Polar Canvas</span>
             <em>Tech Portal</em>
           </div>
+        </div>
+        <div className="dashboard-header-actions">
           <span className="dashboard-welcome">Welcome, {username}</span>
           <button className="logout-button" onClick={onLogout}>
             Logout
