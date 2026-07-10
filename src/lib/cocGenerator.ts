@@ -38,12 +38,13 @@ function addItemRowLoop(zip: PizZip) {
 
   let itemRowFound = false
   const titleCaseQuantityXml = documentXml.replace('<w:t>QUANTITY</w:t>', '<w:t>Quantity</w:t>')
-  const updatedXml = titleCaseQuantityXml.replace(/<w:tr\b[\s\S]*?<\/w:tr>/g, (row) => {
+  const updatedRowsXml = titleCaseQuantityXml.replace(/<w:tr\b[\s\S]*?<\/w:tr>/g, (row) => {
     const autoHeightRow = row.replace(/<w:trHeight\b[^>]*\/>/g, '')
 
     if (autoHeightRow.includes('<w:t>Sl No</w:t>')) {
       return autoHeightRow
         .replace('<w:trPr>', '<w:trPr><w:trHeight w:val="450" w:hRule="exact"/>')
+        .replace('<w:t>Sl No</w:t>', '<w:t>Sl&#160;No</w:t>')
         .replace(/<w:shd\b[^>]*\/>/g, '')
         .replace(/<w:tcPr>/g, '<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="5B9BD5"/>')
         .replace(/<w:color\b[^>]*\/>/g, '')
@@ -67,6 +68,103 @@ function addItemRowLoop(zip: PizZip) {
 
   if (!itemRowFound) {
     throw new Error('COC item row was not found')
+  }
+
+  const updatedXml = updatedRowsXml.replace(/<w:tbl\b[\s\S]*?<\/w:tbl>/g, (table) => {
+    if (!table.includes('Item &amp; Description')) {
+      return table
+    }
+
+    return table
+      .replace(/<w:tblGrid>[\s\S]*?<\/w:tblGrid>/, '')
+      .replace(/<w:tblLayout\b[^>]*\/>/g, '')
+      .replace(/<w:tblBorders>[\s\S]*?<\/w:tblBorders>/g, '')
+      .replace(
+        '<w:tblPr>',
+        '<w:tblPr><w:tblLayout w:type="autofit"/><w:tblBorders>' +
+          '<w:top w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>' +
+          '<w:left w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>' +
+          '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>' +
+          '<w:right w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>' +
+          '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>' +
+          '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>' +
+          '</w:tblBorders>',
+      )
+      .replace(/<w:tblW\b[^>]*\/>/, '<w:tblW w:w="5000" w:type="pct"/>')
+      .replace(/<w:tcW\b[^>]*\/>/g, '<w:tcW w:w="0" w:type="auto"/>')
+  })
+
+  zip.file('word/document.xml', updatedXml)
+}
+
+function reduceCocBodyFontSize(zip: PizZip) {
+  const documentFile = zip.file('word/document.xml')
+  const documentXml = documentFile?.asText()
+
+  if (!documentXml) {
+    throw new Error('COC document content was not found')
+  }
+
+  const titleIndex = documentXml.indexOf('CERTIFICATE OF COMPLIANCE')
+  const bodyStart = titleIndex >= 0 ? documentXml.indexOf('</w:p>', titleIndex) + '</w:p>'.length : -1
+
+  if (bodyStart < '</w:p>'.length) {
+    throw new Error('COC title was not found')
+  }
+
+  const bodyXml = documentXml.slice(bodyStart).replace(/<w:(sz|szCs) w:val="(\d+)"\/>/g, (_, tag, value) => (
+    `<w:${tag} w:val="${Math.max(2, Number(value) - 2)}"/>`
+  ))
+
+  zip.file('word/document.xml', documentXml.slice(0, bodyStart) + bodyXml)
+}
+
+function tightenInvoiceDetailSpacing(zip: PizZip) {
+  const documentFile = zip.file('word/document.xml')
+  const documentXml = documentFile?.asText()
+
+  if (!documentXml) {
+    throw new Error('COC document content was not found')
+  }
+
+  const updatedXml = documentXml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (paragraph) => {
+    const plainText = paragraph.replace(/<[^>]+>/g, '').trim()
+
+    if (!/^(DATE:|CUSTOMER:|PO#:|Invoice\(s\):)/.test(plainText)) {
+      return paragraph
+    }
+
+    return paragraph
+      .replace(/<w:spacing\b[^>]*\/>/g, '')
+      .replace('<w:pPr>', '<w:pPr><w:spacing w:before="0" w:after="0" w:line="330" w:lineRule="auto"/>')
+  })
+
+  zip.file('word/document.xml', updatedXml)
+}
+
+function scaleCocSeal(zip: PizZip) {
+  const documentFile = zip.file('word/document.xml')
+  const documentXml = documentFile?.asText()
+
+  if (!documentXml) {
+    throw new Error('COC document content was not found')
+  }
+
+  let sealFound = false
+  const updatedXml = documentXml.replace(/<w:drawing>[\s\S]*?<\/w:drawing>/g, (drawing) => {
+    if (!drawing.includes('r:embed="rId6"')) {
+      return drawing
+    }
+
+    sealFound = true
+
+    return drawing.replace(/\b(cx|cy)="(\d+)"/g, (_, dimension, value) => (
+      `${dimension}="${Math.round(Number(value) * 0.6)}"`
+    ))
+  })
+
+  if (!sealFound) {
+    throw new Error('COC seal image was not found')
   }
 
   zip.file('word/document.xml', updatedXml)
@@ -95,6 +193,37 @@ function setCocTextBlack(zip: PizZip) {
   }
 }
 
+function alignLetterheadRegistration(zip: PizZip) {
+  for (const fileName of Object.keys(zip.files)) {
+    if (!/^word\/header\d+\.xml$/.test(fileName)) {
+      continue
+    }
+
+    const file = zip.file(fileName)
+    const xml = file?.asText()
+
+    if (!xml || !xml.includes('CIN:') || !xml.includes('GST:')) {
+      continue
+    }
+
+    const updatedXml = xml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (paragraph) => {
+      if (paragraph.includes('<w:drawing>')) {
+        return paragraph.replace('<w:pPr>', '<w:pPr><w:jc w:val="center"/>')
+      }
+
+      if (!paragraph.includes('CIN:') || !paragraph.includes('GST:')) {
+        return paragraph
+      }
+
+      return paragraph
+        .replace('<w:pPr>', '<w:pPr><w:ind w:left="720" w:right="720"/><w:tabs><w:tab w:val="right" w:pos="9026"/></w:tabs>')
+        .replace('<w:tab/>', '')
+    })
+
+    zip.file(fileName, updatedXml)
+  }
+}
+
 function setCocPageLayout(zip: PizZip) {
   const documentFile = zip.file('word/document.xml')
   const documentXml = documentFile?.asText()
@@ -115,10 +244,10 @@ function setCocPageLayout(zip: PizZip) {
     const withoutExistingBorder = section.replace(/<w:pgBorders\b[\s\S]*?<\/w:pgBorders>/g, '')
     const equalMargins = withoutExistingBorder.replace(/<w:pgMar\b[^>]*\/>/, (pageMargins) => (
       pageMargins
-        .replace(/w:left="[^"]*"/, 'w:left="1440"')
-        .replace(/w:top="[^"]*"/, 'w:top="1440"')
+        .replace(/w:left="[^"]*"/, 'w:left="720"')
+        .replace(/w:top="[^"]*"/, 'w:top="2160"')
         .replace(/w:bottom="[^"]*"/, 'w:bottom="1440"')
-        .replace(/w:right="[^"]*"/, 'w:right="1440"')
+        .replace(/w:right="[^"]*"/, 'w:right="720"')
     ))
 
     return equalMargins.replace(/(<w:pgMar\b[^>]*\/>)/, `$1${pageBorder}`)
@@ -130,7 +259,11 @@ function setCocPageLayout(zip: PizZip) {
 export function generateCocTemplate(template: ArrayBuffer, values: CocInvoiceValues): ArrayBuffer {
   const zip = new PizZip(template)
   setCocTextBlack(zip)
+  alignLetterheadRegistration(zip)
   addItemRowLoop(zip)
+  reduceCocBodyFontSize(zip)
+  tightenInvoiceDetailSpacing(zip)
+  scaleCocSeal(zip)
   setCocPageLayout(zip)
   const document = new Docxtemplater(zip, {
     delimiters: {

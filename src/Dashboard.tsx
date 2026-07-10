@@ -82,6 +82,15 @@ function alignCocRegistrationLine(previewElement: HTMLElement) {
   registrationLine.classList.add('coc-registration-line')
 }
 
+function centerCocLetterhead(previewElement: HTMLElement) {
+  const letterheadImage = previewElement.querySelector('header img')
+  const letterheadParagraph = letterheadImage?.closest<HTMLElement>('p')
+
+  if (letterheadParagraph) {
+    letterheadParagraph.style.setProperty('text-align', 'center', 'important')
+  }
+}
+
 function fitCocPreview(previewElement: HTMLElement) {
   const wrapper = previewElement.querySelector<HTMLElement>('.docx-wrapper')
 
@@ -110,6 +119,42 @@ function applyCocPageBorder(previewElement: HTMLElement) {
   }
 }
 
+function styleCocItemTable(previewElement: HTMLElement) {
+  const itemTable = Array.from(previewElement.querySelectorAll('table')).find((table) => {
+    const text = (table.textContent ?? '').replace(/\s+/g, ' ')
+    return text.includes('Sl No') && text.includes('Item & Description') && text.includes('Quantity')
+  })
+  const headerRow = itemTable?.querySelector('tr')
+
+  itemTable?.classList.add('coc-item-table')
+  headerRow?.classList.add('coc-item-table-header')
+}
+
+function styleCocDetailLines(previewElement: HTMLElement) {
+  for (const paragraph of previewElement.querySelectorAll('article p')) {
+    const text = (paragraph.textContent ?? '').trim()
+
+    if (/^(DATE:|CUSTOMER:|PO#:|Invoice\(s\):)/.test(text)) {
+      paragraph.classList.add('coc-detail-line')
+    }
+  }
+}
+
+function removeEmptyCocPages(previewElement: HTMLElement) {
+  const pages = Array.from(previewElement.querySelectorAll<HTMLElement>('section.docx'))
+
+  for (const page of pages.slice(1)) {
+    const article = page.querySelector('article')
+    const hasBodyContent = Boolean(
+      article?.textContent?.trim() || article?.querySelector('img, table, svg'),
+    )
+
+    if (!hasBodyContent) {
+      page.remove()
+    }
+  }
+}
+
 export default function Dashboard({ username, onLogout }: { username: string; onLogout: () => void }) {
   const [selectedKey, setSelectedKey] = useState('coc')
   const [customerId, setCustomerId] = useState('')
@@ -132,6 +177,8 @@ export default function Dashboard({ username, onLogout }: { username: string; on
 
   useEffect(() => {
     if (selectedKey !== 'coc') {
+      setCustomerId('')
+      setInvoiceId('')
       setPreviewTemplate(null)
       setPreviewError('')
       return
@@ -181,8 +228,12 @@ export default function Dashboard({ username, onLogout }: { username: string; on
     })
       .then(() => {
         if (isCurrent) {
+          centerCocLetterhead(previewElement)
           alignCocRegistrationLine(previewElement)
           applyCocPageBorder(previewElement)
+          styleCocItemTable(previewElement)
+          styleCocDetailLines(previewElement)
+          removeEmptyCocPages(previewElement)
           fitCocPreview(previewElement)
           previewResizeObserver = new ResizeObserver(() => fitCocPreview(previewElement))
           previewResizeObserver.observe(previewElement)
@@ -288,6 +339,44 @@ export default function Dashboard({ username, onLogout }: { username: string; on
     } catch {
       setPreviewError('Unable to generate COC preview')
     }
+  }
+
+  function openCocPrintDialog() {
+    const previewElement = previewRef.current
+    const wrapper = previewElement?.querySelector<HTMLElement>('.docx-wrapper')
+
+    if (!previewElement || !wrapper) {
+      return
+    }
+
+    const previousTitle = document.title
+    const selectedInvoice = invoices.find((invoice) => invoice.invoice_id === invoiceId)
+
+    document.title = selectedInvoice ? `${selectedInvoice.invoice_number}-COC` : 'COC'
+    document.body.classList.add('printing-coc')
+    wrapper.style.setProperty('zoom', '1')
+
+    const pages = Array.from(previewElement.querySelectorAll<HTMLElement>('section.docx'))
+    const firstPage = pages[0]
+    const article = firstPage?.querySelector<HTMLElement>('article')
+    const contentBottom = article ? article.offsetTop + article.scrollHeight : Number.POSITIVE_INFINITY
+    const contentFitsOnePage = pages.length === 1 && Boolean(firstPage) && contentBottom <= firstPage.clientHeight - 32
+
+    if (contentFitsOnePage) {
+      document.documentElement.classList.add('single-page-coc-print')
+      document.body.classList.add('single-page-coc-print')
+    }
+
+    const cleanup = () => {
+      document.body.classList.remove('printing-coc')
+      document.body.classList.remove('single-page-coc-print')
+      document.documentElement.classList.remove('single-page-coc-print')
+      document.title = previousTitle
+      fitCocPreview(previewElement)
+    }
+
+    window.addEventListener('afterprint', cleanup, { once: true })
+    window.print()
   }
 
   return (
@@ -415,14 +504,26 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                       {invoicesError}
                     </p>
                   )}
-                  <button
-                    type="button"
-                    onClick={generateCoc}
-                    disabled={!invoiceId || !templateReady}
-                    style={{ marginTop: '1rem', padding: '0.65rem 1rem', borderRadius: '0.4rem', border: 0, background: '#2563eb', color: '#fff', cursor: invoiceId && templateReady ? 'pointer' : 'not-allowed', opacity: invoiceId && templateReady ? 1 : 0.55 }}
-                  >
-                    Generate COC
-                  </button>
+                  <div className="coc-action-row">
+                    <button
+                      type="button"
+                      className="generate-coc-button"
+                      onClick={generateCoc}
+                      disabled={!invoiceId || !templateReady}
+                    >
+                      Generate COC
+                    </button>
+                    {previewTemplate && !previewLoading && !previewError && (
+                      <>
+                      <button type="button" onClick={openCocPrintDialog}>
+                        Save As PDF
+                      </button>
+                      <button type="button" onClick={openCocPrintDialog}>
+                        Print COC
+                      </button>
+                      </>
+                    )}
+                  </div>
                   {(previewTemplate || previewError) && (
                     <div className="coc-preview">
                       {previewLoading && (

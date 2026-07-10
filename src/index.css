@@ -367,6 +367,44 @@ main.dashboard-shell {
   background: #e5e7eb;
 }
 
+.coc-action-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.coc-action-row button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0.6rem 1rem;
+  border: 1px solid #2563eb;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.coc-action-row .generate-coc-button {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.coc-action-row button:hover {
+  background: #eff6ff;
+}
+
+.coc-action-row .generate-coc-button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.coc-action-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .coc-preview-document {
   width: 100%;
   min-width: 0;
@@ -395,11 +433,147 @@ main.dashboard-shell {
   pointer-events: none;
 }
 
+.coc-preview-document .coc-item-table {
+  width: 100% !important;
+  margin-right: 0;
+  margin-left: 0;
+  border: 1px solid #cbd5e1 !important;
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+  table-layout: auto !important;
+}
+
+.coc-preview-document .coc-item-table td,
+.coc-preview-document .coc-item-table th {
+  border: 1px solid #cbd5e1 !important;
+  background-clip: padding-box;
+}
+
+.coc-preview-document .coc-item-table tr {
+  break-inside: avoid;
+}
+
+.coc-preview-document .coc-detail-line {
+  min-height: 1.5em !important;
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+.coc-preview-document .coc-item-table tr > :first-child,
+.coc-preview-document .coc-item-table tr > :last-child {
+  width: 1% !important;
+  white-space: nowrap;
+}
+
+.coc-preview-document .coc-item-table tr > :first-child * {
+  white-space: nowrap !important;
+}
+
+.coc-preview-document .coc-item-table tr > :nth-child(2) {
+  width: auto !important;
+}
+
+.coc-preview-document .coc-item-table-header {
+  height: 30px !important;
+  background: #5b9bd5 !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.coc-preview-document .coc-item-table-header > td,
+.coc-preview-document .coc-item-table-header > th,
+.coc-preview-document .coc-item-table-header p,
+.coc-preview-document .coc-item-table-header span {
+  background: #5b9bd5 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  vertical-align: middle !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body.printing-coc {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  html.single-page-coc-print,
+  body.single-page-coc-print {
+    width: 210mm !important;
+    height: 295mm !important;
+    max-height: 295mm !important;
+    overflow: hidden !important;
+  }
+
+  body.single-page-coc-print .coc-preview-document,
+  body.single-page-coc-print .docx-wrapper,
+  body.single-page-coc-print section.docx {
+    height: 295mm !important;
+    max-height: 295mm !important;
+    overflow: hidden !important;
+  }
+
+  body.printing-coc * {
+    visibility: hidden !important;
+  }
+
+  body.printing-coc .coc-preview-document,
+  body.printing-coc .coc-preview-document * {
+    visibility: visible !important;
+  }
+
+  body.printing-coc .coc-preview-document {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+
+  body.printing-coc .docx-wrapper {
+    display: block !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    zoom: 1 !important;
+  }
+
+  body.printing-coc section.docx {
+    width: 210mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    break-after: auto;
+  }
+
+  body.printing-coc section.docx > footer {
+    position: fixed !important;
+    right: 0;
+    bottom: 6mm;
+    left: 0;
+    z-index: 5;
+  }
+
+  body.printing-coc .coc-page-frame {
+    position: fixed;
+    inset: 2px;
+  }
+}
+
 .coc-preview-document .coc-registration-line {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  width: 100%;
+  width: 451.3pt;
+  max-width: 100%;
+  margin-right: auto;
+  margin-left: auto;
   white-space: nowrap;
   font-family: Calibri, Arial, sans-serif;
   font-size: 7pt !important;
