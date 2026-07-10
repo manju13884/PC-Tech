@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Calculator, ChevronRight, ClipboardList, FileCheck2, FlaskConical, type LucideIcon } from 'lucide-react'
+import { Calculator, ChevronRight, ClipboardList, FileCheck2, FileDown, FlaskConical, PackageCheck, Printer, type LucideIcon } from 'lucide-react'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice } from './invoiceService'
 import { loadCocTemplate } from './lib/templateLoader'
+import { loadPackingSlipLogo, loadPackingSlipTemplate } from './lib/packingSlipTemplateLoader'
 
 interface MenuItem {
   key: string
@@ -184,6 +185,15 @@ export default function Dashboard({ username, onLogout }: { username: string; on
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [invoicesLoading, setInvoicesLoading] = useState(false)
   const [invoicesError, setInvoicesError] = useState<string | null>(null)
+  const [packingCustomerId, setPackingCustomerId] = useState('')
+  const [packingInvoiceId, setPackingInvoiceId] = useState('')
+  const [packingInvoices, setPackingInvoices] = useState<Invoice[]>([])
+  const [packingInvoicesLoading, setPackingInvoicesLoading] = useState(false)
+  const [packingInvoicesError, setPackingInvoicesError] = useState<string | null>(null)
+  const [packingPreviewTemplate, setPackingPreviewTemplate] = useState<ArrayBuffer | null>(null)
+  const [packingPreviewLoading, setPackingPreviewLoading] = useState(false)
+  const [packingPreviewError, setPackingPreviewError] = useState('')
+  const packingPreviewRef = useRef<HTMLDivElement>(null)
   const [templateReady, setTemplateReady] = useState(false)
   const [previewTemplate, setPreviewTemplate] = useState<ArrayBuffer | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -200,6 +210,9 @@ export default function Dashboard({ username, onLogout }: { username: string; on
       setInvoiceId('')
       setPreviewTemplate(null)
       setPreviewError('')
+    }
+
+    if (selectedKey !== 'coc' && selectedKey !== 'packing-slip') {
       return
     }
 
@@ -277,6 +290,48 @@ export default function Dashboard({ username, onLogout }: { username: string; on
   }, [previewTemplate])
 
   useEffect(() => {
+    if (!packingPreviewTemplate || !packingPreviewRef.current) {
+      return
+    }
+
+    let isCurrent = true
+    let previewResizeObserver: ResizeObserver | null = null
+    const previewElement = packingPreviewRef.current
+
+    previewElement.replaceChildren()
+    setPackingPreviewLoading(true)
+    setPackingPreviewError('')
+
+    renderAsync(packingPreviewTemplate, previewElement, undefined, {
+      breakPages: true,
+      renderHeaders: true,
+      renderFooters: true,
+    })
+      .then(() => {
+        if (isCurrent) {
+          fitCocPreview(previewElement)
+          previewResizeObserver = new ResizeObserver(() => fitCocPreview(previewElement))
+          previewResizeObserver.observe(previewElement)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setPackingPreviewError('Unable to preview Packing Slip template')
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setPackingPreviewLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+      previewResizeObserver?.disconnect()
+    }
+  }, [packingPreviewTemplate])
+
+  useEffect(() => {
     setInvoiceId('')
     setInvoices([])
     setInvoicesError(null)
@@ -309,6 +364,40 @@ export default function Dashboard({ username, onLogout }: { username: string; on
       isCurrent = false
     }
   }, [customerId, selectedKey])
+
+  useEffect(() => {
+    setPackingInvoiceId('')
+    setPackingInvoices([])
+    setPackingInvoicesError(null)
+    setPackingInvoicesLoading(false)
+
+    if (selectedKey !== 'packing-slip' || !packingCustomerId) {
+      return
+    }
+
+    let isCurrent = true
+
+    async function loadPackingInvoices() {
+      setPackingInvoicesLoading(true)
+      setPackingInvoicesError(null)
+
+      const invoiceList = await getInvoicesByCustomer(packingCustomerId)
+
+      if (!isCurrent) {
+        return
+      }
+
+      setPackingInvoices(invoiceList)
+      setPackingInvoicesError(getInvoicesError())
+      setPackingInvoicesLoading(false)
+    }
+
+    loadPackingInvoices()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [packingCustomerId, selectedKey])
 
   useEffect(() => {
     if (selectedKey !== 'coc') {
@@ -361,26 +450,103 @@ export default function Dashboard({ username, onLogout }: { username: string; on
     }
   }
 
-  function openCocPrintDialog() {
-    const previewElement = previewRef.current
+  async function generatePackingSlip() {
+    if (!packingInvoiceId) {
+      return
+    }
+
+    setPackingPreviewError('')
+
+    try {
+      const [invoice, template, logo, { generatePackingSlipPages }] = await Promise.all([
+        getInvoiceById(packingInvoiceId),
+        loadPackingSlipTemplate(),
+        loadPackingSlipLogo(),
+        import('./lib/packingSlipGenerator'),
+      ])
+      setPackingPreviewTemplate(generatePackingSlipPages(template, logo, {
+        customerName: invoice.customer_name,
+        invoiceNumber: invoice.invoice_number,
+        invoiceDate: invoice.date,
+        items: invoice.line_items,
+      }))
+    } catch (error) {
+      setPackingPreviewError(error instanceof Error ? error.message : 'Unable to generate Packing Slip preview')
+    }
+  }
+
+  function openMobileCocPrintWindow(previewElement: HTMLElement, title: string, singlePage: boolean): boolean {
+    const printWindow = window.open('', '_blank')
+
+    if (!printWindow) {
+      return false
+    }
+
+    const stylesheetLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+      .map((link) => `<link rel="stylesheet" href="${link.href}">`)
+      .join('')
+    const docxStyles = Array.from(previewElement.querySelectorAll('style'))
+      .map((style) => style.outerHTML)
+      .join('')
+    const singlePageClass = singlePage ? ' single-page-coc-print' : ''
+    const previewClassName = previewElement.classList.contains('packing-slip-preview-document')
+      ? 'coc-preview-document packing-slip-preview-document'
+      : 'coc-preview-document'
+
+    printWindow.document.open()
+    printWindow.document.write(
+      `<!doctype html><html class="${singlePageClass.trim()}"><head><meta charset="utf-8">` +
+        `<meta name="viewport" content="width=device-width, initial-scale=1">` +
+        `<title>${title}</title>${stylesheetLinks}${docxStyles}</head>` +
+        `<body class="printing-coc${singlePageClass}"><div class="${previewClassName}">` +
+        `${previewElement.innerHTML}</div></body></html>`,
+    )
+    printWindow.document.close()
+
+    printWindow.addEventListener('load', () => {
+      printWindow.setTimeout(() => {
+        printWindow.focus()
+        printWindow.print()
+      }, 350)
+    }, { once: true })
+    printWindow.addEventListener('afterprint', () => printWindow.close(), { once: true })
+
+    return true
+  }
+
+  function openDocumentPrintDialog(
+    previewElement: HTMLDivElement | null,
+    documentInvoices: Invoice[],
+    documentInvoiceId: string,
+    suffix: string,
+  ) {
     const wrapper = previewElement?.querySelector<HTMLElement>('.docx-wrapper')
 
     if (!previewElement || !wrapper) {
       return
     }
 
-    const previousTitle = document.title
-    const selectedInvoice = invoices.find((invoice) => invoice.invoice_id === invoiceId)
+    const selectedInvoice = documentInvoices.find((invoice) => invoice.invoice_id === documentInvoiceId)
+    const printTitle = selectedInvoice ? `${selectedInvoice.invoice_number}-${suffix}` : suffix
 
-    document.title = selectedInvoice ? `${selectedInvoice.invoice_number}-COC` : 'COC'
-    document.body.classList.add('printing-coc')
     wrapper.style.setProperty('zoom', '1')
 
     const pages = Array.from(previewElement.querySelectorAll<HTMLElement>('section.docx'))
     const firstPage = pages[0]
     const article = firstPage?.querySelector<HTMLElement>('article')
-    const contentBottom = article ? article.offsetTop + article.scrollHeight : Number.POSITIVE_INFINITY
-    const contentFitsOnePage = pages.length === 1 && Boolean(firstPage) && contentBottom <= firstPage.clientHeight - 32
+    const a4HeightInCssPixels = (297 / 25.4) * 96
+    const contentFitsOnePage = pages.length === 1 && article !== null && article.scrollHeight <= a4HeightInCssPixels - 48
+    const isMobileBrowser = window.matchMedia('(max-width: 768px), (pointer: coarse)').matches
+
+    if (isMobileBrowser && openMobileCocPrintWindow(previewElement, printTitle, contentFitsOnePage)) {
+      fitCocPreview(previewElement)
+      return
+    }
+
+    const previousTitle = document.title
+
+    document.title = printTitle
+    document.body.classList.add('printing-coc')
 
     if (contentFitsOnePage) {
       document.documentElement.classList.add('single-page-coc-print')
@@ -397,6 +563,19 @@ export default function Dashboard({ username, onLogout }: { username: string; on
 
     window.addEventListener('afterprint', cleanup, { once: true })
     window.print()
+  }
+
+  function selectMenuItem(key: string) {
+    if (key === 'packing-slip') {
+      setPackingCustomerId('')
+      setPackingInvoiceId('')
+      setPackingInvoices([])
+      setPackingInvoicesError(null)
+      setPackingPreviewTemplate(null)
+      setPackingPreviewError('')
+    }
+
+    setSelectedKey(key)
   }
 
   return (
@@ -432,7 +611,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                     <button
                       type="button"
                       className={`menu-item ${item.key === selectedKey ? 'active' : ''}`}
-                      onClick={() => setSelectedKey(item.key)}
+                      onClick={() => selectMenuItem(item.key)}
                       aria-current={item.key === selectedKey ? 'page' : undefined}
                     >
                       <span className="menu-item-main">
@@ -533,22 +712,33 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                       {invoicesError}
                     </p>
                   )}
-                  <div className="coc-action-row">
+                  <div className="coc-action-row packing-slip-actions">
                     <button
                       type="button"
-                      className="generate-coc-button"
+                      className="packing-action-button packing-action-primary"
                       onClick={generateCoc}
                       disabled={!invoiceId || !templateReady}
                     >
-                      Generate COC
+                      <FileCheck2 aria-hidden="true" />
+                      <span>Generate COC</span>
                     </button>
                     {previewTemplate && !previewLoading && !previewError && (
                       <>
-                      <button type="button" onClick={openCocPrintDialog}>
-                        Save As PDF
+                      <button
+                        type="button"
+                        className="packing-action-button packing-action-pdf"
+                        onClick={() => openDocumentPrintDialog(previewRef.current, invoices, invoiceId, 'COC')}
+                      >
+                        <FileDown aria-hidden="true" />
+                        <span>Save As PDF</span>
                       </button>
-                      <button type="button" onClick={openCocPrintDialog}>
-                        Print COC
+                      <button
+                        type="button"
+                        className="packing-action-button packing-action-print"
+                        onClick={() => openDocumentPrintDialog(previewRef.current, invoices, invoiceId, 'COC')}
+                      >
+                        <Printer aria-hidden="true" />
+                        <span>Print COC</span>
                       </button>
                       </>
                     )}
@@ -575,9 +765,116 @@ export default function Dashboard({ username, onLogout }: { username: string; on
               )}
               {selectedItem.key === 'packing-slip' && (
                 <div>
-                  <p>
-                    Generate and print packing slips to accompany your shipments and help with order tracking.
-                  </p>
+                  <label htmlFor="packing-customer-name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Customer Name
+                  </label>
+                  <select
+                    id="packing-customer-name"
+                    value={packingCustomerId}
+                    onChange={(event) => {
+                      setPackingCustomerId(event.target.value)
+                      setPackingPreviewTemplate(null)
+                      setPackingPreviewError('')
+                    }}
+                    disabled={customersLoading || Boolean(customersError)}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
+                  >
+                    <option value="">
+                      {customersLoading
+                        ? 'Loading customers...'
+                        : customersError
+                          ? 'Unable to load customers'
+                          : 'Select customer'}
+                    </option>
+                    {customers.map((customer) => (
+                      <option key={customer.customer_id} value={customer.customer_id}>
+                        {formatCustomerOption(customer)}
+                      </option>
+                    ))}
+                  </select>
+                  {customersError && (
+                    <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
+                      {customersError}
+                    </p>
+                  )}
+                  <label htmlFor="packing-invoice-number" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Invoice Number
+                  </label>
+                  <select
+                    id="packing-invoice-number"
+                    value={packingInvoiceId}
+                    onChange={(event) => {
+                      setPackingInvoiceId(event.target.value)
+                      setPackingPreviewTemplate(null)
+                      setPackingPreviewError('')
+                    }}
+                    disabled={!packingCustomerId || packingInvoicesLoading || Boolean(packingInvoicesError)}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
+                  >
+                    <option value="">
+                      {!packingCustomerId
+                        ? 'Select customer first'
+                        : packingInvoicesLoading
+                          ? 'Loading invoices...'
+                          : packingInvoicesError
+                            ? 'Unable to load invoices'
+                            : packingInvoices.length === 0
+                              ? 'No invoices found'
+                              : 'Select invoice'}
+                    </option>
+                    {packingInvoices.map((invoice) => (
+                      <option key={invoice.invoice_id} value={invoice.invoice_id}>
+                        {invoice.invoice_number}
+                      </option>
+                    ))}
+                  </select>
+                  {packingInvoicesError && (
+                    <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
+                      {packingInvoicesError}
+                    </p>
+                  )}
+                  <div className="coc-action-row packing-slip-actions">
+                    <button
+                      type="button"
+                      className="packing-action-button packing-action-primary"
+                      onClick={generatePackingSlip}
+                      disabled={!packingInvoiceId}
+                    >
+                      <PackageCheck aria-hidden="true" />
+                      <span>Generate Packing Slip</span>
+                    </button>
+                    {packingPreviewTemplate && !packingPreviewLoading && !packingPreviewError && (
+                      <>
+                        <button
+                          type="button"
+                          className="packing-action-button packing-action-pdf"
+                          onClick={() => openDocumentPrintDialog(packingPreviewRef.current, packingInvoices, packingInvoiceId, 'PackingSlip')}
+                        >
+                          <FileDown aria-hidden="true" />
+                          <span>Save As PDF</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="packing-action-button packing-action-print"
+                          onClick={() => openDocumentPrintDialog(packingPreviewRef.current, packingInvoices, packingInvoiceId, 'PackingSlip')}
+                        >
+                          <Printer aria-hidden="true" />
+                          <span>Print Packing Slip</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {(packingPreviewTemplate || packingPreviewError) && (
+                    <div className="coc-preview">
+                      {packingPreviewLoading && (
+                        <p style={{ margin: 0, padding: '1rem', background: '#fff' }}>Loading Packing Slip preview...</p>
+                      )}
+                      {packingPreviewError && (
+                        <p style={{ margin: 0, padding: '1rem', color: '#b42318', background: '#fff' }}>{packingPreviewError}</p>
+                      )}
+                      <div ref={packingPreviewRef} className="coc-preview-document packing-slip-preview-document" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
