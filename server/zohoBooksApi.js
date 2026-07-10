@@ -17,16 +17,38 @@ const sendJson = (res, status, payload) => {
   res.end(JSON.stringify(payload))
 }
 
+const ZOHO_REGION_URLS = {
+  in: {
+    tokenUrl: 'https://accounts.zoho.in/oauth/v2/token',
+    booksUrl: 'https://www.zohoapis.in/books/v3',
+  },
+}
+
+const getEnv = (name) => process.env[name]?.trim()
+
+const getZohoUrls = () => {
+  const region = getEnv('ZOHO_REGION')?.toLowerCase() || 'in'
+
+  return ZOHO_REGION_URLS[region] || ZOHO_REGION_URLS.in
+}
+
+const formatZohoOAuthError = (status, payload) => {
+  const errorCode = payload?.error || 'unknown_error'
+  const errorMessage = payload?.error_description || payload?.message || 'Unable to get Zoho access token'
+
+  return `Zoho OAuth token request failed (${status}): ${errorCode}: ${errorMessage}`
+}
+
 const getAccessToken = async () => {
-  const clientId = process.env.ZOHO_CLIENT_ID
-  const clientSecret = process.env.ZOHO_CLIENT_SECRET
-  const refreshToken = process.env.ZOHO_REFRESH_TOKEN
+  const clientId = getEnv('ZOHO_CLIENT_ID')
+  const clientSecret = getEnv('ZOHO_CLIENT_SECRET')
+  const refreshToken = getEnv('ZOHO_REFRESH_TOKEN')
 
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('Missing Zoho OAuth environment variables')
+    throw new Error('Missing Zoho OAuth environment variables: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN')
   }
 
-  const response = await fetch('https://accounts.zoho.com/oauth/v2/token', {
+  const response = await fetch(getZohoUrls().tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -39,10 +61,17 @@ const getAccessToken = async () => {
     }),
   })
 
-  const data = await response.json()
+  const text = await response.text()
+  let data
+
+  try {
+    data = text ? JSON.parse(text) : {}
+  } catch {
+    throw new Error(`Zoho OAuth token request failed (${response.status}): response was not valid JSON`)
+  }
 
   if (!response.ok || !data.access_token) {
-    throw new Error(data.error_description || 'Unable to get Zoho access token')
+    throw new Error(formatZohoOAuthError(response.status, data))
   }
 
   return data.access_token
@@ -50,20 +79,21 @@ const getAccessToken = async () => {
 
 const proxyZohoRequest = async (resource, method, body, searchParams) => {
   const accessToken = await getAccessToken()
-  const zohoUrl = new URL(`https://www.zohoapis.com/books/v3/${resource}`)
+  const zohoUrl = new URL(`${getZohoUrls().booksUrl}/${resource}`)
 
   searchParams.forEach((value, key) => {
     zohoUrl.searchParams.set(key, value)
   })
 
-  if (!zohoUrl.searchParams.has('organization_id') && process.env.ZOHO_ORGANIZATION_ID) {
-    zohoUrl.searchParams.set('organization_id', process.env.ZOHO_ORGANIZATION_ID)
+  const organizationId = getEnv('ZOHO_ORG_ID')
+  if (!zohoUrl.searchParams.has('organization_id') && organizationId) {
+    zohoUrl.searchParams.set('organization_id', organizationId)
   }
 
   const response = await fetch(zohoUrl, {
     method,
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Zoho-oauthtoken ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: method === 'GET' ? undefined : JSON.stringify(body || {}),
@@ -97,7 +127,8 @@ const server = createServer(async (req, res) => {
     sendJson(res, 200, {
       status: 'ok',
       port: PORT,
-      organizationId: process.env.ZOHO_ORGANIZATION_ID || null,
+      organizationConfigured: Boolean(getEnv('ZOHO_ORG_ID')),
+      zohoRegion: getEnv('ZOHO_REGION') || 'in',
     })
     return
   }

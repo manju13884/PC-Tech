@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { getCustomers, getCustomersError, type Customer } from './customerService'
+import { getInvoicesByCustomer, getInvoicesError, type Invoice } from './invoiceService'
 
 interface MenuItem {
   key: string
@@ -48,13 +50,87 @@ const menuGroups: MenuGroup[] = [
   },
 ]
 
+function formatCustomerOption(customer: Customer): string {
+  return `${customer.customer_name} - ${customer.gst_number || 'GST not available'}`
+}
+
 export default function Dashboard({ username, onLogout }: { username: string; onLogout: () => void }) {
-  const [selectedKey, setSelectedKey] = useState(menuGroups[0].items[0].key)
-  const [customerName, setCustomerName] = useState('')
+  const [selectedKey, setSelectedKey] = useState('coc')
+  const [customerId, setCustomerId] = useState('')
+  const [invoiceId, setInvoiceId] = useState('')
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customersLoading, setCustomersLoading] = useState(false)
+  const [customersError, setCustomersError] = useState<string | null>(null)
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [invoicesLoading, setInvoicesLoading] = useState(false)
+  const [invoicesError, setInvoicesError] = useState<string | null>(null)
 
   const selectedItem = menuGroups
     .flatMap((group) => group.items)
     .find((item) => item.key === selectedKey) ?? menuGroups[0].items[0]
+
+  useEffect(() => {
+    if (selectedKey !== 'coc') {
+      return
+    }
+
+    let isCurrent = true
+
+    async function loadCustomers() {
+      setCustomersLoading(true)
+      setCustomersError(null)
+
+      const customerList = await getCustomers()
+
+      if (!isCurrent) {
+        return
+      }
+
+      setCustomers(customerList)
+      setCustomersError(getCustomersError())
+      setCustomersLoading(false)
+    }
+
+    loadCustomers()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [selectedKey])
+
+  useEffect(() => {
+    setInvoiceId('')
+    setInvoices([])
+    setInvoicesError(null)
+    setInvoicesLoading(false)
+
+    if (selectedKey !== 'coc' || !customerId) {
+      return
+    }
+
+    let isCurrent = true
+
+    async function loadInvoices() {
+      setInvoicesLoading(true)
+      setInvoicesError(null)
+
+      const invoiceList = await getInvoicesByCustomer(customerId)
+
+      if (!isCurrent) {
+        return
+      }
+
+      setInvoices(invoiceList)
+      setInvoicesError(getInvoicesError())
+      setInvoicesLoading(false)
+    }
+
+    loadInvoices()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [customerId, selectedKey])
 
   return (
     <main className="dashboard-shell">
@@ -114,15 +190,61 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                   </label>
                   <select
                     id="customer-name"
-                    value={customerName}
-                    onChange={(event) => setCustomerName(event.target.value)}
+                    value={customerId}
+                    onChange={(event) => setCustomerId(event.target.value)}
+                    disabled={customersLoading || Boolean(customersError)}
                     style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
                   >
-                    <option value="">Select customer</option>
-                    <option value="PolarCanvas">PolarCanvas</option>
-                    <option value="ABC Packaging">ABC Packaging</option>
-                    <option value="Northwind Supplies">Northwind Supplies</option>
+                    <option value="">
+                      {customersLoading
+                        ? 'Loading customers...'
+                        : customersError
+                          ? 'Unable to load customers'
+                          : 'Select customer'}
+                    </option>
+                    {customers.map((customer) => (
+                      <option key={customer.customer_id} value={customer.customer_id}>
+                        {formatCustomerOption(customer)}
+                      </option>
+                    ))}
                   </select>
+                  {customersError && (
+                    <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
+                      {customersError}
+                    </p>
+                  )}
+                  <label htmlFor="invoice-number" style={{ display: 'block', marginTop: '1rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    Invoice Number
+                  </label>
+                  <select
+                    id="invoice-number"
+                    value={invoiceId}
+                    onChange={(event) => setInvoiceId(event.target.value)}
+                    disabled={!customerId || invoicesLoading || Boolean(invoicesError)}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '0.4rem', border: '1px solid #ccc' }}
+                  >
+                    <option value="">
+                      {!customerId
+                        ? 'Select customer first'
+                        : invoicesLoading
+                          ? 'Loading invoices...'
+                          : invoicesError
+                            ? 'Unable to load invoices'
+                            : invoices.length === 0
+                              ? 'No invoices found'
+                              : 'Select invoice'}
+                    </option>
+                    {invoices.map((invoice) => (
+                      <option key={invoice.invoice_id} value={invoice.invoice_id}>
+                        {invoice.invoice_number}
+                      </option>
+                    ))}
+                  </select>
+                  {invoicesError && (
+                    <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
+                      {invoicesError}
+                    </p>
+                  )}
                 </div>
               )}
               {selectedItem.key === 'coa' && (

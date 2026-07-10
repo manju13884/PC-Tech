@@ -1,59 +1,40 @@
-import { zohoGet } from '../../lib/zoho'
+import { getZohoCustomers } from '../../lib/customers'
+import { ZohoRequestError, type ZohoEnv } from '../../lib/zoho'
 
-interface CustomersQueryParams {
-  page?: string
-  per_page?: string
-  search_text?: string
+interface PagesFunctionContext {
+  env: ZohoEnv
+}
+
+function jsonResponse(payload: unknown, status: number): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
 }
 
 /**
- * Build the Zoho Contacts endpoint with any supported query parameters.
+ * Cloudflare Function that returns active customer summaries from Zoho Books contacts.
  */
-function buildContactsEndpoint(query: CustomersQueryParams): string {
-  const params = new URLSearchParams()
-
-  if (query.page) {
-    params.set('page', query.page)
-  }
-
-  if (query.per_page) {
-    params.set('per_page', query.per_page)
-  }
-
-  if (query.search_text) {
-    params.set('search_text', query.search_text)
-  }
-
-  const queryString = params.toString()
-  return queryString ? `/contacts?${queryString}` : '/contacts'
-}
-
-/**
- * Cloudflare Function that returns Zoho Books contacts in read-only mode.
- */
-export async function onRequestGet({ request }: { request: Request }): Promise<Response> {
+export async function onRequestGet(context: PagesFunctionContext): Promise<Response> {
   try {
-    const url = new URL(request.url)
-    const query: CustomersQueryParams = {}
+    return jsonResponse(await getZohoCustomers(context.env), 200)
+  } catch (error) {
+    const safeMessage = error instanceof Error ? error.message : 'Unable to load customers'
+    const status = error instanceof ZohoRequestError ? error.status : 502
+    const code = error instanceof ZohoRequestError ? error.code : 'customers_request_failed'
 
-    url.searchParams.forEach((value, key) => {
-      if (key === 'page' || key === 'per_page' || key === 'search_text') {
-        query[key as keyof CustomersQueryParams] = value
-      }
+    console.error('[customers-api] request failed', {
+      status,
+      code,
+      message: safeMessage,
     })
 
-    const payload = await zohoGet(buildContactsEndpoint(query))
-
-    return Response.json(payload, { status: 200 })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-
-    return Response.json(
-      {
-        error: 'Failed to load customers',
-        message,
-      },
-      { status: 502 },
-    )
+    return jsonResponse({
+      error: safeMessage,
+      code,
+      status,
+    }, 502)
   }
 }
