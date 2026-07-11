@@ -1,56 +1,214 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import Dashboard from './Dashboard'
 
-const SESSION_USERNAME_KEY = 'pc-tech-session-username'
+interface AuthenticatedUser {
+  id: number
+  email: string
+  fullName: string
+  role: string
+  status: string
+  sessionVersion: number
+}
+
+interface LoginResponse {
+  success?: boolean
+  error?: string
+  user?: AuthenticatedUser
+}
+
+interface BasicResponse {
+  success?: boolean
+  error?: string
+}
 
 function App() {
-  const [username, setUsername] = useState(() => sessionStorage.getItem(SESSION_USERNAME_KEY) ?? '')
+  const initialSetupToken = new URLSearchParams(window.location.search).get('setup_token') ?? ''
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [setupPassword, setSetupPassword] = useState('')
+  const [setupConfirmPassword, setSetupConfirmPassword] = useState('')
+  const [setupToken, setSetupToken] = useState(initialSetupToken)
   const [message, setMessage] = useState('')
-  const [authenticated, setAuthenticated] = useState(() => Boolean(sessionStorage.getItem(SESSION_USERNAME_KEY)))
+  const [user, setUser] = useState<AuthenticatedUser | null>(null)
+  const [checkingSession, setCheckingSession] = useState(true)
+
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadCurrentUser() {
+      try {
+        const response = await fetch('/api/auth/me', { credentials: 'include' })
+        const data: LoginResponse = await response.json()
+
+        if (!isCurrent || !response.ok || !data.success || !data.user) {
+          return
+        }
+
+        setUser(data.user)
+        setEmail(data.user.email)
+      } catch {
+        // Stay on the login screen when no valid session can be loaded.
+      } finally {
+        if (isCurrent) {
+          setCheckingSession(false)
+        }
+      }
+    }
+
+    loadCurrentUser()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    const normalizedEmail = email.trim().toLowerCase()
 
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        credentials: 'include',
+        body: JSON.stringify({ email: normalizedEmail, password }),
       })
+      const data: LoginResponse = await response.json()
 
       if (!response.ok) {
-        const errorData = await response.json()
-        setMessage(errorData.error || 'Invalid username or password.')
+        setMessage(data.error || 'Invalid email or password.')
         return
       }
 
-      const data = await response.json()
-      if (data.authenticated) {
-        const authenticatedUsername = typeof data.username === 'string' ? data.username : username
-
-        sessionStorage.setItem(SESSION_USERNAME_KEY, authenticatedUsername)
-        setUsername(authenticatedUsername)
-        setAuthenticated(true)
+      if (data.success && data.user) {
+        setUser(data.user)
+        setEmail(data.user.email)
         setMessage('')
+        return
       }
+
+      setMessage(data.error || 'Unable to authenticate.')
     } catch (error) {
       setMessage('Unable to connect to authentication service.')
     }
   }
 
-  const handleLogout = () => {
-    sessionStorage.removeItem(SESSION_USERNAME_KEY)
-    setAuthenticated(false)
-    setUsername('')
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } catch {
+      // Clear local state even if the logout request cannot be completed.
+    }
+
+    setUser(null)
+    setEmail('')
     setPassword('')
     setMessage('')
   }
 
-  if (authenticated) {
-    return <Dashboard username={username} onLogout={handleLogout} />
+  const handleSetupPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (setupPassword !== setupConfirmPassword) {
+      setMessage('Passwords do not match.')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/auth/setup-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: setupToken, password: setupPassword }),
+      })
+      const data: BasicResponse = await response.json()
+
+      if (!response.ok || !data.success) {
+        setMessage(data.error || 'Unable to set password.')
+        return
+      }
+
+      window.history.replaceState(null, '', window.location.pathname)
+      setSetupToken('')
+      setSetupPassword('')
+      setSetupConfirmPassword('')
+      setMessage('Password set. Please login.')
+    } catch {
+      setMessage('Unable to connect to authentication service.')
+    }
+  }
+
+  if (user) {
+    return <Dashboard username={user.fullName || user.email} onLogout={handleLogout} />
+  }
+
+  if (checkingSession) {
+    return (
+      <main className="app-shell">
+        <section className="login-card auth-loading-card">
+          <p>Loading...</p>
+        </section>
+      </main>
+    )
+  }
+
+  if (setupToken) {
+    return (
+      <main className="app-shell">
+        <section className="login-card">
+          <div className="login-grid">
+            <div className="login-panel">
+              <img
+                className="site-logo"
+                src="/assets/logo.png"
+                alt="PolarCanvas"
+              />
+              <div className="login-panel-copy">
+                <h2>Set password</h2>
+                <p>Create your password to activate your PC-Tech account.</p>
+              </div>
+            </div>
+            <div className="login-form-panel">
+              <form onSubmit={handleSetupPassword} className="login-form">
+                <div className="login-form-title">
+                  <h3>Account setup</h3>
+                </div>
+
+                <label htmlFor="setup-password">Password</label>
+                <input
+                  id="setup-password"
+                  type="password"
+                  value={setupPassword}
+                  onChange={(event) => setSetupPassword(event.target.value)}
+                  autoComplete="new-password"
+                  required
+                />
+
+                <label htmlFor="setup-confirm-password">Confirm Password</label>
+                <input
+                  id="setup-confirm-password"
+                  type="password"
+                  value={setupConfirmPassword}
+                  onChange={(event) => setSetupConfirmPassword(event.target.value)}
+                  autoComplete="new-password"
+                  required
+                />
+
+                <button type="submit">Set Password</button>
+
+                {message && <p className="message">{message}</p>}
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
+    )
   }
 
   return (
@@ -84,13 +242,13 @@ function App() {
                 <h3>Sign in</h3>
               </div>
 
-              <label htmlFor="username">Username</label>
+              <label htmlFor="email">Email</label>
               <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                autoComplete="username"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
                 required
               />
 

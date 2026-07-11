@@ -116,7 +116,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       ).bind(user.id, tokenHash, user.session_version, getSessionExpiry()).run()
 
       if (!sessionResult.success) throw new Error('Session insert failed')
-      sessionCookie = buildSessionCookie(sessionToken)
+      sessionCookie = buildSessionCookie(sessionToken, new URL(context.request.url).protocol === 'https:')
     } catch {
       console.error('[d1-login] Session creation failed')
       return json({ success: false, error: 'Unable to create session' }, 500)

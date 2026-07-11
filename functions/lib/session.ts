@@ -30,12 +30,16 @@ export function getSessionExpiry(): string {
   return new Date(Date.now() + SESSION_DURATION_SECONDS * 1000).toISOString()
 }
 
-export function buildSessionCookie(token: string): string {
-  return `${SESSION_COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION_SECONDS}`
+export function buildSessionCookie(token: string, secure = true): string {
+  const secureAttribute = secure ? '; Secure' : ''
+
+  return `${SESSION_COOKIE_NAME}=${token}; HttpOnly${secureAttribute}; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION_SECONDS}`
 }
 
-export function buildExpiredSessionCookie(): string {
-  return `${SESSION_COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
+export function buildExpiredSessionCookie(secure = true): string {
+  const secureAttribute = secure ? '; Secure' : ''
+
+  return `${SESSION_COOKIE_NAME}=; HttpOnly${secureAttribute}; SameSite=Strict; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
 }
 
 export function parseCookieHeader(cookieHeader: string | null): Record<string, string> {

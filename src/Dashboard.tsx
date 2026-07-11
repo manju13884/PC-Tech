@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Calculator, ChevronRight, ClipboardList, FileCheck2, FileDown, FlaskConical, PackageCheck, Printer, Settings, type LucideIcon } from 'lucide-react'
+import { Ban, Calculator, ChevronRight, ClipboardList, FileCheck2, FileDown, FlaskConical, PackageCheck, Pencil, Printer, Save, Settings, X, type LucideIcon } from 'lucide-react'
+import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
+import { deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
+import { createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice } from './invoiceService'
 import { loadCocTemplate } from './lib/templateLoader'
@@ -16,6 +19,12 @@ interface MenuItem {
 interface MenuGroup {
   title: string
   items: MenuItem[]
+}
+
+interface AccessMatrixItem {
+  key: string
+  module: string
+  subMenu: string
 }
 
 const menuGroups: MenuGroup[] = [
@@ -58,18 +67,34 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
-    title: 'ADMIN',
+    title: 'Configurations',
     items: [
       {
         key: 'admin-configurations',
-        title: 'Configurations',
+        title: 'Access Management',
         description:
-          'Manage administrative configuration settings for this portal.',
+          'Manage user accounts, role access, and administrative permissions for this portal.',
         icon: Settings,
       },
     ],
   },
 ]
+
+const menuItems = menuGroups.flatMap((group) => group.items)
+const defaultMenuKey = 'coc'
+const accessMatrix: AccessMatrixItem[] = menuGroups.flatMap((group) => (
+  group.items.map((item) => ({
+    key: item.key,
+    module: group.title,
+    subMenu: item.title,
+  }))
+))
+
+function getInitialMenuKey(): string {
+  const hashKey = window.location.hash.replace(/^#/, '')
+
+  return menuItems.some((item) => item.key === hashKey) ? hashKey : defaultMenuKey
+}
 
 function formatCustomerOption(customer: Customer): string {
   return `${customer.customer_name} - ${customer.gst_number || 'GST not available'}`
@@ -187,19 +212,22 @@ function removeEmptyCocPages(previewElement: HTMLElement) {
   }
 }
 
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-}
+function formatAdminDate(value: string): string {
+  const date = new Date(value)
 
-function isValidStandardPassword(value: string): boolean {
-  const uppercaseCount = (value.match(/[A-Z]/g) ?? []).length
-  const numberCount = (value.match(/\d/g) ?? []).length
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
 
-  return value.length >= 6 && uppercaseCount >= 1 && numberCount >= 2
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = date.toLocaleString('en-US', { month: 'short' })
+  const year = date.getFullYear()
+
+  return `${day}-${month}-${year}`
 }
 
 export default function Dashboard({ username, onLogout }: { username: string; onLogout: () => void }) {
-  const [selectedKey, setSelectedKey] = useState('coc')
+  const [selectedKey, setSelectedKey] = useState(getInitialMenuKey)
   const [customerId, setCustomerId] = useState('')
   const [invoiceId, setInvoiceId] = useState('')
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -222,15 +250,39 @@ export default function Dashboard({ username, onLogout }: { username: string; on
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState('')
   const previewRef = useRef<HTMLDivElement>(null)
-  const [newUserEmail, setNewUserEmail] = useState('')
-  const [newUserPassword, setNewUserPassword] = useState('')
-  const [newUserRole, setNewUserRole] = useState('sales')
-  const [newUserMessage, setNewUserMessage] = useState('')
-  const [newUserMessageType, setNewUserMessageType] = useState<'error' | 'success'>('error')
+  const [adminConfigTab, setAdminConfigTab] = useState<'users' | 'roles' | 'access'>('users')
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false)
+  const [adminUsersError, setAdminUsersError] = useState<string | null>(null)
+  const [editingUserId, setEditingUserId] = useState<number | null>(null)
+  const [editUserFullName, setEditUserFullName] = useState('')
+  const [editUserEmail, setEditUserEmail] = useState('')
+  const [editUserRole, setEditUserRole] = useState('')
+  const [savingUserId, setSavingUserId] = useState<number | null>(null)
+  const [userPendingDeactivate, setUserPendingDeactivate] = useState<AdminUser | null>(null)
+  const [createUserOpen, setCreateUserOpen] = useState(false)
+  const [createUserFullName, setCreateUserFullName] = useState('')
+  const [createUserEmail, setCreateUserEmail] = useState('')
+  const [createUserRole, setCreateUserRole] = useState('')
+  const [createUserEmailError, setCreateUserEmailError] = useState('')
+  const [creatingUser, setCreatingUser] = useState(false)
+  const [latestSetupLink, setLatestSetupLink] = useState('')
+  const [adminRoles, setAdminRoles] = useState<AdminRole[]>([])
+  const [adminRolesLoading, setAdminRolesLoading] = useState(false)
+  const [adminRolesError, setAdminRolesError] = useState<string | null>(null)
+  const [editingRoleId, setEditingRoleId] = useState<number | null>(null)
+  const [editRoleName, setEditRoleName] = useState('')
+  const [editRoleDescription, setEditRoleDescription] = useState('')
+  const [savingRoleId, setSavingRoleId] = useState<number | null>(null)
+  const [roleActionMessage, setRoleActionMessage] = useState('')
+  const [roleActionMessageType, setRoleActionMessageType] = useState<'error' | 'success'>('error')
+  const [rolePendingDeactivate, setRolePendingDeactivate] = useState<AdminRole | null>(null)
+  const [adminAccessByRole, setAdminAccessByRole] = useState<Record<number, AdminAccessPermission[]>>({})
+  const [adminAccessLoading, setAdminAccessLoading] = useState(false)
+  const [adminAccessError, setAdminAccessError] = useState<string | null>(null)
+  const [savingAccessKey, setSavingAccessKey] = useState('')
 
-  const selectedItem = menuGroups
-    .flatMap((group) => group.items)
-    .find((item) => item.key === selectedKey) ?? menuGroups[0].items[0]
+  const selectedItem = menuItems.find((item) => item.key === selectedKey) ?? menuItems[0]
 
   useEffect(() => {
     if (selectedKey !== 'coc') {
@@ -267,6 +319,96 @@ export default function Dashboard({ username, onLogout }: { username: string; on
       isCurrent = false
     }
   }, [selectedKey])
+
+  useEffect(() => {
+    if (selectedKey !== 'admin-configurations' || adminConfigTab !== 'users') {
+      return
+    }
+
+    let isCurrent = true
+
+    async function loadAdminUsers() {
+      setAdminUsersLoading(true)
+      setAdminUsersError(null)
+
+      const users = await getAdminUsers()
+
+      if (!isCurrent) {
+        return
+      }
+
+      setAdminUsers(users)
+      setAdminUsersError(getAdminUsersError())
+      setAdminUsersLoading(false)
+    }
+
+    loadAdminUsers()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [adminConfigTab, selectedKey])
+
+  useEffect(() => {
+    if (selectedKey !== 'admin-configurations' || adminRoles.length > 0) {
+      return
+    }
+
+    let isCurrent = true
+
+    async function loadAdminRoles() {
+      setAdminRolesLoading(true)
+      setAdminRolesError(null)
+
+      const roles = await getAdminRoles()
+
+      if (!isCurrent) {
+        return
+      }
+
+      setAdminRoles(roles)
+      setAdminRolesError(getAdminRolesError())
+      setAdminRolesLoading(false)
+    }
+
+    loadAdminRoles()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [adminRoles.length, selectedKey])
+
+  useEffect(() => {
+    if (selectedKey !== 'admin-configurations' || adminConfigTab !== 'access' || adminRoles.length === 0) {
+      return
+    }
+
+    let isCurrent = true
+
+    async function loadAdminAccess() {
+      setAdminAccessLoading(true)
+      setAdminAccessError(null)
+
+      const activeRoles = adminRoles.filter((role) => role.status === 'ACTIVE')
+      const accessEntries = await Promise.all(
+        activeRoles.map(async (role) => [role.id, await getAdminAccess(role.id)] as const),
+      )
+
+      if (!isCurrent) {
+        return
+      }
+
+      setAdminAccessByRole(Object.fromEntries(accessEntries))
+      setAdminAccessError(getAdminAccessError())
+      setAdminAccessLoading(false)
+    }
+
+    loadAdminAccess()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [adminConfigTab, adminRoles, selectedKey])
 
   useEffect(() => {
     if (!previewTemplate || !previewRef.current) {
@@ -316,6 +458,18 @@ export default function Dashboard({ username, onLogout }: { username: string; on
       previewResizeObserver?.disconnect()
     }
   }, [previewTemplate])
+
+  useEffect(() => {
+    if (!roleActionMessage) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setRoleActionMessage('')
+    }, 2200)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [roleActionMessage])
 
   useEffect(() => {
     if (!packingPreviewTemplate || !packingPreviewRef.current) {
@@ -603,27 +757,239 @@ export default function Dashboard({ username, onLogout }: { username: string; on
       setPackingPreviewError('')
     }
 
+    window.history.replaceState(null, '', `#${key}`)
     setSelectedKey(key)
   }
 
-  function validateNewUser() {
-    const email = newUserEmail.trim()
-    const password = newUserPassword.trim()
+  function startEditRole(role: AdminRole) {
+    setEditingRoleId(role.id)
+    setEditRoleName(role.name)
+    setEditRoleDescription(role.description)
+    setRoleActionMessage('')
+  }
 
-    if (!isValidEmail(email)) {
-      setNewUserMessageType('error')
-      setNewUserMessage('Enter a valid email address for the user name.')
+  function cancelEditRole() {
+    setEditingRoleId(null)
+    setEditRoleName('')
+    setEditRoleDescription('')
+    setRoleActionMessage('')
+  }
+
+  function startEditUser(user: AdminUser) {
+    setEditingUserId(user.id)
+    setEditUserFullName(user.fullName)
+    setEditUserEmail(user.email)
+    setEditUserRole(user.role)
+    setRoleActionMessage('')
+  }
+
+  function cancelEditUser() {
+    setEditingUserId(null)
+    setEditUserFullName('')
+    setEditUserEmail('')
+    setEditUserRole('')
+    setRoleActionMessage('')
+  }
+
+  async function saveUser(userId: number) {
+    setSavingUserId(userId)
+    setRoleActionMessage('')
+
+    try {
+      const updatedUser = await updateAdminUser(userId, {
+        email: editUserEmail,
+        fullName: editUserFullName,
+        role: editUserRole,
+      })
+
+      setAdminUsers((users) => users.map((user) => (user.id === updatedUser.id ? updatedUser : user)))
+      setEditingUserId(null)
+      setEditUserFullName('')
+      setEditUserEmail('')
+      setEditUserRole('')
+      setRoleActionMessageType('success')
+      setRoleActionMessage('User updated.')
+    } catch (caughtError) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to update user')
+    } finally {
+      setSavingUserId(null)
+    }
+  }
+
+  function openCreateUser() {
+    const firstAssignableRole = adminRoles.find((role) => role.status === 'ACTIVE' && role.name !== 'SUPERADMIN')
+      ?? adminRoles.find((role) => role.status === 'ACTIVE')
+
+    setCreateUserRole(firstAssignableRole?.name ?? '')
+    setCreateUserFullName('')
+    setCreateUserEmail('')
+    setLatestSetupLink('')
+    setCreateUserEmailError('')
+    setCreateUserOpen(true)
+    setRoleActionMessage('')
+  }
+
+  async function createUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setCreatingUser(true)
+    setLatestSetupLink('')
+    setCreateUserEmailError('')
+    setRoleActionMessage('')
+
+    try {
+      const result = await createAdminUser({
+        fullName: createUserFullName,
+        email: createUserEmail,
+        role: createUserRole,
+      })
+
+      setAdminUsers((users) => [result.user, ...users])
+      setCreateUserOpen(false)
+      setCreateUserFullName('')
+      setCreateUserEmail('')
+      setCreateUserRole('')
+      setLatestSetupLink(result.invite.setupLink ?? '')
+      setRoleActionMessageType('success')
+      setRoleActionMessage(result.invite.emailSent ? 'User created. Invite email sent.' : 'User created. Email not configured.')
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Unable to create user'
+      if (message.toLowerCase().includes('email') && message.toLowerCase().includes('already exists')) {
+        setCreateUserEmailError('Email already exists')
+      }
+      setRoleActionMessageType('error')
+      setRoleActionMessage(message)
+    } finally {
+      setCreatingUser(false)
+    }
+  }
+
+  function requestDeactivateUser(user: AdminUser) {
+    if (user.role === 'SUPERADMIN') {
+      setRoleActionMessageType('error')
+      setRoleActionMessage('SUPERADMIN user cannot be deactivated.')
       return
     }
 
-    if (!isValidStandardPassword(password)) {
-      setNewUserMessageType('error')
-      setNewUserMessage('Password must be at least 6 characters with 1 uppercase letter and 2 numbers.')
+    setUserPendingDeactivate(user)
+  }
+
+  async function deactivateUser() {
+    if (!userPendingDeactivate) {
       return
     }
 
-    setNewUserMessageType('success')
-    setNewUserMessage('Create user details are valid.')
+    setSavingUserId(userPendingDeactivate.id)
+    setRoleActionMessage('')
+
+    try {
+      const updatedUser = await deactivateAdminUser(userPendingDeactivate.id)
+
+      setAdminUsers((users) => users.map((user) => (
+        user.id === updatedUser.id ? updatedUser : user
+      )))
+      setUserPendingDeactivate(null)
+      setRoleActionMessageType('success')
+      setRoleActionMessage('User deactivated.')
+    } catch (caughtError) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to deactivate user')
+    } finally {
+      setSavingUserId(null)
+    }
+  }
+
+  async function saveRole(roleId: number) {
+    setSavingRoleId(roleId)
+    setRoleActionMessage('')
+
+    try {
+      const updatedRole = await updateAdminRole(roleId, {
+        name: editRoleName,
+        description: editRoleDescription,
+      })
+
+      setAdminRoles((roles) => roles.map((role) => (role.id === updatedRole.id ? updatedRole : role)))
+      setEditingRoleId(null)
+      setEditRoleName('')
+      setEditRoleDescription('')
+      setRoleActionMessageType('success')
+      setRoleActionMessage('Role updated.')
+    } catch (caughtError) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to update role')
+    } finally {
+      setSavingRoleId(null)
+    }
+  }
+
+  function requestDeactivateRole(role: AdminRole) {
+    if (role.name === 'SUPERADMIN') {
+      setRoleActionMessageType('error')
+      setRoleActionMessage('SUPERADMIN role cannot be deactivated.')
+      return
+    }
+
+    setRolePendingDeactivate(role)
+  }
+
+  async function deactivateRole() {
+    if (!rolePendingDeactivate) {
+      return
+    }
+
+    setSavingRoleId(rolePendingDeactivate.id)
+    setRoleActionMessage('')
+
+    try {
+      const updatedRole = await deactivateAdminRole(rolePendingDeactivate.id)
+
+      setAdminRoles((roles) => roles.map((currentRole) => (
+        currentRole.id === updatedRole.id ? updatedRole : currentRole
+      )))
+      setRolePendingDeactivate(null)
+      setRoleActionMessageType('success')
+      setRoleActionMessage('Role deactivated.')
+    } catch (caughtError) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to deactivate role')
+    } finally {
+      setSavingRoleId(null)
+    }
+  }
+
+  function getRoleMenuAccess(roleId: number, menuKey: string): boolean {
+    return adminAccessByRole[roleId]?.find((access) => access.menuKey === menuKey)?.view ?? false
+  }
+
+  async function toggleRoleMenuAccess(roleId: number, menuKey: string, value: boolean) {
+    const updateKey = `${roleId}:${menuKey}`
+    setSavingAccessKey(updateKey)
+    setRoleActionMessage('')
+
+    try {
+      const updatedAccess = await updateRoleMenuAccess(roleId, menuKey, value)
+
+      setAdminAccessByRole((accessByRole) => {
+        const roleAccess = accessByRole[roleId] ?? []
+        const existing = roleAccess.some((access) => access.menuKey === updatedAccess.menuKey)
+        const nextRoleAccess = existing
+          ? roleAccess.map((access) => (access.menuKey === updatedAccess.menuKey ? updatedAccess : access))
+          : [...roleAccess, updatedAccess]
+
+        return {
+          ...accessByRole,
+          [roleId]: nextRoleAccess,
+        }
+      })
+      setRoleActionMessageType('success')
+      setRoleActionMessage('Access updated.')
+    } catch (caughtError) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to update access')
+    } finally {
+      setSavingAccessKey('')
+    }
   }
 
   return (
@@ -812,70 +1178,523 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                 </div>
               )}
               {selectedItem.key === 'admin-configurations' && (
-                <div className="coc-form">
-                  <div className="admin-config-grid">
-                    <section className="admin-config-panel">
-                      <h3>User Roles</h3>
-                      <ul className="admin-role-list">
-                        <li>superadmin</li>
-                        <li>sales</li>
-                        <li>ops</li>
-                      </ul>
-                    </section>
-                    <section className="admin-config-panel">
-                      <h3>User Info & Login</h3>
-                      <div className="admin-user-action-list">
-                        <button type="button" onClick={validateNewUser}>Create user</button>
-                        <button type="button" disabled>Edit user</button>
-                        <button type="button" disabled>De-activate user</button>
-                      </div>
-                      <div className="admin-user-form">
-                        <div className="coc-form-field">
-                          <label htmlFor="admin-new-user-email">User Name</label>
-                          <input
-                            id="admin-new-user-email"
-                            type="email"
-                            value={newUserEmail}
-                            onChange={(event) => {
-                              setNewUserEmail(event.target.value)
-                              setNewUserMessage('')
-                              setNewUserMessageType('error')
-                            }}
-                            placeholder="name@example.com"
-                          />
+                <div className="admin-config-page">
+                  <div className="admin-config-topbar">
+                    <div className="admin-config-tabs" role="tablist" aria-label="Configuration sections">
+                      <button
+                        type="button"
+                        className={adminConfigTab === 'users' ? 'active' : ''}
+                        onClick={() => setAdminConfigTab('users')}
+                        role="tab"
+                        aria-selected={adminConfigTab === 'users'}
+                      >
+                        <span>Users</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={adminConfigTab === 'roles' ? 'active' : ''}
+                        onClick={() => setAdminConfigTab('roles')}
+                        role="tab"
+                        aria-selected={adminConfigTab === 'roles'}
+                      >
+                        <span>Roles</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={adminConfigTab === 'access' ? 'active' : ''}
+                        onClick={() => setAdminConfigTab('access')}
+                        role="tab"
+                        aria-selected={adminConfigTab === 'access'}
+                      >
+                        <span>Access</span>
+                      </button>
+                    </div>
+                  </div>
+                  {adminConfigTab === 'users' && (
+                    <div className="admin-config-grid">
+                      <section className="admin-config-panel admin-users-panel">
+                        <div className="admin-panel-toolbar">
+                          <button type="button" onClick={openCreateUser}>
+                            Create User
+                          </button>
                         </div>
-                        <div className="coc-form-field">
-                          <label htmlFor="admin-new-user-password">Password</label>
-                          <input
-                            id="admin-new-user-password"
-                            type="password"
-                            value={newUserPassword}
-                            onChange={(event) => {
-                              setNewUserPassword(event.target.value)
-                              setNewUserMessage('')
-                              setNewUserMessageType('error')
-                            }}
-                          />
-                        </div>
-                        <div className="coc-form-field">
-                          <label htmlFor="admin-new-user-role">Role</label>
-                          <select
-                            id="admin-new-user-role"
-                            value={newUserRole}
-                            onChange={(event) => setNewUserRole(event.target.value)}
-                          >
-                            <option value="superadmin">superadmin</option>
-                            <option value="sales">sales</option>
-                            <option value="ops">ops</option>
-                          </select>
-                        </div>
-                        {newUserMessage && (
-                          <p className={`admin-user-message ${newUserMessageType}`}>
-                            {newUserMessage}
-                          </p>
+                        {latestSetupLink && (
+                          <div className="admin-invite-link">
+                            <span>Setup link</span>
+                            <input value={latestSetupLink} readOnly />
+                          </div>
                         )}
+                        {adminUsersLoading && (
+                          <p className="admin-user-message">Loading users...</p>
+                        )}
+                        {adminUsersError && (
+                          <p className="admin-user-message">{adminUsersError}</p>
+                        )}
+                        {!adminUsersLoading && !adminUsersError && adminUsers.length === 0 && (
+                          <p className="admin-user-message">No users found.</p>
+                        )}
+                        {!adminUsersLoading && !adminUsersError && adminUsers.length > 0 && (
+                          <div className="admin-users-table-wrap">
+                            <table className="admin-users-table">
+                              <thead>
+                                <tr>
+                                  <th>ID</th>
+                                  <th>Name</th>
+                                  <th>Email</th>
+                                  <th>Role</th>
+                                  <th>Status</th>
+                                  <th>Created</th>
+                                  <th>Updated</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {adminUsers.map((user) => (
+                                  <tr key={user.id}>
+                                    <td>{user.id}</td>
+                                    <td>
+                                      {editingUserId === user.id ? (
+                                        <input
+                                          className="admin-inline-input"
+                                          value={editUserFullName}
+                                          onChange={(event) => setEditUserFullName(event.target.value)}
+                                          disabled={savingUserId === user.id}
+                                        />
+                                      ) : (
+                                        user.fullName
+                                      )}
+                                    </td>
+                                    <td>
+                                      {editingUserId === user.id ? (
+                                        <input
+                                          className="admin-inline-input admin-inline-email"
+                                          type="email"
+                                          value={editUserEmail}
+                                          onChange={(event) => setEditUserEmail(event.target.value)}
+                                          disabled={savingUserId === user.id}
+                                        />
+                                      ) : (
+                                        user.email
+                                      )}
+                                    </td>
+                                    <td>
+                                      {editingUserId === user.id ? (
+                                        <select
+                                          className="admin-inline-input"
+                                          value={editUserRole}
+                                          onChange={(event) => setEditUserRole(event.target.value)}
+                                          disabled={user.role === 'SUPERADMIN' || savingUserId === user.id}
+                                        >
+                                          {adminRoles
+                                            .filter((role) => role.status === 'ACTIVE')
+                                            .map((role) => (
+                                              <option key={role.id} value={role.name}>
+                                                {role.name}
+                                              </option>
+                                            ))}
+                                        </select>
+                                      ) : (
+                                        user.role
+                                      )}
+                                    </td>
+                                    <td>
+                                      <span className={`admin-status-pill ${user.status.toLowerCase()}`}>
+                                        {user.status}
+                                      </span>
+                                    </td>
+                                    <td>{formatAdminDate(user.createdAt)}</td>
+                                    <td>{formatAdminDate(user.updatedAt)}</td>
+                                    <td>
+                                      <div className="admin-row-actions">
+                                        {editingUserId === user.id ? (
+                                          <>
+                                            <button
+                                              type="button"
+                                              className="primary"
+                                              onClick={() => saveUser(user.id)}
+                                              disabled={savingUserId === user.id}
+                                            >
+                                              <Save size={14} aria-hidden="true" />
+                                              <span>Save</span>
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="secondary"
+                                              onClick={cancelEditUser}
+                                              disabled={savingUserId === user.id}
+                                            >
+                                              <X size={14} aria-hidden="true" />
+                                              <span>Cancel</span>
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <button
+                                              type="button"
+                                              className="secondary"
+                                              onClick={() => startEditUser(user)}
+                                              disabled={savingUserId !== null}
+                                            >
+                                              <Pencil size={14} aria-hidden="true" />
+                                              <span>Edit</span>
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="danger"
+                                              onClick={() => requestDeactivateUser(user)}
+                                              disabled={
+                                                savingUserId !== null ||
+                                                user.status !== 'ACTIVE' ||
+                                                user.role === 'SUPERADMIN'
+                                              }
+                                            >
+                                              <Ban size={14} aria-hidden="true" />
+                                              <span>{user.status === 'ACTIVE' ? 'Deactivate' : 'Deactivated'}</span>
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </section>
+                    </div>
+                  )}
+                  {adminConfigTab === 'roles' && (
+                    <div className="admin-config-grid">
+                      <section className="admin-config-panel admin-users-panel">
+                        {adminRolesLoading && (
+                          <p className="admin-user-message">Loading roles...</p>
+                        )}
+                        {adminRolesError && (
+                          <p className="admin-user-message">{adminRolesError}</p>
+                        )}
+                        {!adminRolesLoading && !adminRolesError && adminRoles.length === 0 && (
+                          <p className="admin-user-message">No roles found.</p>
+                        )}
+                        {!adminRolesLoading && !adminRolesError && adminRoles.length > 0 && (
+                          <div className="admin-users-table-wrap">
+                            <table className="admin-users-table admin-roles-table">
+                              <thead>
+                                <tr>
+                                  <th>ID</th>
+                                  <th>Role</th>
+                                  <th>Description</th>
+                                  <th>Status</th>
+                                  <th>Created</th>
+                                  <th>Updated</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {adminRoles.map((role) => (
+                                  <tr key={role.id}>
+                                    <td>{role.id}</td>
+                                    <td>
+                                      {editingRoleId === role.id ? (
+                                        <input
+                                          className="admin-inline-input"
+                                          value={editRoleName}
+                                          onChange={(event) => setEditRoleName(event.target.value)}
+                                          disabled={role.name === 'SUPERADMIN' || savingRoleId === role.id}
+                                        />
+                                      ) : (
+                                        role.name
+                                      )}
+                                    </td>
+                                    <td>
+                                      {editingRoleId === role.id ? (
+                                        <input
+                                          className="admin-inline-input admin-inline-description"
+                                          value={editRoleDescription}
+                                          onChange={(event) => setEditRoleDescription(event.target.value)}
+                                          disabled={savingRoleId === role.id}
+                                        />
+                                      ) : (
+                                        role.description
+                                      )}
+                                    </td>
+                                    <td>
+                                      <span className={`admin-status-pill ${role.status.toLowerCase()}`}>
+                                        {role.status}
+                                      </span>
+                                    </td>
+                                    <td>{formatAdminDate(role.createdAt)}</td>
+                                    <td>{formatAdminDate(role.updatedAt)}</td>
+                                    <td>
+                                      <div className="admin-row-actions">
+                                        {editingRoleId === role.id ? (
+                                          <>
+                                            <button
+                                              type="button"
+                                              className="primary"
+                                              onClick={() => saveRole(role.id)}
+                                              disabled={savingRoleId === role.id}
+                                            >
+                                              <Save size={14} aria-hidden="true" />
+                                              <span>Save</span>
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="secondary"
+                                              onClick={cancelEditRole}
+                                              disabled={savingRoleId === role.id}
+                                            >
+                                              <X size={14} aria-hidden="true" />
+                                              <span>Cancel</span>
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <button
+                                              type="button"
+                                              className="secondary"
+                                              onClick={() => startEditRole(role)}
+                                              disabled={savingRoleId !== null}
+                                            >
+                                              <Pencil size={14} aria-hidden="true" />
+                                              <span>Edit</span>
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="danger"
+                                              onClick={() => requestDeactivateRole(role)}
+                                              disabled={
+                                                savingRoleId !== null ||
+                                                role.status !== 'ACTIVE' ||
+                                                role.name === 'SUPERADMIN'
+                                              }
+                                            >
+                                              <Ban size={14} aria-hidden="true" />
+                                              <span>{role.status === 'ACTIVE' ? 'Deactivate' : 'Deactivated'}</span>
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </section>
+                    </div>
+                  )}
+                  {adminConfigTab === 'access' && (
+                    <div className="admin-config-grid">
+                      <section className="admin-config-panel admin-users-panel">
+                        {adminAccessLoading && (
+                          <p className="admin-user-message">Loading access...</p>
+                        )}
+                        {adminAccessError && (
+                          <p className="admin-user-message">{adminAccessError}</p>
+                        )}
+                        {!adminAccessLoading && !adminAccessError && (
+                          <div className="admin-users-table-wrap">
+                            <table className="admin-users-table admin-access-table">
+                              <thead>
+                                <tr>
+                                  <th>Particulars</th>
+                                  {adminRoles
+                                    .filter((role) => role.status === 'ACTIVE')
+                                    .map((role) => (
+                                    <th key={role.id}>{role.name}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {accessMatrix.map((accessItem) => (
+                                  <tr key={accessItem.key}>
+                                    <td>
+                                      <span className="admin-access-module">{accessItem.module}</span>
+                                      <strong>{accessItem.subMenu}</strong>
+                                    </td>
+                                    {adminRoles
+                                      .filter((role) => role.status === 'ACTIVE')
+                                      .map((role) => {
+                                      const checkboxKey = `${role.id}:${accessItem.key}`
+
+                                      return (
+                                        <td key={role.id}>
+                                          <input
+                                            className="admin-access-checkbox"
+                                            type="checkbox"
+                                            checked={getRoleMenuAccess(role.id, accessItem.key)}
+                                            onChange={(event) => (
+                                              toggleRoleMenuAccess(role.id, accessItem.key, event.target.checked)
+                                            )}
+                                            disabled={savingAccessKey === checkboxKey}
+                                            aria-label={`${role.name} access for ${accessItem.subMenu}`}
+                                          />
+                                        </td>
+                                      )
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </section>
+                    </div>
+                  )}
+                </div>
+              )}
+              {roleActionMessage && (
+                <div className={`admin-toast ${roleActionMessageType}`} role="status">
+                  {roleActionMessage}
+                </div>
+              )}
+              {rolePendingDeactivate && (
+                <div className="admin-dialog-backdrop" role="presentation">
+                  <div
+                    className="admin-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="admin-deactivate-title"
+                  >
+                    <div className="admin-dialog-icon">
+                      <Ban size={18} aria-hidden="true" />
+                    </div>
+                    <div className="admin-dialog-copy">
+                      <h3 id="admin-deactivate-title">Deactivate role?</h3>
+                      <p>
+                        {rolePendingDeactivate.name} will become inactive and cannot be assigned for active access.
+                      </p>
+                    </div>
+                    <div className="admin-dialog-actions">
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setRolePendingDeactivate(null)}
+                        disabled={savingRoleId === rolePendingDeactivate.id}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={deactivateRole}
+                        disabled={savingRoleId === rolePendingDeactivate.id}
+                      >
+                        Deactivate
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {userPendingDeactivate && (
+                <div className="admin-dialog-backdrop" role="presentation">
+                  <div
+                    className="admin-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="admin-user-deactivate-title"
+                  >
+                    <div className="admin-dialog-icon">
+                      <Ban size={18} aria-hidden="true" />
+                    </div>
+                    <div className="admin-dialog-copy">
+                      <h3 id="admin-user-deactivate-title">Deactivate user?</h3>
+                      <p>
+                        {userPendingDeactivate.fullName} will not be able to sign in until the account is active again.
+                      </p>
+                    </div>
+                    <div className="admin-dialog-actions">
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setUserPendingDeactivate(null)}
+                        disabled={savingUserId === userPendingDeactivate.id}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={deactivateUser}
+                        disabled={savingUserId === userPendingDeactivate.id}
+                      >
+                        Deactivate
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {createUserOpen && (
+                <div className="admin-dialog-backdrop" role="presentation">
+                  <div
+                    className="admin-dialog admin-create-user-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="admin-create-user-title"
+                  >
+                    <div className="admin-dialog-copy">
+                      <h3 id="admin-create-user-title">Create user</h3>
+                      <p>The user will receive a password setup link by email.</p>
+                    </div>
+                    <form onSubmit={createUser} className="admin-create-user-form">
+                      <label htmlFor="admin-create-user-name">Name</label>
+                      <input
+                        id="admin-create-user-name"
+                        value={createUserFullName}
+                        onChange={(event) => setCreateUserFullName(event.target.value)}
+                        disabled={creatingUser}
+                        required
+                      />
+
+                      <label htmlFor="admin-create-user-email">Email</label>
+                      <input
+                        id="admin-create-user-email"
+                        type="email"
+                        value={createUserEmail}
+                        onChange={(event) => {
+                          setCreateUserEmail(event.target.value)
+                          setCreateUserEmailError('')
+                        }}
+                        disabled={creatingUser}
+                        required
+                      />
+                      {createUserEmailError && (
+                        <p className="admin-field-error">{createUserEmailError}</p>
+                      )}
+
+                      <label htmlFor="admin-create-user-role">Role</label>
+                      <select
+                        id="admin-create-user-role"
+                        value={createUserRole}
+                        onChange={(event) => setCreateUserRole(event.target.value)}
+                        disabled={creatingUser}
+                        required
+                      >
+                        {adminRoles
+                          .filter((role) => role.status === 'ACTIVE')
+                          .map((role) => (
+                            <option key={role.id} value={role.name}>
+                              {role.name}
+                            </option>
+                          ))}
+                      </select>
+
+                      <div className="admin-dialog-actions">
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => setCreateUserOpen(false)}
+                          disabled={creatingUser}
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit" className="primary" disabled={creatingUser}>
+                          Create & Send Invite
+                        </button>
                       </div>
-                    </section>
+                    </form>
                   </div>
                 </div>
               )}
