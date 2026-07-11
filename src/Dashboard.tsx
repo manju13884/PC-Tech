@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Calculator, ChevronRight, ClipboardList, FileCheck2, FileDown, FlaskConical, PackageCheck, Printer, type LucideIcon } from 'lucide-react'
+import { Calculator, ChevronRight, ClipboardList, FileCheck2, FileDown, FlaskConical, PackageCheck, Printer, Settings, type LucideIcon } from 'lucide-react'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice } from './invoiceService'
 import { loadCocTemplate } from './lib/templateLoader'
@@ -54,6 +54,18 @@ const menuGroups: MenuGroup[] = [
         description:
           'Access the Certificate of Analysis for quality assurance and material test results.',
         icon: FlaskConical,
+      },
+    ],
+  },
+  {
+    title: 'ADMIN',
+    items: [
+      {
+        key: 'admin-configurations',
+        title: 'Configurations',
+        description:
+          'Manage administrative configuration settings for this portal.',
+        icon: Settings,
       },
     ],
   },
@@ -175,6 +187,17 @@ function removeEmptyCocPages(previewElement: HTMLElement) {
   }
 }
 
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function isValidStandardPassword(value: string): boolean {
+  const uppercaseCount = (value.match(/[A-Z]/g) ?? []).length
+  const numberCount = (value.match(/\d/g) ?? []).length
+
+  return value.length >= 6 && uppercaseCount >= 1 && numberCount >= 2
+}
+
 export default function Dashboard({ username, onLogout }: { username: string; onLogout: () => void }) {
   const [selectedKey, setSelectedKey] = useState('coc')
   const [customerId, setCustomerId] = useState('')
@@ -199,6 +222,11 @@ export default function Dashboard({ username, onLogout }: { username: string; on
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState('')
   const previewRef = useRef<HTMLDivElement>(null)
+  const [newUserEmail, setNewUserEmail] = useState('')
+  const [newUserPassword, setNewUserPassword] = useState('')
+  const [newUserRole, setNewUserRole] = useState('sales')
+  const [newUserMessage, setNewUserMessage] = useState('')
+  const [newUserMessageType, setNewUserMessageType] = useState<'error' | 'success'>('error')
 
   const selectedItem = menuGroups
     .flatMap((group) => group.items)
@@ -578,6 +606,26 @@ export default function Dashboard({ username, onLogout }: { username: string; on
     setSelectedKey(key)
   }
 
+  function validateNewUser() {
+    const email = newUserEmail.trim()
+    const password = newUserPassword.trim()
+
+    if (!isValidEmail(email)) {
+      setNewUserMessageType('error')
+      setNewUserMessage('Enter a valid email address for the user name.')
+      return
+    }
+
+    if (!isValidStandardPassword(password)) {
+      setNewUserMessageType('error')
+      setNewUserMessage('Password must be at least 6 characters with 1 uppercase letter and 2 numbers.')
+      return
+    }
+
+    setNewUserMessageType('success')
+    setNewUserMessage('Create user details are valid.')
+  }
+
   return (
     <main className="dashboard-shell">
       <header className="dashboard-header">
@@ -631,7 +679,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' ? ' document-form-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}`}>
             <header className="dashboard-page-heading">
               <h2>{selectedItem.title}</h2>
               <p>{selectedItem.description}</p>
@@ -761,6 +809,74 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                   <p>
                     The Certificate of Analysis provides the quality and testing information for the packaging material.
                   </p>
+                </div>
+              )}
+              {selectedItem.key === 'admin-configurations' && (
+                <div className="coc-form">
+                  <div className="admin-config-grid">
+                    <section className="admin-config-panel">
+                      <h3>User Roles</h3>
+                      <ul className="admin-role-list">
+                        <li>superadmin</li>
+                        <li>sales</li>
+                        <li>ops</li>
+                      </ul>
+                    </section>
+                    <section className="admin-config-panel">
+                      <h3>User Info & Login</h3>
+                      <div className="admin-user-action-list">
+                        <button type="button" onClick={validateNewUser}>Create user</button>
+                        <button type="button" disabled>Edit user</button>
+                        <button type="button" disabled>De-activate user</button>
+                      </div>
+                      <div className="admin-user-form">
+                        <div className="coc-form-field">
+                          <label htmlFor="admin-new-user-email">User Name</label>
+                          <input
+                            id="admin-new-user-email"
+                            type="email"
+                            value={newUserEmail}
+                            onChange={(event) => {
+                              setNewUserEmail(event.target.value)
+                              setNewUserMessage('')
+                              setNewUserMessageType('error')
+                            }}
+                            placeholder="name@example.com"
+                          />
+                        </div>
+                        <div className="coc-form-field">
+                          <label htmlFor="admin-new-user-password">Password</label>
+                          <input
+                            id="admin-new-user-password"
+                            type="password"
+                            value={newUserPassword}
+                            onChange={(event) => {
+                              setNewUserPassword(event.target.value)
+                              setNewUserMessage('')
+                              setNewUserMessageType('error')
+                            }}
+                          />
+                        </div>
+                        <div className="coc-form-field">
+                          <label htmlFor="admin-new-user-role">Role</label>
+                          <select
+                            id="admin-new-user-role"
+                            value={newUserRole}
+                            onChange={(event) => setNewUserRole(event.target.value)}
+                          >
+                            <option value="superadmin">superadmin</option>
+                            <option value="sales">sales</option>
+                            <option value="ops">ops</option>
+                          </select>
+                        </div>
+                        {newUserMessage && (
+                          <p className={`admin-user-message ${newUserMessageType}`}>
+                            {newUserMessage}
+                          </p>
+                        )}
+                      </div>
+                    </section>
+                  </div>
                 </div>
               )}
               {selectedItem.key === 'packing-slip' && (

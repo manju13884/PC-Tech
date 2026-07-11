@@ -449,6 +449,84 @@ main.dashboard-shell {
   width: min(100%, 760px);
 }
 
+.admin-config-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-config-panel {
+  min-height: 96px;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.admin-config-panel h3 {
+  margin: 0;
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.admin-role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-role-list li {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #334155;
+  background: #f8fafc;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.admin-user-action-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.admin-user-action-list button {
+  min-height: 38px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #475569;
+  background: #f8fafc;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.admin-user-action-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.admin-user-form {
+  margin-top: 1rem;
+}
+
+.admin-user-message {
+  margin: 0.75rem 0 0;
+  color: #b42318;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.admin-user-message.success {
+  color: #067647;
+}
+
 .coc-form-field + .coc-form-field {
   margin-top: 0.875rem;
 }
@@ -462,6 +540,7 @@ main.dashboard-shell {
   line-height: 1.35;
 }
 
+.coc-form-field input,
 .coc-form-field select {
   width: 100%;
   min-height: 42px;
@@ -477,16 +556,19 @@ main.dashboard-shell {
   transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
 
+.coc-form-field input:hover:not(:disabled),
 .coc-form-field select:hover:not(:disabled) {
   border-color: #94a3b8;
 }
 
+.coc-form-field input:focus,
 .coc-form-field select:focus {
   border-color: #60a5fa;
   outline: 0;
   box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
 }
 
+.coc-form-field input:disabled,
 .coc-form-field select:disabled {
   cursor: not-allowed;
   border-color: #e2e8f0;
