@@ -29,6 +29,9 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Build Cloudflare Pages Functions
+        run: npx wrangler pages functions build functions --outfile dist/_worker.js --output-routes-path dist/_routes.json --compatibility-date=2026-07-09
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
