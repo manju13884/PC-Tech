@@ -35,6 +35,19 @@ function App() {
   const [message, setMessage] = useState('')
   const [user, setUser] = useState<AuthenticatedUser | null>(null)
   const [checkingSession, setCheckingSession] = useState(true)
+  const loginBrand = (
+    <div className="login-brand">
+      <img
+        className="site-logo"
+        src="/assets/PC-Bord-Logo-only-transparent.png"
+        alt="PolarCanvas bird logo"
+      />
+      <div className="portal-identity" aria-label="PolarCanvas Tech Portal">
+        <span>PolarCanvas</span>
+        <em>Tech Portal</em>
+      </div>
+    </div>
+  )
 
   useEffect(() => {
     let isCurrent = true
@@ -190,11 +203,7 @@ function App() {
         <section className="login-card">
           <div className="login-grid">
             <div className="login-panel">
-              <img
-                className="site-logo"
-                src="/assets/logo.png"
-                alt="PolarCanvas"
-              />
+              {loginBrand}
               <div className="login-panel-copy">
                 <h2>Change password</h2>
                 <p>This is your first login. Create a new password before continuing to PC-Tech.</p>
@@ -257,11 +266,7 @@ function App() {
         <section className="login-card">
           <div className="login-grid">
             <div className="login-panel">
-              <img
-                className="site-logo"
-                src="/assets/logo.png"
-                alt="PolarCanvas"
-              />
+              {loginBrand}
               <div className="login-panel-copy">
                 <h2>Set password</h2>
                 <p>Create your password to activate your PC-Tech account.</p>
@@ -309,11 +314,7 @@ function App() {
       <section className="login-card">
         <div className="login-grid">
           <div className="login-panel">
-            <img
-              className="site-logo"
-              src="/assets/logo.png"
-              alt="PolarCanvas"
-            />
+            {loginBrand}
             <div className="login-panel-copy">
               <h2>Welcome back</h2>
               <p>Securely sign in to your PolarCanvas portal for pricing, compliance certificates, and shipping documentation.</p>

@@ -1127,7 +1127,7 @@ export default function Dashboard({
             alt="PolarCanvas bird logo"
           />
           <div className="portal-identity" aria-label="PolarCanvas Tech Portal">
-            <span>Polar Canvas</span>
+            <span>PolarCanvas</span>
             <em>Tech Portal</em>
           </div>
         </div>
