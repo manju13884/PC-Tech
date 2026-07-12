@@ -225,8 +225,8 @@ main.app-shell::after {
 }
 
 .dashboard-header .site-logo {
-  width: 64px;
-  height: 64px;
+  width: 54px;
+  height: 54px;
   object-fit: cover;
   margin-bottom: 0;
 }
@@ -322,26 +322,27 @@ main.app-shell::after {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  min-height: 80px;
-  height: 80px;
-  padding: 0.5rem 1rem;
+  min-height: 70px;
+  height: 70px;
+  padding: 0.5rem 1.15rem;
   box-sizing: border-box;
-  background: #20263d;
+  background:
+    linear-gradient(135deg, #142b70 0%, #1e3a8a 48%, #172554 100%);
   border: 0;
   border-radius: 0;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 rgba(191, 219, 254, 0.14), 0 10px 28px rgba(15, 23, 42, 0.16);
 }
 
 .dashboard-brand {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.45rem;
 }
 
 .dashboard-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.75rem;
 }
 
 .portal-identity {
@@ -371,22 +372,27 @@ main.app-shell::after {
 }
 
 .dashboard-welcome {
-  color: #f8fafc;
-  font-size: 0.95rem;
+  color: #dbeafe;
+  font-size: 0.84rem;
   font-weight: 600;
-  background: transparent;
-  padding: 0.35rem 0;
-  border-radius: 0;
+  background: rgba(15, 23, 42, 0.18);
+  padding: 0.35rem 0.62rem;
+  border: 1px solid rgba(191, 219, 254, 0.12);
+  border-radius: 8px;
 }
 
 .logout-button {
-  min-width: 88px;
-  padding: 0.55rem 0.95rem;
-  background: #3b82f6;
+  min-width: 78px;
+  min-height: 34px;
+  padding: 0.42rem 0.75rem;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
   color: #ffffff;
+  font: inherit;
+  font-size: 0.82rem;
   font-weight: 600;
-  border-radius: 4px;
-  box-shadow: none;
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(30, 64, 175, 0.18);
 }
 
 .logout-button:hover {
@@ -397,28 +403,28 @@ main.app-shell::after {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   gap: 0;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 70px);
   min-height: 0;
 }
 
 .dashboard-menu {
   display: grid;
   align-content: start;
-  gap: 1.25rem;
+  gap: 1rem;
   min-width: 0;
   height: 100%;
   overflow-y: auto;
-  background: #f7f8fc;
+  background: #f3f6fb;
   border: 0;
-  border-right: 1px solid #d8dce7;
+  border-right: 1px solid #d7dee9;
   border-radius: 0;
-  padding: 1.25rem 0.75rem;
+  padding: 1rem 0.65rem;
 }
 
 .menu-group h3 {
-  margin: 0 0 0.5rem;
-  padding: 0 0.75rem;
-  font-size: 0.75rem;
+  margin: 0 0 0.38rem;
+  padding: 0 0.65rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #687086;
@@ -429,7 +435,7 @@ main.app-shell::after {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.25rem;
+  gap: 0.18rem;
 }
 
 .menu-item {
@@ -437,15 +443,15 @@ main.app-shell::after {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.58rem;
   width: 100%;
-  min-height: 46px;
-  padding: 0.45rem 0.6rem;
-  border: 0;
-  border-radius: 4px;
+  min-height: 40px;
+  padding: 0.38rem 0.48rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: transparent;
   color: #20263d;
-  font-size: 0.875rem;
+  font-size: 0.82rem;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -475,12 +481,12 @@ main.app-shell::after {
 
 .menu-item-icon {
   display: grid;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border: 1px solid #e1e5ee;
-  border-radius: 4px;
+  border-radius: 7px;
   background: #ffffff;
   color: #687086;
 }
@@ -492,12 +498,14 @@ main.app-shell::after {
 }
 
 .menu-item:hover {
-  background: #eef2ff;
+  border-color: #dbe6fb;
+  background: #eef4ff;
   color: #1e5bd7;
 }
 
 .menu-item.active {
-  background: #d7e2ff;
+  border-color: #c8d8fb;
+  background: #dce8ff;
   color: #1e5bd7;
 }
 
@@ -527,15 +535,16 @@ main.app-shell::after {
   min-width: 0;
   height: 100%;
   overflow-y: auto;
-  background: #ffffff;
+  background:
+    linear-gradient(180deg, #eef4fb 0, #f8fafc 76px, #f8fafc 100%);
 }
 
 .dashboard-card {
   min-width: 0;
-  background: #ffffff;
+  background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 1.5rem 2rem 2rem;
+  padding: 1.25rem 1.65rem 1.75rem;
   box-shadow: none;
 }
 
@@ -552,32 +561,39 @@ main.app-shell::after {
 }
 
 .document-form-page .dashboard-page-heading {
-  max-width: 760px;
+  max-width: none;
+  padding: 0 0 0.95rem;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .document-form-page .dashboard-page-heading h2 {
   margin: 0;
   color: #1e293b;
-  font-size: 1.35rem;
+  font-size: 1.22rem;
   font-weight: 650;
   line-height: 1.3;
 }
 
 .document-form-page .dashboard-page-heading p {
-  margin: 0.3rem 0 0;
+  margin: 0.26rem 0 0;
   color: #64748b;
-  font-size: 0.925rem;
+  font-size: 0.86rem;
   line-height: 1.45;
 }
 
 .document-form-page .dashboard-details {
   margin-top: 1rem;
-  padding-top: 1rem;
-  border-top-color: #edf0f4;
+  padding-top: 0;
+  border-top: 0;
 }
 
 .coc-form {
-  width: min(100%, 760px);
+  width: min(100%, 880px);
+  padding: 1rem;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
 }
 
 .admin-config-page {
@@ -1123,14 +1139,14 @@ main.app-shell::after {
 }
 
 .coc-form-field + .coc-form-field {
-  margin-top: 0.875rem;
+  margin-top: 0.75rem;
 }
 
 .coc-form-field label {
   display: block;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.32rem;
   color: #334155;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -1138,14 +1154,14 @@ main.app-shell::after {
 .coc-form-field input,
 .coc-form-field select {
   width: 100%;
-  min-height: 42px;
-  padding: 0.625rem 2.5rem 0.625rem 0.75rem;
+  min-height: 38px;
+  padding: 0.52rem 2.25rem 0.52rem 0.68rem;
   border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background-color: #ffffff;
+  border-radius: 7px;
+  background-color: #fbfdff;
   color: #1e293b;
   font: inherit;
-  font-size: 0.925rem;
+  font-size: 0.84rem;
   line-height: 1.3;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
@@ -1173,7 +1189,7 @@ main.app-shell::after {
 }
 
 .coc-form > .coc-action-row {
-  margin-top: 1rem;
+  margin-top: 0.85rem;
 }
 
 .dashboard-details {
@@ -1197,17 +1213,17 @@ main.app-shell::after {
 .coc-action-row {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
   overflow-x: auto;
 }
 
 .coc-action-row button {
   flex: 0 0 auto;
-  min-height: 40px;
-  padding: 0.6rem 1rem;
+  min-height: 36px;
+  padding: 0.48rem 0.78rem;
   border: 1px solid #2563eb;
-  border-radius: 4px;
+  border-radius: 7px;
   background: #ffffff;
   color: #1d4ed8;
   font-weight: 600;
@@ -1233,19 +1249,19 @@ main.app-shell::after {
 }
 
 .packing-slip-actions {
-  gap: 0.625rem;
-  padding: 0.25rem 0;
+  gap: 0.5rem;
+  padding: 0.2rem 0 0;
 }
 
 .coc-action-row .packing-action-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  min-height: 42px;
-  padding: 0.625rem 0.9rem;
+  gap: 0.38rem;
+  min-height: 36px;
+  padding: 0.48rem 0.72rem;
   border-color: #cbd5e1;
-  border-radius: 6px;
+  border-radius: 7px;
   background: #ffffff;
   color: #334155;
   line-height: 1;
@@ -1254,8 +1270,8 @@ main.app-shell::after {
 }
 
 .coc-action-row .packing-action-button svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
   stroke-width: 2;
 }
@@ -1275,7 +1291,7 @@ main.app-shell::after {
 
 .coc-action-row .packing-action-primary {
   border-color: #2563eb;
-  background: #2563eb;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
   color: #ffffff;
   box-shadow: 0 2px 5px rgba(37, 99, 235, 0.24);
 }
@@ -1288,7 +1304,7 @@ main.app-shell::after {
 
 .coc-action-row .packing-action-pdf {
   border-color: #64748b;
-  background: #64748b;
+  background: #5f6f85;
   color: #ffffff;
   box-shadow: 0 2px 5px rgba(71, 85, 105, 0.18);
 }
@@ -1302,7 +1318,7 @@ main.app-shell::after {
 
 .coc-action-row .packing-action-print {
   border-color: #64748b;
-  background: #64748b;
+  background: #5f6f85;
   color: #ffffff;
   box-shadow: 0 2px 5px rgba(71, 85, 105, 0.18);
 }
@@ -1589,10 +1605,13 @@ main.app-shell::after {
   .login-panel,
   .login-form-panel,
   .dashboard-hero,
-  .dashboard-header,
   .dashboard-menu,
   .dashboard-card {
     padding: 1.5rem;
+  }
+
+  .dashboard-header {
+    padding: 0.5rem 1rem;
   }
 
   .dashboard-grid {
@@ -1617,7 +1636,7 @@ main.app-shell::after {
   .dashboard-grid {
     grid-template-columns: 1fr;
     height: auto;
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - 70px);
   }
 
   .dashboard-menu,
