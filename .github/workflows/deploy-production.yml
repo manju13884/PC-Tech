@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout production branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -29,13 +29,13 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Build Cloudflare Pages Functions
-        run: npx wrangler pages functions build functions --outfile dist/_worker.js --output-routes-path dist/_routes.json --compatibility-date=2026-07-09
+      - name: Remove invalid generated worker file
+        run: rm -f dist/_worker.js dist/_worker.js.map
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=pc-tech-production --branch=production
+          command: pages deploy dist --project-name=pc-tech-production --branch=production --commit-dirty=true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
