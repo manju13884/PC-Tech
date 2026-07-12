@@ -1483,7 +1483,7 @@ export default function Dashboard({
                                               disabled={savingUserId !== null}
                                             >
                                               <Settings size={14} aria-hidden="true" />
-                                              <span>Password reset</span>
+                                              <span>Password</span>
                                             </button>
                                           </>
                                         )}

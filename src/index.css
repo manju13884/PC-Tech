@@ -27,9 +27,8 @@ main.dashboard-shell {
 
 main.app-shell {
   place-items: center;
-  padding: 2rem;
-  overflow-x: hidden;
-  overflow-y: auto;
+  padding: 1rem;
+  overflow: hidden;
   background:
     radial-gradient(circle at 22% 16%, rgba(80, 164, 255, 0.2), transparent 28%),
     radial-gradient(circle at 86% 72%, rgba(59, 130, 246, 0.16), transparent 30%),
@@ -69,13 +68,13 @@ main.app-shell::after {
 .login-card {
   position: relative;
   z-index: 1;
-  width: min(980px, 100%);
+  width: min(900px, 100%);
   overflow: hidden;
   background: rgba(20, 44, 108, 0.34);
-  border: 0;
-  border-radius: 10px;
-  padding: 1rem;
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(191, 219, 254, 0.12);
+  border-radius: 16px;
+  padding: 0.65rem;
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.24);
   backdrop-filter: blur(18px);
 }
 
@@ -95,12 +94,16 @@ main.app-shell::after {
   display: grid;
   grid-template-columns: minmax(280px, 0.92fr) minmax(340px, 1.08fr);
   gap: 0;
-  min-height: 480px;
+  min-height: 390px;
+  overflow: hidden;
+  border-radius: 13px;
+  background:
+    linear-gradient(115deg, #142b70 0%, #1a347f 44%, #142a69 44%, #0b1840 100%);
 }
 
 .login-panel,
 .login-form-panel {
-  border-radius: 0;
+  border-radius: 13px;
 }
 
 .login-panel {
@@ -108,12 +111,11 @@ main.app-shell::after {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 480px;
-  padding: 2rem;
+  min-height: 390px;
+  padding: 1.35rem;
   overflow: hidden;
   background:
-    linear-gradient(160deg, rgba(74, 144, 255, 0.26), transparent 48%),
-    linear-gradient(180deg, #142b70 0%, #1a347f 100%);
+    linear-gradient(180deg, rgba(20, 43, 112, 0.94), rgba(26, 52, 127, 0.94));
   border-right: 0;
 }
 
@@ -127,22 +129,22 @@ main.app-shell::after {
 }
 
 .login-panel::before {
-  top: 128px;
-  width: 150px;
-  height: 150px;
-  border: 1px solid rgba(147, 197, 253, 0.22);
+  top: 104px;
+  width: 112px;
+  height: 112px;
+  border: 1px solid rgba(147, 197, 253, 0.14);
   background:
-    linear-gradient(135deg, rgba(96, 165, 250, 0.36), rgba(30, 64, 175, 0.12)),
-    linear-gradient(45deg, rgba(255, 255, 255, 0.06), transparent 54%);
-  box-shadow: 0 38px 80px rgba(6, 15, 43, 0.28);
+    linear-gradient(135deg, rgba(96, 165, 250, 0.18), rgba(30, 64, 175, 0.08)),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.035), transparent 54%);
+  box-shadow: 0 24px 56px rgba(6, 15, 43, 0.2);
 }
 
 .login-panel::after {
-  top: 238px;
-  width: 116px;
-  height: 116px;
-  border: 1px solid rgba(147, 197, 253, 0.16);
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(15, 23, 42, 0.04));
+  top: 188px;
+  width: 78px;
+  height: 78px;
+  border: 1px solid rgba(147, 197, 253, 0.1);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(15, 23, 42, 0.03));
 }
 
 .login-panel > * {
@@ -157,8 +159,8 @@ main.app-shell::after {
 }
 
 .login-brand .site-logo {
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
   object-fit: cover;
   margin-bottom: 0;
 }
@@ -167,23 +169,22 @@ main.app-shell::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 480px;
-  padding: 2.25rem;
+  min-height: 390px;
+  padding: 1.35rem;
   background:
-    linear-gradient(180deg, rgba(20, 40, 98, 0.96), rgba(11, 24, 64, 0.98)),
-    #0b1840;
+    linear-gradient(180deg, rgba(20, 40, 98, 0.96), rgba(11, 24, 64, 0.98));
   border-left: 0;
 }
 
 .login-panel-copy h2 {
   margin: 0;
   color: #ffffff;
-  font-size: 2.15rem;
+  font-size: 1.72rem;
   line-height: 1.05;
 }
 
 .login-panel-copy p {
-  margin: 1rem 0 0;
+  margin: 0.65rem 0 0;
   max-width: 300px;
   color: #c7d2fe;
   line-height: 1.55;
@@ -192,28 +193,28 @@ main.app-shell::after {
 .login-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  margin-top: 2rem;
+  gap: 0.7rem;
+  margin-top: 1rem;
 }
 
 .login-stats div {
-  padding: 0.82rem 0.95rem;
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.22);
-  border: 1px solid rgba(147, 197, 253, 0.16);
+  padding: 0.58rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.16);
+  border: 1px solid rgba(147, 197, 253, 0.12);
 }
 
 .login-stats strong {
   display: block;
   color: #ffffff;
-  font-size: 1.35rem;
+  font-size: 1.05rem;
 }
 
 .login-stats span {
   display: block;
   margin-top: 0.25rem;
   color: #bfdbfe;
-  font-size: 0.82rem;
+  font-size: 0.72rem;
 }
 
 .site-logo {
@@ -232,15 +233,15 @@ main.app-shell::after {
 
 .login-form {
   width: 100%;
-  max-width: 360px;
+  max-width: 330px;
   display: flex;
   flex-direction: column;
 }
 
 .login-form-title h3 {
-  margin: 0 0 1.35rem;
+  margin: 0 0 0.95rem;
   color: #ffffff;
-  font-size: 1.75rem;
+  font-size: 1.48rem;
   line-height: 1.1;
   text-align: center;
 }
@@ -254,7 +255,7 @@ main.app-shell::after {
 
 .login-form label {
   display: block;
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.28rem;
   color: #dbeafe;
   font-size: 0.78rem;
   font-weight: 700;
@@ -264,12 +265,12 @@ main.app-shell::after {
 .login-form input {
   box-sizing: border-box;
   width: 100%;
-  height: 44px;
-  padding: 0.78rem 0.9rem;
-  margin: 0 0 1.15rem;
-  border: 1px solid rgba(191, 219, 254, 0.22);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.94);
+  height: 38px;
+  padding: 0.56rem 0.72rem;
+  margin: 0 0 0.78rem;
+  border: 1px solid rgba(203, 213, 225, 0.36);
+  border-radius: 8px;
+  background: #f8fafc;
   color: #0f172a;
   font-size: 0.9rem;
   line-height: 1.2;
@@ -288,12 +289,12 @@ main.app-shell::after {
 .login-form button {
   box-sizing: border-box;
   width: 100%;
-  height: 44px;
-  margin-top: 0.25rem;
-  padding: 0.78rem 1rem;
+  height: 38px;
+  margin-top: 0.08rem;
+  padding: 0.56rem 0.85rem;
   border: none;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
   color: #ffffff;
   font-size: 0.9rem;
   font-weight: 700;
@@ -795,20 +796,20 @@ main.app-shell::after {
 .admin-panel-toolbar {
   display: flex;
   justify-content: flex-end;
-  padding: 0.75rem;
+  padding: 0.55rem 0.7rem;
   border-bottom: 1px solid #e2e8f0;
   background: #fbfdff;
 }
 
 .admin-panel-toolbar button {
-  min-height: 34px;
-  padding: 0.45rem 0.75rem;
+  min-height: 30px;
+  padding: 0.32rem 0.62rem;
   border: 1px solid #2563eb;
   border-radius: 6px;
   background: #2563eb;
   color: #ffffff;
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   font-weight: 650;
 }
 
@@ -862,29 +863,30 @@ main.app-shell::after {
 }
 
 .admin-users-table-wrap {
-  max-height: 440px;
-  overflow-x: auto;
+  max-height: none;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
 .admin-users-table {
   width: 100%;
-  min-width: 720px;
+  min-width: 0;
   border-collapse: collapse;
   color: #334155;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
 }
 
 .admin-roles-table {
-  min-width: 780px;
+  min-width: 0;
 }
 
 .admin-users-management-table {
-  min-width: 1040px;
+  table-layout: fixed;
+  min-width: 0;
 }
 
 .admin-access-table {
-  min-width: 760px;
+  min-width: 0;
 }
 
 .admin-roles-table td:nth-child(3) {
@@ -895,7 +897,7 @@ main.app-shell::after {
 
 .admin-users-table th,
 .admin-users-table td {
-  padding: 0.48rem 0.6rem;
+  padding: 0.34rem 0.42rem;
   border-bottom: 1px solid #e2e8f0;
   text-align: left;
   vertical-align: middle;
@@ -967,18 +969,50 @@ main.app-shell::after {
 
 .admin-users-management-table th:last-child,
 .admin-users-management-table td:last-child {
-  width: 330px;
+  width: 25%;
+}
+
+.admin-users-management-table th:nth-child(1),
+.admin-users-management-table td:nth-child(1) {
+  width: 4%;
+}
+
+.admin-users-management-table th:nth-child(2),
+.admin-users-management-table td:nth-child(2) {
+  width: 10%;
+}
+
+.admin-users-management-table th:nth-child(3),
+.admin-users-management-table td:nth-child(3) {
+  width: 22%;
+}
+
+.admin-users-management-table th:nth-child(4),
+.admin-users-management-table td:nth-child(4) {
+  width: 11%;
+}
+
+.admin-users-management-table th:nth-child(5),
+.admin-users-management-table td:nth-child(5) {
+  width: 9%;
+}
+
+.admin-users-management-table th:nth-child(6),
+.admin-users-management-table td:nth-child(6),
+.admin-users-management-table th:nth-child(7),
+.admin-users-management-table td:nth-child(7) {
+  width: 9.5%;
 }
 
 .admin-status-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 20px;
-  padding: 0.15rem 0.42rem;
+  min-height: 18px;
+  padding: 0.12rem 0.34rem;
   border-radius: 999px;
   background: #f1f5f9;
   color: #475569;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -996,9 +1030,9 @@ main.app-shell::after {
 .admin-row-actions {
   display: flex;
   align-items: center;
-  width: max-content;
-  min-height: 30px;
-  padding: 0.1rem;
+  width: 100%;
+  min-height: 28px;
+  padding: 0.06rem;
   border: 1px solid #dbe3ee;
   border-radius: 6px;
   background: #f8fafc;
@@ -1007,15 +1041,17 @@ main.app-shell::after {
 .admin-row-actions button {
   display: inline-flex;
   align-items: center;
-  gap: 0.28rem;
-  min-height: 26px;
-  padding: 0.25rem 0.5rem;
+  flex: 1 1 0;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 24px;
+  padding: 0.2rem 0.28rem;
   border: 0;
   border-radius: 5px;
   background: transparent;
   color: #475569;
   font: inherit;
-  font-size: 0.76rem;
+  font-size: 0.66rem;
   font-weight: 650;
   line-height: 1;
   white-space: nowrap;
