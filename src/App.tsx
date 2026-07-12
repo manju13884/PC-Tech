@@ -8,6 +8,8 @@ interface AuthenticatedUser {
   role: string
   status: string
   sessionVersion: number
+  mustChangePassword: boolean
+  menuAccess: string[]
 }
 
 interface LoginResponse {
@@ -27,6 +29,8 @@ function App() {
   const [password, setPassword] = useState('')
   const [setupPassword, setSetupPassword] = useState('')
   const [setupConfirmPassword, setSetupConfirmPassword] = useState('')
+  const [changePassword, setChangePassword] = useState('')
+  const [changeConfirmPassword, setChangeConfirmPassword] = useState('')
   const [setupToken, setSetupToken] = useState(initialSetupToken)
   const [message, setMessage] = useState('')
   const [user, setUser] = useState<AuthenticatedUser | null>(null)
@@ -108,7 +112,43 @@ function App() {
     setUser(null)
     setEmail('')
     setPassword('')
+    setChangePassword('')
+    setChangeConfirmPassword('')
     setMessage('')
+  }
+
+  const handleChangePassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (changePassword !== changeConfirmPassword) {
+      setMessage('Passwords do not match.')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ password: changePassword }),
+      })
+      const data: BasicResponse = await response.json()
+
+      if (!response.ok || !data.success) {
+        setMessage(data.error || 'Unable to change password.')
+        return
+      }
+
+      setUser((currentUser) => currentUser ? { ...currentUser, mustChangePassword: false } : currentUser)
+      setPassword('')
+      setChangePassword('')
+      setChangeConfirmPassword('')
+      setMessage('')
+    } catch {
+      setMessage('Unable to connect to authentication service.')
+    }
   }
 
   const handleSetupPassword = async (event: FormEvent<HTMLFormElement>) => {
@@ -144,8 +184,61 @@ function App() {
     }
   }
 
+  if (user && user.mustChangePassword) {
+    return (
+      <main className="app-shell">
+        <section className="login-card">
+          <div className="login-grid">
+            <div className="login-panel">
+              <img
+                className="site-logo"
+                src="/assets/logo.png"
+                alt="PolarCanvas"
+              />
+              <div className="login-panel-copy">
+                <h2>Change password</h2>
+                <p>This is your first login. Create a new password before continuing to PC-Tech.</p>
+              </div>
+            </div>
+            <div className="login-form-panel">
+              <form onSubmit={handleChangePassword} className="login-form">
+                <div className="login-form-title">
+                  <h3>Set new password</h3>
+                </div>
+
+                <label htmlFor="change-password">New Password</label>
+                <input
+                  id="change-password"
+                  type="password"
+                  value={changePassword}
+                  onChange={(event) => setChangePassword(event.target.value)}
+                  autoComplete="new-password"
+                  required
+                />
+
+                <label htmlFor="change-confirm-password">Confirm Password</label>
+                <input
+                  id="change-confirm-password"
+                  type="password"
+                  value={changeConfirmPassword}
+                  onChange={(event) => setChangeConfirmPassword(event.target.value)}
+                  autoComplete="new-password"
+                  required
+                />
+
+                <button type="submit">Change Password</button>
+
+                {message && <p className="message">{message}</p>}
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
+    )
+  }
+
   if (user) {
-    return <Dashboard username={user.fullName || user.email} onLogout={handleLogout} />
+    return <Dashboard username={user.fullName || user.email} menuAccess={user.menuAccess} onLogout={handleLogout} />
   }
 
   if (checkingSession) {

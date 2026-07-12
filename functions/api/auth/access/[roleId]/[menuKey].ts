@@ -135,6 +135,16 @@ function isPermissionName(value: unknown): value is PermissionName {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(PERMISSION_COLUMNS, value)
 }
 
+function getSafeAccessUpdateError(caughtError: unknown): string {
+  const message = caughtError instanceof Error ? caughtError.message : ''
+
+  if (message.includes('role_menu_permissions') || message.includes('no such table')) {
+    return 'Access permissions table is missing. Apply the D1 migrations to production.'
+  }
+
+  return 'Unable to update access'
+}
+
 export async function onRequest(context: FunctionContext): Promise<Response> {
   if (context.request.method !== 'PATCH') {
     return json({ success: false, error: 'Method not allowed' }, 405, { Allow: 'PATCH' })
@@ -183,6 +193,10 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
 
     if (!role) {
       return json({ success: false, error: 'Role not found' }, 404)
+    }
+
+    if (menuKey === 'admin-configurations' && role.name !== 'SUPERADMIN') {
+      return json({ success: false, error: 'Access Management is restricted to SUPERADMIN' }, 400)
     }
 
     if (role.name === 'SUPERADMIN' && (body.access === false || body.value === false)) {
@@ -267,8 +281,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
     }
 
     return json({ success: true, access: mapPermission(updated) }, 200)
-  } catch {
+  } catch (caughtError) {
     console.error('[admin-access-update] Unable to update access')
-    return json({ success: false, error: 'Unable to update access' }, 500)
+    return json({ success: false, error: getSafeAccessUpdateError(caughtError) }, 500)
   }
 }

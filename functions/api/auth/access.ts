@@ -103,6 +103,16 @@ function mapPermission(row: PermissionRow) {
   }
 }
 
+function getSafeAccessError(caughtError: unknown): string {
+  const message = caughtError instanceof Error ? caughtError.message : ''
+
+  if (message.includes('role_menu_permissions') || message.includes('no such table')) {
+    return 'Access permissions table is missing. Apply the D1 migrations to production.'
+  }
+
+  return 'Unable to load access'
+}
+
 export async function onRequest(context: FunctionContext): Promise<Response> {
   if (context.request.method !== 'GET') {
     return json({ success: false, error: 'Method not allowed' }, 405, { Allow: 'GET' })
@@ -141,8 +151,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       success: true,
       access: result.results.map(mapPermission),
     }, 200)
-  } catch {
+  } catch (caughtError) {
     console.error('[admin-access] Unable to load access')
-    return json({ success: false, error: 'Unable to load access' }, 500)
+    return json({ success: false, error: getSafeAccessError(caughtError) }, 500)
   }
 }

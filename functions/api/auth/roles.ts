@@ -108,7 +108,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         created_at,
         updated_at
       FROM roles
-      ORDER BY id ASC`,
+      ORDER BY created_at ASC, id ASC`,
     ).all<RoleRow>()
 
     if (!result.success) {

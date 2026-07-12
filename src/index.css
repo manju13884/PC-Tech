@@ -502,9 +502,9 @@ main.dashboard-shell {
 }
 
 .admin-config-tabs button.active {
-  background: #ffffff;
-  color: #0f172a;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
 }
 
 .admin-config-grid {
@@ -591,6 +591,11 @@ main.dashboard-shell {
   border-radius: 999px;
   background: #fff1f3;
   color: #b42318;
+}
+
+.admin-dialog-icon.success {
+  background: #dcfce7;
+  color: #047857;
 }
 
 .admin-dialog-copy {
@@ -698,32 +703,6 @@ main.dashboard-shell {
   background: #1d4ed8;
 }
 
-.admin-invite-link {
-  display: grid;
-  gap: 0.35rem;
-  padding: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
-}
-
-.admin-invite-link span {
-  color: #475569;
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
-.admin-invite-link input {
-  width: 100%;
-  min-height: 32px;
-  padding: 0.4rem 0.55rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #334155;
-  font: inherit;
-  font-size: 0.78rem;
-}
-
 .admin-create-user-dialog {
   width: min(460px, 100%);
 }
@@ -780,6 +759,10 @@ main.dashboard-shell {
 
 .admin-roles-table {
   min-width: 780px;
+}
+
+.admin-users-management-table {
+  min-width: 1040px;
 }
 
 .admin-access-table {
@@ -864,6 +847,11 @@ main.dashboard-shell {
   border-bottom: 0;
 }
 
+.admin-users-management-table th:last-child,
+.admin-users-management-table td:last-child {
+  width: 330px;
+}
+
 .admin-status-pill {
   display: inline-flex;
   align-items: center;
@@ -890,6 +878,7 @@ main.dashboard-shell {
 .admin-row-actions {
   display: flex;
   align-items: center;
+  width: max-content;
   min-height: 30px;
   padding: 0.1rem;
   border: 1px solid #dbe3ee;
@@ -911,6 +900,11 @@ main.dashboard-shell {
   font-size: 0.76rem;
   font-weight: 650;
   line-height: 1;
+  white-space: nowrap;
+}
+
+.admin-row-actions button span {
+  white-space: nowrap;
 }
 
 .admin-row-actions button + button {

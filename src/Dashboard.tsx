@@ -1,9 +1,9 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Ban, Calculator, ChevronRight, ClipboardList, FileCheck2, FileDown, FlaskConical, PackageCheck, Pencil, Printer, Save, Settings, X, type LucideIcon } from 'lucide-react'
+import { Ban, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, PackageCheck, Pencil, Printer, Save, Settings, X, type LucideIcon } from 'lucide-react'
 import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
 import { deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
-import { createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, updateAdminUser, type AdminUser } from './adminUsersService'
+import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice } from './invoiceService'
 import { loadCocTemplate } from './lib/templateLoader'
@@ -89,11 +89,23 @@ const accessMatrix: AccessMatrixItem[] = menuGroups.flatMap((group) => (
     subMenu: item.title,
   }))
 ))
+const accessRoleOrder = ['SUPERADMIN', 'ADMIN', 'SALES', 'ACCOUNTS', 'OPS']
 
 function getInitialMenuKey(): string {
   const hashKey = window.location.hash.replace(/^#/, '')
 
   return menuItems.some((item) => item.key === hashKey) ? hashKey : defaultMenuKey
+}
+
+function getVisibleMenuGroups(menuAccess: string[]): MenuGroup[] {
+  const allowedKeys = new Set(menuAccess)
+
+  return menuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => allowedKeys.has(item.key)),
+    }))
+    .filter((group) => group.items.length > 0)
 }
 
 function formatCustomerOption(customer: Customer): string {
@@ -226,7 +238,37 @@ function formatAdminDate(value: string): string {
   return `${day}-${month}-${year}`
 }
 
-export default function Dashboard({ username, onLogout }: { username: string; onLogout: () => void }) {
+function sortByCreatedDateAsc<T extends { id: number; createdAt: string }>(items: T[]): T[] {
+  return [...items].sort((left, right) => {
+    const leftTime = Date.parse(left.createdAt)
+    const rightTime = Date.parse(right.createdAt)
+    const dateDifference = (Number.isFinite(leftTime) ? leftTime : 0) -
+      (Number.isFinite(rightTime) ? rightTime : 0)
+
+    return dateDifference || left.id - right.id
+  })
+}
+
+function sortAccessRoles(roles: AdminRole[]): AdminRole[] {
+  return [...roles].sort((left, right) => {
+    const leftIndex = accessRoleOrder.indexOf(left.name)
+    const rightIndex = accessRoleOrder.indexOf(right.name)
+    const normalizedLeftIndex = leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex
+    const normalizedRightIndex = rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex
+
+    return normalizedLeftIndex - normalizedRightIndex || left.name.localeCompare(right.name)
+  })
+}
+
+export default function Dashboard({
+  username,
+  menuAccess,
+  onLogout,
+}: {
+  username: string
+  menuAccess: string[]
+  onLogout: () => void
+}) {
   const [selectedKey, setSelectedKey] = useState(getInitialMenuKey)
   const [customerId, setCustomerId] = useState('')
   const [invoiceId, setInvoiceId] = useState('')
@@ -259,14 +301,15 @@ export default function Dashboard({ username, onLogout }: { username: string; on
   const [editUserEmail, setEditUserEmail] = useState('')
   const [editUserRole, setEditUserRole] = useState('')
   const [savingUserId, setSavingUserId] = useState<number | null>(null)
+  const [userPendingActivate, setUserPendingActivate] = useState<AdminUser | null>(null)
   const [userPendingDeactivate, setUserPendingDeactivate] = useState<AdminUser | null>(null)
+  const [userPendingPasswordReset, setUserPendingPasswordReset] = useState<AdminUser | null>(null)
   const [createUserOpen, setCreateUserOpen] = useState(false)
   const [createUserFullName, setCreateUserFullName] = useState('')
   const [createUserEmail, setCreateUserEmail] = useState('')
   const [createUserRole, setCreateUserRole] = useState('')
   const [createUserEmailError, setCreateUserEmailError] = useState('')
   const [creatingUser, setCreatingUser] = useState(false)
-  const [latestSetupLink, setLatestSetupLink] = useState('')
   const [adminRoles, setAdminRoles] = useState<AdminRole[]>([])
   const [adminRolesLoading, setAdminRolesLoading] = useState(false)
   const [adminRolesError, setAdminRolesError] = useState<string | null>(null)
@@ -282,7 +325,30 @@ export default function Dashboard({ username, onLogout }: { username: string; on
   const [adminAccessError, setAdminAccessError] = useState<string | null>(null)
   const [savingAccessKey, setSavingAccessKey] = useState('')
 
-  const selectedItem = menuItems.find((item) => item.key === selectedKey) ?? menuItems[0]
+  const visibleMenuGroups = getVisibleMenuGroups(menuAccess)
+  const visibleMenuItems = visibleMenuGroups.flatMap((group) => group.items)
+  const visibleMenuKeys = new Set(visibleMenuItems.map((item) => item.key))
+  const visibleMenuKeyList = visibleMenuItems.map((item) => item.key).join('|')
+  const selectedItem = visibleMenuItems.find((item) => item.key === selectedKey) ?? visibleMenuItems[0] ?? {
+    key: 'no-access',
+    title: 'No modules available',
+    description: 'No application modules are assigned to your role.',
+    icon: Settings,
+  }
+  const sortedAdminUsers = sortByCreatedDateAsc(adminUsers)
+  const sortedAdminRoles = sortByCreatedDateAsc(adminRoles)
+  const activeAdminRoles = sortedAdminRoles.filter((role) => role.status === 'ACTIVE')
+  const accessRoles = sortAccessRoles(activeAdminRoles)
+
+  useEffect(() => {
+    if (visibleMenuItems.length === 0 || visibleMenuKeys.has(selectedKey)) {
+      return
+    }
+
+    const nextKey = visibleMenuItems[0].key
+    window.history.replaceState(null, '', `#${nextKey}`)
+    setSelectedKey(nextKey)
+  }, [selectedKey, visibleMenuKeyList])
 
   useEffect(() => {
     if (selectedKey !== 'coc') {
@@ -389,7 +455,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
       setAdminAccessLoading(true)
       setAdminAccessError(null)
 
-      const activeRoles = adminRoles.filter((role) => role.status === 'ACTIVE')
+      const activeRoles = sortAccessRoles(adminRoles.filter((role) => role.status === 'ACTIVE'))
       const accessEntries = await Promise.all(
         activeRoles.map(async (role) => [role.id, await getAdminAccess(role.id)] as const),
       )
@@ -748,6 +814,10 @@ export default function Dashboard({ username, onLogout }: { username: string; on
   }
 
   function selectMenuItem(key: string) {
+    if (!visibleMenuKeys.has(key)) {
+      return
+    }
+
     if (key === 'packing-slip') {
       setPackingCustomerId('')
       setPackingInvoiceId('')
@@ -824,7 +894,6 @@ export default function Dashboard({ username, onLogout }: { username: string; on
     setCreateUserRole(firstAssignableRole?.name ?? '')
     setCreateUserFullName('')
     setCreateUserEmail('')
-    setLatestSetupLink('')
     setCreateUserEmailError('')
     setCreateUserOpen(true)
     setRoleActionMessage('')
@@ -833,7 +902,6 @@ export default function Dashboard({ username, onLogout }: { username: string; on
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setCreatingUser(true)
-    setLatestSetupLink('')
     setCreateUserEmailError('')
     setRoleActionMessage('')
 
@@ -849,9 +917,8 @@ export default function Dashboard({ username, onLogout }: { username: string; on
       setCreateUserFullName('')
       setCreateUserEmail('')
       setCreateUserRole('')
-      setLatestSetupLink(result.invite.setupLink ?? '')
       setRoleActionMessageType('success')
-      setRoleActionMessage(result.invite.emailSent ? 'User created. Invite email sent.' : 'User created. Email not configured.')
+      setRoleActionMessage('User created. User must change password on first login.')
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : 'Unable to create user'
       if (message.toLowerCase().includes('email') && message.toLowerCase().includes('already exists')) {
@@ -874,6 +941,35 @@ export default function Dashboard({ username, onLogout }: { username: string; on
     setUserPendingDeactivate(user)
   }
 
+  function requestActivateUser(user: AdminUser) {
+    setUserPendingActivate(user)
+  }
+
+  async function activateUser() {
+    if (!userPendingActivate) {
+      return
+    }
+
+    setSavingUserId(userPendingActivate.id)
+    setRoleActionMessage('')
+
+    try {
+      const updatedUser = await activateAdminUser(userPendingActivate.id)
+
+      setAdminUsers((users) => users.map((user) => (
+        user.id === updatedUser.id ? updatedUser : user
+      )))
+      setUserPendingActivate(null)
+      setRoleActionMessageType('success')
+      setRoleActionMessage('User activated. Password reset and change required on next login.')
+    } catch (caughtError) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to activate user')
+    } finally {
+      setSavingUserId(null)
+    }
+  }
+
   async function deactivateUser() {
     if (!userPendingDeactivate) {
       return
@@ -894,6 +990,35 @@ export default function Dashboard({ username, onLogout }: { username: string; on
     } catch (caughtError) {
       setRoleActionMessageType('error')
       setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to deactivate user')
+    } finally {
+      setSavingUserId(null)
+    }
+  }
+
+  function requestResetUserPassword(user: AdminUser) {
+    setUserPendingPasswordReset(user)
+  }
+
+  async function resetUserPassword() {
+    if (!userPendingPasswordReset) {
+      return
+    }
+
+    setSavingUserId(userPendingPasswordReset.id)
+    setRoleActionMessage('')
+
+    try {
+      const updatedUser = await resetAdminUserPassword(userPendingPasswordReset.id)
+
+      setAdminUsers((users) => users.map((user) => (
+        user.id === updatedUser.id ? updatedUser : user
+      )))
+      setUserPendingPasswordReset(null)
+      setRoleActionMessageType('success')
+      setRoleActionMessage('Password reset. User must change it on next login.')
+    } catch (caughtError) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to reset password')
     } finally {
       setSavingUserId(null)
     }
@@ -1016,7 +1141,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
 
       <div className="dashboard-grid">
         <aside className="dashboard-menu">
-          {menuGroups.map((group) => (
+          {visibleMenuGroups.map((group) => (
             <div key={group.title} className="menu-group">
               <h3>{group.title}</h3>
               <ul className="menu-list">
@@ -1218,24 +1343,18 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                             Create User
                           </button>
                         </div>
-                        {latestSetupLink && (
-                          <div className="admin-invite-link">
-                            <span>Setup link</span>
-                            <input value={latestSetupLink} readOnly />
-                          </div>
-                        )}
                         {adminUsersLoading && (
                           <p className="admin-user-message">Loading users...</p>
                         )}
                         {adminUsersError && (
                           <p className="admin-user-message">{adminUsersError}</p>
                         )}
-                        {!adminUsersLoading && !adminUsersError && adminUsers.length === 0 && (
+                        {!adminUsersLoading && !adminUsersError && sortedAdminUsers.length === 0 && (
                           <p className="admin-user-message">No users found.</p>
                         )}
-                        {!adminUsersLoading && !adminUsersError && adminUsers.length > 0 && (
+                        {!adminUsersLoading && !adminUsersError && sortedAdminUsers.length > 0 && (
                           <div className="admin-users-table-wrap">
-                            <table className="admin-users-table">
+                            <table className="admin-users-table admin-users-management-table">
                               <thead>
                                 <tr>
                                   <th>ID</th>
@@ -1249,7 +1368,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                                 </tr>
                               </thead>
                               <tbody>
-                                {adminUsers.map((user) => (
+                                {sortedAdminUsers.map((user) => (
                                   <tr key={user.id}>
                                     <td>{user.id}</td>
                                     <td>
@@ -1285,9 +1404,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                                           onChange={(event) => setEditUserRole(event.target.value)}
                                           disabled={user.role === 'SUPERADMIN' || savingUserId === user.id}
                                         >
-                                          {adminRoles
-                                            .filter((role) => role.status === 'ACTIVE')
-                                            .map((role) => (
+                                          {activeAdminRoles.map((role) => (
                                               <option key={role.id} value={role.name}>
                                                 {role.name}
                                               </option>
@@ -1338,18 +1455,35 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                                               <Pencil size={14} aria-hidden="true" />
                                               <span>Edit</span>
                                             </button>
+                                            {user.status === 'ACTIVE' ? (
+                                              <button
+                                                type="button"
+                                                className="danger"
+                                                onClick={() => requestDeactivateUser(user)}
+                                                disabled={savingUserId !== null || user.role === 'SUPERADMIN'}
+                                              >
+                                                <Ban size={14} aria-hidden="true" />
+                                                <span>Deactivate</span>
+                                              </button>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                className="primary"
+                                                onClick={() => requestActivateUser(user)}
+                                                disabled={savingUserId !== null}
+                                              >
+                                                <CircleCheck size={14} aria-hidden="true" />
+                                                <span>Activate</span>
+                                              </button>
+                                            )}
                                             <button
                                               type="button"
-                                              className="danger"
-                                              onClick={() => requestDeactivateUser(user)}
-                                              disabled={
-                                                savingUserId !== null ||
-                                                user.status !== 'ACTIVE' ||
-                                                user.role === 'SUPERADMIN'
-                                              }
+                                              className="secondary"
+                                              onClick={() => requestResetUserPassword(user)}
+                                              disabled={savingUserId !== null}
                                             >
-                                              <Ban size={14} aria-hidden="true" />
-                                              <span>{user.status === 'ACTIVE' ? 'Deactivate' : 'Deactivated'}</span>
+                                              <Settings size={14} aria-hidden="true" />
+                                              <span>Password reset</span>
                                             </button>
                                           </>
                                         )}
@@ -1373,10 +1507,10 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                         {adminRolesError && (
                           <p className="admin-user-message">{adminRolesError}</p>
                         )}
-                        {!adminRolesLoading && !adminRolesError && adminRoles.length === 0 && (
+                        {!adminRolesLoading && !adminRolesError && sortedAdminRoles.length === 0 && (
                           <p className="admin-user-message">No roles found.</p>
                         )}
-                        {!adminRolesLoading && !adminRolesError && adminRoles.length > 0 && (
+                        {!adminRolesLoading && !adminRolesError && sortedAdminRoles.length > 0 && (
                           <div className="admin-users-table-wrap">
                             <table className="admin-users-table admin-roles-table">
                               <thead>
@@ -1391,7 +1525,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                                 </tr>
                               </thead>
                               <tbody>
-                                {adminRoles.map((role) => (
+                                {sortedAdminRoles.map((role) => (
                                   <tr key={role.id}>
                                     <td>{role.id}</td>
                                     <td>
@@ -1500,9 +1634,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                               <thead>
                                 <tr>
                                   <th>Particulars</th>
-                                  {adminRoles
-                                    .filter((role) => role.status === 'ACTIVE')
-                                    .map((role) => (
+                                  {accessRoles.map((role) => (
                                     <th key={role.id}>{role.name}</th>
                                   ))}
                                 </tr>
@@ -1514,9 +1646,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                                       <span className="admin-access-module">{accessItem.module}</span>
                                       <strong>{accessItem.subMenu}</strong>
                                     </td>
-                                    {adminRoles
-                                      .filter((role) => role.status === 'ACTIVE')
-                                      .map((role) => {
+                                    {accessRoles.map((role) => {
                                       const checkboxKey = `${role.id}:${accessItem.key}`
 
                                       return (
@@ -1588,6 +1718,44 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                   </div>
                 </div>
               )}
+              {userPendingActivate && (
+                <div className="admin-dialog-backdrop" role="presentation">
+                  <div
+                    className="admin-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="admin-user-activate-title"
+                  >
+                    <div className="admin-dialog-icon success">
+                      <CircleCheck size={18} aria-hidden="true" />
+                    </div>
+                    <div className="admin-dialog-copy">
+                      <h3 id="admin-user-activate-title">Activate user?</h3>
+                      <p>
+                        {userPendingActivate.fullName} will be able to sign in again with the default password rule and must change it on next login.
+                      </p>
+                    </div>
+                    <div className="admin-dialog-actions">
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setUserPendingActivate(null)}
+                        disabled={savingUserId === userPendingActivate.id}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="primary"
+                        onClick={activateUser}
+                        disabled={savingUserId === userPendingActivate.id}
+                      >
+                        Activate
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {userPendingDeactivate && (
                 <div className="admin-dialog-backdrop" role="presentation">
                   <div
@@ -1626,6 +1794,44 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                   </div>
                 </div>
               )}
+              {userPendingPasswordReset && (
+                <div className="admin-dialog-backdrop" role="presentation">
+                  <div
+                    className="admin-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="admin-user-reset-title"
+                  >
+                    <div className="admin-dialog-icon">
+                      <Settings size={18} aria-hidden="true" />
+                    </div>
+                    <div className="admin-dialog-copy">
+                      <h3 id="admin-user-reset-title">Reset password?</h3>
+                      <p>
+                        {userPendingPasswordReset.fullName} will use the default password rule and must change it on next login.
+                      </p>
+                    </div>
+                    <div className="admin-dialog-actions">
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setUserPendingPasswordReset(null)}
+                        disabled={savingUserId === userPendingPasswordReset.id}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="primary"
+                        onClick={resetUserPassword}
+                        disabled={savingUserId === userPendingPasswordReset.id}
+                      >
+                        Reset Password
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {createUserOpen && (
                 <div className="admin-dialog-backdrop" role="presentation">
                   <div
@@ -1636,7 +1842,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                   >
                     <div className="admin-dialog-copy">
                       <h3 id="admin-create-user-title">Create user</h3>
-                      <p>The user will receive a password setup link by email.</p>
+                      <p>Default password is generated from the name. User must change it on first login.</p>
                     </div>
                     <form onSubmit={createUser} className="admin-create-user-form">
                       <label htmlFor="admin-create-user-name">Name</label>
@@ -1672,9 +1878,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                         disabled={creatingUser}
                         required
                       >
-                        {adminRoles
-                          .filter((role) => role.status === 'ACTIVE')
-                          .map((role) => (
+                        {activeAdminRoles.map((role) => (
                             <option key={role.id} value={role.name}>
                               {role.name}
                             </option>
@@ -1691,7 +1895,7 @@ export default function Dashboard({ username, onLogout }: { username: string; on
                           Cancel
                         </button>
                         <button type="submit" className="primary" disabled={creatingUser}>
-                          Create & Send Invite
+                          Create User
                         </button>
                       </div>
                     </form>

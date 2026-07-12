@@ -3,6 +3,7 @@ import { onRequest as __api_auth_roles__id__ts_onRequest } from "D:\\PC-Tech\\fu
 import { onRequest as __api_auth_users__id__ts_onRequest } from "D:\\PC-Tech\\functions\\api\\auth\\users\\[id].ts"
 import { onRequest as __api_auth_access_ts_onRequest } from "D:\\PC-Tech\\functions\\api\\auth\\access.ts"
 import { onRequest as __api_auth_bootstrap_superadmin_ts_onRequest } from "D:\\PC-Tech\\functions\\api\\auth\\bootstrap-superadmin.ts"
+import { onRequest as __api_auth_change_password_ts_onRequest } from "D:\\PC-Tech\\functions\\api\\auth\\change-password.ts"
 import { onRequest as __api_auth_login_ts_onRequest } from "D:\\PC-Tech\\functions\\api\\auth\\login.ts"
 import { onRequest as __api_auth_logout_ts_onRequest } from "D:\\PC-Tech\\functions\\api\\auth\\logout.ts"
 import { onRequest as __api_auth_me_ts_onRequest } from "D:\\PC-Tech\\functions\\api\\auth\\me.ts"
@@ -48,6 +49,13 @@ export const routes = [
       method: "",
       middlewares: [],
       modules: [__api_auth_bootstrap_superadmin_ts_onRequest],
+    },
+  {
+      routePath: "/api/auth/change-password",
+      mountPath: "/api/auth",
+      method: "",
+      middlewares: [],
+      modules: [__api_auth_change_password_ts_onRequest],
     },
   {
       routePath: "/api/auth/login",

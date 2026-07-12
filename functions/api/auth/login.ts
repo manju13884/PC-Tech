@@ -26,12 +26,21 @@ interface AuthenticationRow {
   full_name: string
   password_hash: string
   password_salt: string
+  role_id: number
   role_name: string
   user_status: string
   role_is_active: number
   session_version: number
+  must_change_password: number
 }
 
+const ALL_MENU_KEYS = [
+  'corrugated-box-price',
+  'coc',
+  'packing-slip',
+  'coa',
+  'admin-configurations',
+]
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password'
 const DUMMY_HASH = 'YBXf2d6MiFk522BmWn2oK1TWvXg7xlou/L+HtiRO75I='
@@ -39,6 +48,40 @@ const DUMMY_SALT = 'xGw6kBbLDs2oEL9GDm37Yw=='
 
 function json(payload: unknown, status: number, headers?: HeadersInit): Response {
   return Response.json(payload, { status, headers })
+}
+
+async function getMenuAccess(env: Env, roleId: number, roleName: string): Promise<string[]> {
+  if (roleName === 'SUPERADMIN') {
+    return ALL_MENU_KEYS
+  }
+
+  try {
+    const result = await env.DB.prepare(
+      `SELECT menu_key
+      FROM role_menu_permissions
+      WHERE role_id = ?
+        AND (
+          can_full = 1
+          OR can_view = 1
+          OR can_create = 1
+          OR can_edit = 1
+          OR can_delete = 1
+          OR can_approve = 1
+        )
+      ORDER BY menu_key ASC`,
+    ).bind(roleId).all<{ menu_key: string }>()
+
+    if (!result.success) {
+      throw new Error('Menu access query failed')
+    }
+
+    return result.results
+      .map((row) => row.menu_key)
+      .filter((menuKey) => menuKey !== 'admin-configurations')
+  } catch {
+    console.error('[d1-login] Unable to load menu access')
+    return []
+  }
 }
 
 export async function onRequest(context: FunctionContext): Promise<Response> {
@@ -77,10 +120,12 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         u.full_name,
         u.password_hash,
         u.password_salt,
+        r.id AS role_id,
         r.name AS role_name,
         u.status AS user_status,
         r.is_active AS role_is_active,
-        u.session_version
+        u.session_version,
+        u.must_change_password
       FROM users u
       INNER JOIN roles r ON r.id = u.role_id
       WHERE u.email = ?
@@ -104,6 +149,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
     if (user.role_is_active !== 1) {
       return json({ success: false, error: 'User role is inactive' }, 403)
     }
+
+    const menuAccess = await getMenuAccess(context.env, user.role_id, user.role_name)
 
     let sessionCookie: string
     try {
@@ -132,6 +179,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         role: user.role_name,
         status: user.user_status,
         sessionVersion: user.session_version,
+        mustChangePassword: user.must_change_password === 1,
+        menuAccess,
       },
     }, 200, { 'Set-Cookie': sessionCookie })
   } catch {

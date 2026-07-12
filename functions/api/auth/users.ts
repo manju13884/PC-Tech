@@ -1,11 +1,8 @@
 import { getSessionTokenFromRequest, hashSessionToken } from '../../lib/session'
-import { generateSessionToken } from '../../lib/session'
-import { sendPasswordSetupEmail } from '../../lib/email'
+import { hashPassword } from '../../lib/password'
 
 interface Env {
   DB: D1Database
-  RESEND_API_KEY?: string
-  EMAIL_FROM?: string
 }
 
 interface FunctionContext {
@@ -31,6 +28,7 @@ interface UserRow {
   role_name: string
   status: string
   session_version: number
+  must_change_password: number
   created_at: string
   updated_at: string
 }
@@ -48,10 +46,27 @@ interface RoleRow {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const INVITE_DURATION_SECONDS = 24 * 60 * 60
 
 function json(payload: unknown, status: number, headers?: HeadersInit): Response {
   return Response.json(payload, { status, headers })
+}
+
+function getDefaultPassword(fullName: string): string {
+  return `${fullName.replace(/\s+/g, '')}@123$`
+}
+
+function mapUser(user: UserRow) {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.full_name,
+    role: user.role_name,
+    status: user.status,
+    sessionVersion: user.session_version,
+    mustChangePassword: user.must_change_password === 1,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at,
+  }
 }
 
 function authenticationRequired(): Response {
@@ -163,6 +178,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         return json({ success: false, error: 'A user with this email already exists' }, 409)
       }
 
+      const defaultPassword = getDefaultPassword(fullName)
+      const passwordData = await hashPassword(defaultPassword)
       const user = await context.env.DB.prepare(
         `INSERT INTO users (
           email,
@@ -172,56 +189,20 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
           role_id,
           status,
           session_version,
+          must_change_password,
           created_by,
           updated_by
-        ) VALUES (?, ?, 'PENDING_PASSWORD_HASH', 'PENDING_PASSWORD_SALT', ?, 'INACTIVE', 1, NULL, NULL)
-        RETURNING id, email, full_name, status, session_version, created_at, updated_at`,
-      ).bind(email, fullName, role.id).first<Omit<UserRow, 'role_name'>>()
+        ) VALUES (?, ?, ?, ?, ?, 'ACTIVE', 1, 1, NULL, NULL)
+        RETURNING id, email, full_name, status, session_version, must_change_password, created_at, updated_at`,
+      ).bind(email, fullName, passwordData.hash, passwordData.salt, role.id).first<Omit<UserRow, 'role_name'>>()
 
       if (!user) {
         throw new Error('User insert did not return a record')
       }
 
-      const setupToken = generateSessionToken()
-      const setupTokenHash = await hashSessionToken(setupToken)
-      const expiresAt = new Date(Date.now() + INVITE_DURATION_SECONDS * 1000).toISOString()
-      const setupLink = `${new URL(context.request.url).origin}/?setup_token=${encodeURIComponent(setupToken)}`
-
-      const tokenResult = await context.env.DB.prepare(
-        `INSERT INTO password_setup_tokens (
-          user_id,
-          token_hash,
-          expires_at
-        ) VALUES (?, ?, ?)`,
-      ).bind(user.id, setupTokenHash, expiresAt).run()
-
-      if (!tokenResult.success) {
-        throw new Error('Password setup token insert failed')
-      }
-
-      const emailResult = await sendPasswordSetupEmail(context.env, {
-        to: email,
-        fullName,
-        setupLink,
-      })
-
       return json({
         success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          fullName: user.full_name,
-          role: role.name,
-          status: user.status,
-          sessionVersion: user.session_version,
-          createdAt: user.created_at,
-          updatedAt: user.updated_at,
-        },
-        invite: {
-          emailSent: emailResult.sent,
-          setupLink: emailResult.sent ? undefined : setupLink,
-          message: emailResult.sent ? 'Invite email sent' : emailResult.reason,
-        },
+        user: mapUser({ ...user, role_name: role.name }),
       }, 201)
     }
 
@@ -233,11 +214,12 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         r.name AS role_name,
         u.status,
         u.session_version,
+        u.must_change_password,
         u.created_at,
         u.updated_at
       FROM users u
       INNER JOIN roles r ON r.id = u.role_id
-      ORDER BY u.created_at DESC, u.id DESC`,
+      ORDER BY u.created_at ASC, u.id ASC`,
     ).all<UserRow>()
 
     if (!result.success) {
@@ -246,16 +228,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
 
     return json({
       success: true,
-      users: result.results.map((user) => ({
-        id: user.id,
-        email: user.email,
-        fullName: user.full_name,
-        role: user.role_name,
-        status: user.status,
-        sessionVersion: user.session_version,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
-      })),
+      users: result.results.map(mapUser),
     }, 200)
   } catch {
     console.error('[admin-users] Unable to load users')

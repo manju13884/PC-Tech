@@ -5,17 +5,13 @@ export interface AdminUser {
   role: string
   status: string
   sessionVersion: number
+  mustChangePassword: boolean
   createdAt: string
   updatedAt: string
 }
 
 export interface CreateAdminUserResult {
   user: AdminUser
-  invite: {
-    emailSent: boolean
-    setupLink?: string
-    message?: string
-  }
 }
 
 let loading = false
@@ -57,6 +53,7 @@ function isAdminUser(value: unknown): value is AdminUser {
     typeof user.role === 'string' &&
     typeof user.status === 'string' &&
     typeof user.sessionVersion === 'number' &&
+    typeof user.mustChangePassword === 'boolean' &&
     typeof user.createdAt === 'string' &&
     typeof user.updatedAt === 'string'
   )
@@ -149,6 +146,40 @@ export async function deactivateAdminUser(userId: number): Promise<AdminUser> {
   return readUserResponse(response)
 }
 
+export async function activateAdminUser(userId: number): Promise<AdminUser> {
+  const response = await fetch(`/api/auth/users/${userId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ status: 'ACTIVE' }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await getResponseError(response, `Unable to activate user (${response.status})`))
+  }
+
+  return readUserResponse(response)
+}
+
+export async function resetAdminUserPassword(userId: number): Promise<AdminUser> {
+  const response = await fetch(`/api/auth/users/${userId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ resetPassword: true }),
+  })
+
+  if (!response.ok) {
+    throw new Error(await getResponseError(response, `Unable to reset password (${response.status})`))
+  }
+
+  return readUserResponse(response)
+}
+
 export async function createAdminUser(values: {
   fullName: string
   email: string
@@ -171,22 +202,11 @@ export async function createAdminUser(values: {
   const user = data && typeof data === 'object'
     ? (data as { user?: unknown }).user
     : null
-  const invite = data && typeof data === 'object'
-    ? (data as { invite?: unknown }).invite
-    : null
-
-  if (!isAdminUser(user) || !invite || typeof invite !== 'object') {
+  if (!isAdminUser(user)) {
     throw new Error('Create user response was invalid')
   }
 
-  const inviteData = invite as { emailSent?: unknown; setupLink?: unknown; message?: unknown }
-
   return {
     user,
-    invite: {
-      emailSent: inviteData.emailSent === true,
-      setupLink: typeof inviteData.setupLink === 'string' ? inviteData.setupLink : undefined,
-      message: typeof inviteData.message === 'string' ? inviteData.message : undefined,
-    },
   }
 }

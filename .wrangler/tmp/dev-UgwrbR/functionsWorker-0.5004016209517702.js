@@ -154,6 +154,15 @@ function isPermissionName(value) {
 }
 __name(isPermissionName, "isPermissionName");
 __name2(isPermissionName, "isPermissionName");
+function getSafeAccessUpdateError(caughtError) {
+  const message = caughtError instanceof Error ? caughtError.message : "";
+  if (message.includes("role_menu_permissions") || message.includes("no such table")) {
+    return "Access permissions table is missing. Apply the D1 migrations to production.";
+  }
+  return "Unable to update access";
+}
+__name(getSafeAccessUpdateError, "getSafeAccessUpdateError");
+__name2(getSafeAccessUpdateError, "getSafeAccessUpdateError");
 async function onRequest(context) {
   if (context.request.method !== "PATCH") {
     return json({ success: false, error: "Method not allowed" }, 405, { Allow: "PATCH" });
@@ -191,6 +200,9 @@ async function onRequest(context) {
     ).bind(roleId).first();
     if (!role) {
       return json({ success: false, error: "Role not found" }, 404);
+    }
+    if (menuKey === "admin-configurations" && role.name !== "SUPERADMIN") {
+      return json({ success: false, error: "Access Management is restricted to SUPERADMIN" }, 400);
     }
     if (role.name === "SUPERADMIN" && (body.access === false || body.value === false)) {
       return json({ success: false, error: "SUPERADMIN access cannot be revoked" }, 400);
@@ -268,9 +280,9 @@ async function onRequest(context) {
       throw new Error("Permission update did not return a record");
     }
     return json({ success: true, access: mapPermission(updated) }, 200);
-  } catch {
+  } catch (caughtError) {
     console.error("[admin-access-update] Unable to update access");
-    return json({ success: false, error: "Unable to update access" }, 500);
+    return json({ success: false, error: getSafeAccessUpdateError(caughtError) }, 500);
   }
 }
 __name(onRequest, "onRequest");
@@ -399,288 +411,6 @@ async function onRequest2(context) {
 }
 __name(onRequest2, "onRequest2");
 __name2(onRequest2, "onRequest");
-var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-function json3(payload, status, headers) {
-  return Response.json(payload, { status, headers });
-}
-__name(json3, "json3");
-__name2(json3, "json");
-function authenticationRequired3() {
-  return json3({ success: false, error: "Authentication required" }, 401);
-}
-__name(authenticationRequired3, "authenticationRequired3");
-__name2(authenticationRequired3, "authenticationRequired");
-function mapUser(user) {
-  return {
-    id: user.id,
-    email: user.email,
-    fullName: user.full_name,
-    role: user.role_name,
-    status: user.status,
-    sessionVersion: user.session_version,
-    createdAt: user.created_at,
-    updatedAt: user.updated_at
-  };
-}
-__name(mapUser, "mapUser");
-__name2(mapUser, "mapUser");
-async function requireSuperadmin3(context) {
-  const sessionToken = getSessionTokenFromRequest(context.request);
-  if (!sessionToken) return authenticationRequired3();
-  const tokenHash = await hashSessionToken(sessionToken);
-  const session = await context.env.DB.prepare(
-    `SELECT
-      s.id AS session_id,
-      s.expires_at AS session_expires_at,
-      s.revoked_at AS session_revoked_at,
-      s.session_version AS session_session_version,
-      u.status AS user_status,
-      u.session_version AS user_session_version,
-      r.name AS role_name,
-      r.is_active AS role_is_active
-    FROM sessions s
-    INNER JOIN users u ON u.id = s.user_id
-    INNER JOIN roles r ON r.id = u.role_id
-    WHERE s.token_hash = ?
-    LIMIT 1`
-  ).bind(tokenHash).first();
-  if (!session) return authenticationRequired3();
-  const expiresAt = Date.parse(session.session_expires_at);
-  if (session.session_revoked_at !== null || !Number.isFinite(expiresAt) || expiresAt <= Date.now() || session.session_session_version !== session.user_session_version) {
-    return authenticationRequired3();
-  }
-  if (session.user_status !== "ACTIVE") {
-    return json3({ success: false, error: "User account is inactive" }, 403);
-  }
-  if (session.role_is_active !== 1) {
-    return json3({ success: false, error: "User role is inactive" }, 403);
-  }
-  if (session.role_name !== "SUPERADMIN") {
-    return json3({ success: false, error: "SUPERADMIN access required" }, 403);
-  }
-  await context.env.DB.prepare(
-    "UPDATE sessions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?"
-  ).bind(session.session_id).run();
-  return null;
-}
-__name(requireSuperadmin3, "requireSuperadmin3");
-__name2(requireSuperadmin3, "requireSuperadmin");
-async function onRequest3(context) {
-  if (context.request.method !== "PATCH") {
-    return json3({ success: false, error: "Method not allowed" }, 405, { Allow: "PATCH" });
-  }
-  try {
-    const authError = await requireSuperadmin3(context);
-    if (authError) return authError;
-    const idParam = Array.isArray(context.params.id) ? context.params.id[0] : context.params.id;
-    const userId = Number(idParam);
-    if (!Number.isInteger(userId) || userId <= 0) {
-      return json3({ success: false, error: "User id is invalid" }, 400);
-    }
-    let body;
-    try {
-      const parsedBody = await context.request.json();
-      body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody) ? parsedBody : {};
-    } catch {
-      return json3({ success: false, error: "Request body must be valid JSON" }, 400);
-    }
-    const existingUser = await context.env.DB.prepare(
-      `SELECT
-        u.id,
-        u.email,
-        u.full_name,
-        u.role_id,
-        r.name AS role_name,
-        u.status,
-        u.session_version,
-        u.created_at,
-        u.updated_at
-      FROM users u
-      INNER JOIN roles r ON r.id = u.role_id
-      WHERE u.id = ?
-      LIMIT 1`
-    ).bind(userId).first();
-    if (!existingUser) {
-      return json3({ success: false, error: "User not found" }, 404);
-    }
-    const nextEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : existingUser.email;
-    const nextFullName = typeof body.fullName === "string" ? body.fullName.trim() : existingUser.full_name;
-    const nextRoleName = typeof body.role === "string" ? body.role.trim().toUpperCase() : existingUser.role_name;
-    const nextStatus = typeof body.status === "string" ? body.status.trim().toUpperCase() : existingUser.status;
-    if (!EMAIL_PATTERN.test(nextEmail)) {
-      return json3({ success: false, error: "Email must be a valid email address" }, 400);
-    }
-    if (!nextFullName) {
-      return json3({ success: false, error: "Full name is required" }, 400);
-    }
-    if (nextStatus !== "ACTIVE" && nextStatus !== "INACTIVE") {
-      return json3({ success: false, error: "Status must be ACTIVE or INACTIVE" }, 400);
-    }
-    const nextRole = await context.env.DB.prepare(
-      "SELECT id, name, is_active FROM roles WHERE name = ? LIMIT 1"
-    ).bind(nextRoleName).first();
-    if (!nextRole) {
-      return json3({ success: false, error: "Role not found" }, 400);
-    }
-    if (nextRole.is_active !== 1) {
-      return json3({ success: false, error: "Cannot assign an inactive role" }, 400);
-    }
-    if (existingUser.role_name === "SUPERADMIN" && nextStatus !== "ACTIVE") {
-      return json3({ success: false, error: "SUPERADMIN user cannot be deactivated" }, 400);
-    }
-    if (existingUser.role_name === "SUPERADMIN" && nextRole.name !== "SUPERADMIN") {
-      return json3({ success: false, error: "SUPERADMIN user role cannot be changed" }, 400);
-    }
-    const duplicateEmail = await context.env.DB.prepare(
-      "SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1"
-    ).bind(nextEmail, userId).first();
-    if (duplicateEmail) {
-      return json3({ success: false, error: "A user with this email already exists" }, 409);
-    }
-    const securityChanged = nextRole.id !== existingUser.role_id || nextStatus !== existingUser.status;
-    const nextSessionVersion = securityChanged ? existingUser.session_version + 1 : existingUser.session_version;
-    const updatedUser = await context.env.DB.prepare(
-      `UPDATE users
-      SET email = ?,
-        full_name = ?,
-        role_id = ?,
-        status = ?,
-        session_version = ?,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-      RETURNING
-        id,
-        email,
-        full_name,
-        role_id,
-        ? AS role_name,
-        status,
-        session_version,
-        created_at,
-        updated_at`
-    ).bind(
-      nextEmail,
-      nextFullName,
-      nextRole.id,
-      nextStatus,
-      nextSessionVersion,
-      userId,
-      nextRole.name
-    ).first();
-    if (!updatedUser) {
-      throw new Error("User update did not return a record");
-    }
-    return json3({ success: true, user: mapUser(updatedUser) }, 200);
-  } catch {
-    console.error("[admin-user-update] Unable to update user");
-    return json3({ success: false, error: "Unable to update user" }, 500);
-  }
-}
-__name(onRequest3, "onRequest3");
-__name2(onRequest3, "onRequest");
-function json4(payload, status, headers) {
-  return Response.json(payload, { status, headers });
-}
-__name(json4, "json4");
-__name2(json4, "json");
-function authenticationRequired4() {
-  return json4({ success: false, error: "Authentication required" }, 401);
-}
-__name(authenticationRequired4, "authenticationRequired4");
-__name2(authenticationRequired4, "authenticationRequired");
-async function requireSuperadmin4(context) {
-  const sessionToken = getSessionTokenFromRequest(context.request);
-  if (!sessionToken) return authenticationRequired4();
-  const tokenHash = await hashSessionToken(sessionToken);
-  const session = await context.env.DB.prepare(
-    `SELECT
-      s.id AS session_id,
-      s.expires_at AS session_expires_at,
-      s.revoked_at AS session_revoked_at,
-      s.session_version AS session_session_version,
-      u.status AS user_status,
-      u.session_version AS user_session_version,
-      r.name AS role_name,
-      r.is_active AS role_is_active
-    FROM sessions s
-    INNER JOIN users u ON u.id = s.user_id
-    INNER JOIN roles r ON r.id = u.role_id
-    WHERE s.token_hash = ?
-    LIMIT 1`
-  ).bind(tokenHash).first();
-  if (!session) return authenticationRequired4();
-  const expiresAt = Date.parse(session.session_expires_at);
-  if (session.session_revoked_at !== null || !Number.isFinite(expiresAt) || expiresAt <= Date.now() || session.session_session_version !== session.user_session_version) {
-    return authenticationRequired4();
-  }
-  if (session.user_status !== "ACTIVE") {
-    return json4({ success: false, error: "User account is inactive" }, 403);
-  }
-  if (session.role_is_active !== 1) {
-    return json4({ success: false, error: "User role is inactive" }, 403);
-  }
-  if (session.role_name !== "SUPERADMIN") {
-    return json4({ success: false, error: "SUPERADMIN access required" }, 403);
-  }
-  await context.env.DB.prepare(
-    "UPDATE sessions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?"
-  ).bind(session.session_id).run();
-  return null;
-}
-__name(requireSuperadmin4, "requireSuperadmin4");
-__name2(requireSuperadmin4, "requireSuperadmin");
-function mapPermission2(row) {
-  return {
-    menuKey: row.menu_key,
-    full: row.can_full === 1,
-    view: row.can_view === 1,
-    create: row.can_create === 1,
-    edit: row.can_edit === 1,
-    delete: row.can_delete === 1,
-    approve: row.can_approve === 1
-  };
-}
-__name(mapPermission2, "mapPermission2");
-__name2(mapPermission2, "mapPermission");
-async function onRequest4(context) {
-  if (context.request.method !== "GET") {
-    return json4({ success: false, error: "Method not allowed" }, 405, { Allow: "GET" });
-  }
-  try {
-    const authError = await requireSuperadmin4(context);
-    if (authError) return authError;
-    const url = new URL(context.request.url);
-    const roleId = Number(url.searchParams.get("role_id"));
-    if (!Number.isInteger(roleId) || roleId <= 0) {
-      return json4({ success: false, error: "Role id is required" }, 400);
-    }
-    const result = await context.env.DB.prepare(
-      `SELECT
-        menu_key,
-        can_full,
-        can_view,
-        can_create,
-        can_edit,
-        can_delete,
-        can_approve
-      FROM role_menu_permissions
-      WHERE role_id = ?
-      ORDER BY menu_key ASC`
-    ).bind(roleId).all();
-    if (!result.success) {
-      throw new Error("Access list query failed");
-    }
-    return json4({
-      success: true,
-      access: result.results.map(mapPermission2)
-    }, 200);
-  } catch {
-    console.error("[admin-access] Unable to load access");
-    return json4({ success: false, error: "Unable to load access" }, 500);
-  }
-}
-__name(onRequest4, "onRequest4");
-__name2(onRequest4, "onRequest");
 var PBKDF2_ITERATIONS = 1e5;
 var SALT_BYTES = 16;
 var HASH_BYTES = 32;
@@ -774,6 +504,376 @@ async function verifyPassword(password, storedHash, storedSalt) {
 }
 __name(verifyPassword, "verifyPassword");
 __name2(verifyPassword, "verifyPassword");
+var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function json3(payload, status, headers) {
+  return Response.json(payload, { status, headers });
+}
+__name(json3, "json3");
+__name2(json3, "json");
+function getDefaultPassword(fullName) {
+  return `${fullName.replace(/\s+/g, "")}@123$`;
+}
+__name(getDefaultPassword, "getDefaultPassword");
+__name2(getDefaultPassword, "getDefaultPassword");
+function authenticationRequired3() {
+  return json3({ success: false, error: "Authentication required" }, 401);
+}
+__name(authenticationRequired3, "authenticationRequired3");
+__name2(authenticationRequired3, "authenticationRequired");
+function mapUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.full_name,
+    role: user.role_name,
+    status: user.status,
+    sessionVersion: user.session_version,
+    mustChangePassword: user.must_change_password === 1,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at
+  };
+}
+__name(mapUser, "mapUser");
+__name2(mapUser, "mapUser");
+async function requireSuperadmin3(context) {
+  const sessionToken = getSessionTokenFromRequest(context.request);
+  if (!sessionToken) return authenticationRequired3();
+  const tokenHash = await hashSessionToken(sessionToken);
+  const session = await context.env.DB.prepare(
+    `SELECT
+      s.id AS session_id,
+      s.expires_at AS session_expires_at,
+      s.revoked_at AS session_revoked_at,
+      s.session_version AS session_session_version,
+      u.status AS user_status,
+      u.session_version AS user_session_version,
+      r.name AS role_name,
+      r.is_active AS role_is_active
+    FROM sessions s
+    INNER JOIN users u ON u.id = s.user_id
+    INNER JOIN roles r ON r.id = u.role_id
+    WHERE s.token_hash = ?
+    LIMIT 1`
+  ).bind(tokenHash).first();
+  if (!session) return authenticationRequired3();
+  const expiresAt = Date.parse(session.session_expires_at);
+  if (session.session_revoked_at !== null || !Number.isFinite(expiresAt) || expiresAt <= Date.now() || session.session_session_version !== session.user_session_version) {
+    return authenticationRequired3();
+  }
+  if (session.user_status !== "ACTIVE") {
+    return json3({ success: false, error: "User account is inactive" }, 403);
+  }
+  if (session.role_is_active !== 1) {
+    return json3({ success: false, error: "User role is inactive" }, 403);
+  }
+  if (session.role_name !== "SUPERADMIN") {
+    return json3({ success: false, error: "SUPERADMIN access required" }, 403);
+  }
+  await context.env.DB.prepare(
+    "UPDATE sessions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?"
+  ).bind(session.session_id).run();
+  return null;
+}
+__name(requireSuperadmin3, "requireSuperadmin3");
+__name2(requireSuperadmin3, "requireSuperadmin");
+async function onRequest3(context) {
+  if (context.request.method !== "PATCH") {
+    return json3({ success: false, error: "Method not allowed" }, 405, { Allow: "PATCH" });
+  }
+  try {
+    const authError = await requireSuperadmin3(context);
+    if (authError) return authError;
+    const idParam = Array.isArray(context.params.id) ? context.params.id[0] : context.params.id;
+    const userId = Number(idParam);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return json3({ success: false, error: "User id is invalid" }, 400);
+    }
+    let body;
+    try {
+      const parsedBody = await context.request.json();
+      body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody) ? parsedBody : {};
+    } catch {
+      return json3({ success: false, error: "Request body must be valid JSON" }, 400);
+    }
+    const existingUser = await context.env.DB.prepare(
+      `SELECT
+        u.id,
+        u.email,
+        u.full_name,
+        u.role_id,
+        r.name AS role_name,
+        u.status,
+        u.session_version,
+        u.must_change_password,
+        u.created_at,
+        u.updated_at
+      FROM users u
+      INNER JOIN roles r ON r.id = u.role_id
+      WHERE u.id = ?
+      LIMIT 1`
+    ).bind(userId).first();
+    if (!existingUser) {
+      return json3({ success: false, error: "User not found" }, 404);
+    }
+    const nextEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : existingUser.email;
+    const nextFullName = typeof body.fullName === "string" ? body.fullName.trim() : existingUser.full_name;
+    const nextRoleName = typeof body.role === "string" ? body.role.trim().toUpperCase() : existingUser.role_name;
+    const nextStatus = typeof body.status === "string" ? body.status.trim().toUpperCase() : existingUser.status;
+    if (!EMAIL_PATTERN.test(nextEmail)) {
+      return json3({ success: false, error: "Email must be a valid email address" }, 400);
+    }
+    if (!nextFullName) {
+      return json3({ success: false, error: "Full name is required" }, 400);
+    }
+    if (nextStatus !== "ACTIVE" && nextStatus !== "INACTIVE") {
+      return json3({ success: false, error: "Status must be ACTIVE or INACTIVE" }, 400);
+    }
+    const nextRole = await context.env.DB.prepare(
+      "SELECT id, name, is_active FROM roles WHERE name = ? LIMIT 1"
+    ).bind(nextRoleName).first();
+    if (!nextRole) {
+      return json3({ success: false, error: "Role not found" }, 400);
+    }
+    if (nextRole.is_active !== 1) {
+      return json3({ success: false, error: "Cannot assign an inactive role" }, 400);
+    }
+    if (existingUser.role_name === "SUPERADMIN" && nextStatus !== "ACTIVE") {
+      return json3({ success: false, error: "SUPERADMIN user cannot be deactivated" }, 400);
+    }
+    if (existingUser.role_name === "SUPERADMIN" && nextRole.name !== "SUPERADMIN") {
+      return json3({ success: false, error: "SUPERADMIN user role cannot be changed" }, 400);
+    }
+    const duplicateEmail = await context.env.DB.prepare(
+      "SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1"
+    ).bind(nextEmail, userId).first();
+    if (duplicateEmail) {
+      return json3({ success: false, error: "A user with this email already exists" }, 409);
+    }
+    if (body.resetPassword === true) {
+      const defaultPassword = getDefaultPassword(existingUser.full_name);
+      const passwordData = await hashPassword(defaultPassword);
+      const updatedUser2 = await context.env.DB.prepare(
+        `UPDATE users
+        SET password_hash = ?,
+          password_salt = ?,
+          must_change_password = 1,
+          session_version = session_version + 1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        RETURNING
+          id,
+          email,
+          full_name,
+          role_id,
+          ? AS role_name,
+          status,
+          session_version,
+          must_change_password,
+          created_at,
+          updated_at`
+      ).bind(passwordData.hash, passwordData.salt, userId, existingUser.role_name).first();
+      if (!updatedUser2) {
+        throw new Error("Password reset did not return a record");
+      }
+      return json3({ success: true, user: mapUser(updatedUser2) }, 200);
+    }
+    const isActivatingUser = existingUser.status === "INACTIVE" && nextStatus === "ACTIVE";
+    const securityChanged = nextRole.id !== existingUser.role_id || nextStatus !== existingUser.status || isActivatingUser;
+    const nextSessionVersion = securityChanged ? existingUser.session_version + 1 : existingUser.session_version;
+    if (isActivatingUser) {
+      const defaultPassword = getDefaultPassword(nextFullName);
+      const passwordData = await hashPassword(defaultPassword);
+      const updatedUser2 = await context.env.DB.prepare(
+        `UPDATE users
+        SET email = ?,
+          full_name = ?,
+          password_hash = ?,
+          password_salt = ?,
+          role_id = ?,
+          status = ?,
+          must_change_password = 1,
+          session_version = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        RETURNING
+          id,
+          email,
+          full_name,
+          role_id,
+          ? AS role_name,
+          status,
+          session_version,
+          must_change_password,
+          created_at,
+          updated_at`
+      ).bind(
+        nextEmail,
+        nextFullName,
+        passwordData.hash,
+        passwordData.salt,
+        nextRole.id,
+        nextStatus,
+        nextSessionVersion,
+        userId,
+        nextRole.name
+      ).first();
+      if (!updatedUser2) {
+        throw new Error("User activation did not return a record");
+      }
+      return json3({ success: true, user: mapUser(updatedUser2) }, 200);
+    }
+    const updatedUser = await context.env.DB.prepare(
+      `UPDATE users
+      SET email = ?,
+        full_name = ?,
+        role_id = ?,
+        status = ?,
+        session_version = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+      RETURNING
+        id,
+        email,
+        full_name,
+        role_id,
+        ? AS role_name,
+        status,
+        session_version,
+        must_change_password,
+        created_at,
+        updated_at`
+    ).bind(
+      nextEmail,
+      nextFullName,
+      nextRole.id,
+      nextStatus,
+      nextSessionVersion,
+      userId,
+      nextRole.name
+    ).first();
+    if (!updatedUser) {
+      throw new Error("User update did not return a record");
+    }
+    return json3({ success: true, user: mapUser(updatedUser) }, 200);
+  } catch {
+    console.error("[admin-user-update] Unable to update user");
+    return json3({ success: false, error: "Unable to update user" }, 500);
+  }
+}
+__name(onRequest3, "onRequest3");
+__name2(onRequest3, "onRequest");
+function json4(payload, status, headers) {
+  return Response.json(payload, { status, headers });
+}
+__name(json4, "json4");
+__name2(json4, "json");
+function authenticationRequired4() {
+  return json4({ success: false, error: "Authentication required" }, 401);
+}
+__name(authenticationRequired4, "authenticationRequired4");
+__name2(authenticationRequired4, "authenticationRequired");
+async function requireSuperadmin4(context) {
+  const sessionToken = getSessionTokenFromRequest(context.request);
+  if (!sessionToken) return authenticationRequired4();
+  const tokenHash = await hashSessionToken(sessionToken);
+  const session = await context.env.DB.prepare(
+    `SELECT
+      s.id AS session_id,
+      s.expires_at AS session_expires_at,
+      s.revoked_at AS session_revoked_at,
+      s.session_version AS session_session_version,
+      u.status AS user_status,
+      u.session_version AS user_session_version,
+      r.name AS role_name,
+      r.is_active AS role_is_active
+    FROM sessions s
+    INNER JOIN users u ON u.id = s.user_id
+    INNER JOIN roles r ON r.id = u.role_id
+    WHERE s.token_hash = ?
+    LIMIT 1`
+  ).bind(tokenHash).first();
+  if (!session) return authenticationRequired4();
+  const expiresAt = Date.parse(session.session_expires_at);
+  if (session.session_revoked_at !== null || !Number.isFinite(expiresAt) || expiresAt <= Date.now() || session.session_session_version !== session.user_session_version) {
+    return authenticationRequired4();
+  }
+  if (session.user_status !== "ACTIVE") {
+    return json4({ success: false, error: "User account is inactive" }, 403);
+  }
+  if (session.role_is_active !== 1) {
+    return json4({ success: false, error: "User role is inactive" }, 403);
+  }
+  if (session.role_name !== "SUPERADMIN") {
+    return json4({ success: false, error: "SUPERADMIN access required" }, 403);
+  }
+  await context.env.DB.prepare(
+    "UPDATE sessions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?"
+  ).bind(session.session_id).run();
+  return null;
+}
+__name(requireSuperadmin4, "requireSuperadmin4");
+__name2(requireSuperadmin4, "requireSuperadmin");
+function mapPermission2(row) {
+  return {
+    menuKey: row.menu_key,
+    full: row.can_full === 1,
+    view: row.can_view === 1,
+    create: row.can_create === 1,
+    edit: row.can_edit === 1,
+    delete: row.can_delete === 1,
+    approve: row.can_approve === 1
+  };
+}
+__name(mapPermission2, "mapPermission2");
+__name2(mapPermission2, "mapPermission");
+function getSafeAccessError(caughtError) {
+  const message = caughtError instanceof Error ? caughtError.message : "";
+  if (message.includes("role_menu_permissions") || message.includes("no such table")) {
+    return "Access permissions table is missing. Apply the D1 migrations to production.";
+  }
+  return "Unable to load access";
+}
+__name(getSafeAccessError, "getSafeAccessError");
+__name2(getSafeAccessError, "getSafeAccessError");
+async function onRequest4(context) {
+  if (context.request.method !== "GET") {
+    return json4({ success: false, error: "Method not allowed" }, 405, { Allow: "GET" });
+  }
+  try {
+    const authError = await requireSuperadmin4(context);
+    if (authError) return authError;
+    const url = new URL(context.request.url);
+    const roleId = Number(url.searchParams.get("role_id"));
+    if (!Number.isInteger(roleId) || roleId <= 0) {
+      return json4({ success: false, error: "Role id is required" }, 400);
+    }
+    const result = await context.env.DB.prepare(
+      `SELECT
+        menu_key,
+        can_full,
+        can_view,
+        can_create,
+        can_edit,
+        can_delete,
+        can_approve
+      FROM role_menu_permissions
+      WHERE role_id = ?
+      ORDER BY menu_key ASC`
+    ).bind(roleId).all();
+    if (!result.success) {
+      throw new Error("Access list query failed");
+    }
+    return json4({
+      success: true,
+      access: result.results.map(mapPermission2)
+    }, 200);
+  } catch (caughtError) {
+    console.error("[admin-access] Unable to load access");
+    return json4({ success: false, error: getSafeAccessError(caughtError) }, 500);
+  }
+}
+__name(onRequest4, "onRequest4");
+__name2(onRequest4, "onRequest");
 var EMAIL_PATTERN2 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 var COMMON_PASSWORDS = /* @__PURE__ */ new Set([
   "1234567890",
@@ -885,18 +985,34 @@ async function onRequest5(context) {
 }
 __name(onRequest5, "onRequest5");
 __name2(onRequest5, "onRequest");
-var EMAIL_PATTERN3 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-var INVALID_CREDENTIALS_MESSAGE = "Invalid email or password";
-var DUMMY_HASH = "YBXf2d6MiFk522BmWn2oK1TWvXg7xlou/L+HtiRO75I=";
-var DUMMY_SALT = "xGw6kBbLDs2oEL9GDm37Yw==";
+var COMMON_PASSWORDS2 = /* @__PURE__ */ new Set([
+  "1234567890",
+  "password123",
+  "qwerty12345",
+  "letmein1234",
+  "superadmin"
+]);
 function json6(payload, status, headers) {
   return Response.json(payload, { status, headers });
 }
 __name(json6, "json6");
 __name2(json6, "json");
+function validatePassword2(password) {
+  if (password.length < 10) return "Password must be at least 10 characters";
+  if (COMMON_PASSWORDS2.has(password.toLowerCase())) return "Password is too weak";
+  const characterGroups = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/];
+  const groupsPresent = characterGroups.filter((pattern) => pattern.test(password)).length;
+  return groupsPresent >= 2 ? null : "Password must include characters from at least two of these groups: lowercase, uppercase, numbers, symbols";
+}
+__name(validatePassword2, "validatePassword2");
+__name2(validatePassword2, "validatePassword");
 async function onRequest6(context) {
   if (context.request.method !== "POST") {
     return json6({ success: false, error: "Method not allowed" }, 405, { Allow: "POST" });
+  }
+  const sessionToken = getSessionTokenFromRequest(context.request);
+  if (!sessionToken) {
+    return json6({ success: false, error: "Authentication required" }, 401);
   }
   let body;
   try {
@@ -905,6 +1021,119 @@ async function onRequest6(context) {
   } catch {
     return json6({ success: false, error: "Request body must be valid JSON" }, 400);
   }
+  const password = typeof body.password === "string" ? body.password : "";
+  const passwordError = validatePassword2(password);
+  if (passwordError) {
+    return json6({ success: false, error: passwordError }, 400);
+  }
+  try {
+    const tokenHash = await hashSessionToken(sessionToken);
+    const session = await context.env.DB.prepare(
+      `SELECT
+        s.id AS session_id,
+        s.expires_at AS session_expires_at,
+        s.revoked_at AS session_revoked_at,
+        s.session_version AS session_session_version,
+        u.id AS user_id,
+        u.status AS user_status,
+        u.session_version AS user_session_version
+      FROM sessions s
+      INNER JOIN users u ON u.id = s.user_id
+      WHERE s.token_hash = ?
+      LIMIT 1`
+    ).bind(tokenHash).first();
+    if (!session) {
+      return json6({ success: false, error: "Authentication required" }, 401);
+    }
+    const expiresAt = Date.parse(session.session_expires_at);
+    if (session.session_revoked_at !== null || !Number.isFinite(expiresAt) || expiresAt <= Date.now() || session.session_session_version !== session.user_session_version) {
+      return json6({ success: false, error: "Authentication required" }, 401);
+    }
+    if (session.user_status !== "ACTIVE") {
+      return json6({ success: false, error: "User account is inactive" }, 403);
+    }
+    const passwordData = await hashPassword(password);
+    const nextSessionVersion = session.user_session_version + 1;
+    const updateUser = await context.env.DB.prepare(
+      `UPDATE users
+      SET password_hash = ?,
+        password_salt = ?,
+        must_change_password = 0,
+        session_version = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?`
+    ).bind(passwordData.hash, passwordData.salt, nextSessionVersion, session.user_id).run();
+    if (!updateUser.success || updateUser.meta.changes !== 1) {
+      throw new Error("Password update failed");
+    }
+    await context.env.DB.prepare(
+      "UPDATE sessions SET session_version = ?, last_used_at = CURRENT_TIMESTAMP WHERE id = ?"
+    ).bind(nextSessionVersion, session.session_id).run();
+    return json6({ success: true }, 200);
+  } catch {
+    console.error("[change-password] Unable to change password");
+    return json6({ success: false, error: "Unable to change password" }, 500);
+  }
+}
+__name(onRequest6, "onRequest6");
+__name2(onRequest6, "onRequest");
+var ALL_MENU_KEYS = [
+  "corrugated-box-price",
+  "coc",
+  "packing-slip",
+  "coa",
+  "admin-configurations"
+];
+var EMAIL_PATTERN3 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+var INVALID_CREDENTIALS_MESSAGE = "Invalid email or password";
+var DUMMY_HASH = "YBXf2d6MiFk522BmWn2oK1TWvXg7xlou/L+HtiRO75I=";
+var DUMMY_SALT = "xGw6kBbLDs2oEL9GDm37Yw==";
+function json7(payload, status, headers) {
+  return Response.json(payload, { status, headers });
+}
+__name(json7, "json7");
+__name2(json7, "json");
+async function getMenuAccess(env, roleId, roleName) {
+  if (roleName === "SUPERADMIN") {
+    return ALL_MENU_KEYS;
+  }
+  try {
+    const result = await env.DB.prepare(
+      `SELECT menu_key
+      FROM role_menu_permissions
+      WHERE role_id = ?
+        AND (
+          can_full = 1
+          OR can_view = 1
+          OR can_create = 1
+          OR can_edit = 1
+          OR can_delete = 1
+          OR can_approve = 1
+        )
+      ORDER BY menu_key ASC`
+    ).bind(roleId).all();
+    if (!result.success) {
+      throw new Error("Menu access query failed");
+    }
+    return result.results.map((row) => row.menu_key).filter((menuKey) => menuKey !== "admin-configurations");
+  } catch {
+    console.error("[d1-login] Unable to load menu access");
+    return [];
+  }
+}
+__name(getMenuAccess, "getMenuAccess");
+__name2(getMenuAccess, "getMenuAccess");
+async function onRequest7(context) {
+  if (context.request.method !== "POST") {
+    return json7({ success: false, error: "Method not allowed" }, 405, { Allow: "POST" });
+  }
+  let body;
+  try {
+    const parsedBody = await context.request.json();
+    body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody) ? parsedBody : {};
+  } catch {
+    return json7({ success: false, error: "Request body must be valid JSON" }, 400);
+  }
   const errors = {};
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
@@ -912,7 +1141,7 @@ async function onRequest6(context) {
   else if (!EMAIL_PATTERN3.test(email)) errors.email = "Email must be a valid email address";
   if (!password) errors.password = "Password is required";
   if (Object.keys(errors).length > 0) {
-    return json6({ success: false, error: "Validation failed", details: errors }, 400);
+    return json7({ success: false, error: "Validation failed", details: errors }, 400);
   }
   try {
     const user = await context.env.DB.prepare(
@@ -922,10 +1151,12 @@ async function onRequest6(context) {
         u.full_name,
         u.password_hash,
         u.password_salt,
+        r.id AS role_id,
         r.name AS role_name,
         u.status AS user_status,
         r.is_active AS role_is_active,
-        u.session_version
+        u.session_version,
+        u.must_change_password
       FROM users u
       INNER JOIN roles r ON r.id = u.role_id
       WHERE u.email = ?
@@ -933,18 +1164,19 @@ async function onRequest6(context) {
     ).bind(email).first();
     if (!user) {
       await verifyPassword(password, DUMMY_HASH, DUMMY_SALT);
-      return json6({ success: false, error: INVALID_CREDENTIALS_MESSAGE }, 401);
+      return json7({ success: false, error: INVALID_CREDENTIALS_MESSAGE }, 401);
     }
     const passwordMatches = await verifyPassword(password, user.password_hash, user.password_salt);
     if (!passwordMatches) {
-      return json6({ success: false, error: INVALID_CREDENTIALS_MESSAGE }, 401);
+      return json7({ success: false, error: INVALID_CREDENTIALS_MESSAGE }, 401);
     }
     if (user.user_status !== "ACTIVE") {
-      return json6({ success: false, error: "User account is inactive" }, 403);
+      return json7({ success: false, error: "User account is inactive" }, 403);
     }
     if (user.role_is_active !== 1) {
-      return json6({ success: false, error: "User role is inactive" }, 403);
+      return json7({ success: false, error: "User role is inactive" }, 403);
     }
+    const menuAccess = await getMenuAccess(context.env, user.role_id, user.role_name);
     let sessionCookie;
     try {
       const sessionToken = generateSessionToken();
@@ -958,9 +1190,9 @@ async function onRequest6(context) {
       sessionCookie = buildSessionCookie(sessionToken, new URL(context.request.url).protocol === "https:");
     } catch {
       console.error("[d1-login] Session creation failed");
-      return json6({ success: false, error: "Unable to create session" }, 500);
+      return json7({ success: false, error: "Unable to create session" }, 500);
     }
-    return json6({
+    return json7({
       success: true,
       user: {
         id: user.id,
@@ -968,24 +1200,26 @@ async function onRequest6(context) {
         fullName: user.full_name,
         role: user.role_name,
         status: user.user_status,
-        sessionVersion: user.session_version
+        sessionVersion: user.session_version,
+        mustChangePassword: user.must_change_password === 1,
+        menuAccess
       }
     }, 200, { "Set-Cookie": sessionCookie });
   } catch {
     console.error("[d1-login] Unexpected authentication error");
-    return json6({ success: false, error: "Unable to authenticate" }, 500);
+    return json7({ success: false, error: "Unable to authenticate" }, 500);
   }
 }
-__name(onRequest6, "onRequest6");
-__name2(onRequest6, "onRequest");
-function json7(payload, status, headers) {
+__name(onRequest7, "onRequest7");
+__name2(onRequest7, "onRequest");
+function json8(payload, status, headers) {
   return Response.json(payload, { status, headers });
 }
-__name(json7, "json7");
-__name2(json7, "json");
-async function onRequest7(context) {
+__name(json8, "json8");
+__name2(json8, "json");
+async function onRequest8(context) {
   if (context.request.method !== "POST") {
-    return json7({ success: false, error: "Method not allowed" }, 405, { Allow: "POST" });
+    return json8({ success: false, error: "Method not allowed" }, 405, { Allow: "POST" });
   }
   const isSecureRequest = new URL(context.request.url).protocol === "https:";
   const headers = {
@@ -999,28 +1233,65 @@ async function onRequest7(context) {
         "UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP WHERE token_hash = ? AND revoked_at IS NULL"
       ).bind(tokenHash).run();
     }
-    return json7({ success: true }, 200, headers);
+    return json8({ success: true }, 200, headers);
   } catch {
     console.error("[logout] Unable to revoke session");
-    return json7({ success: false, error: "Unable to logout" }, 500, headers);
+    return json8({ success: false, error: "Unable to logout" }, 500, headers);
   }
 }
-__name(onRequest7, "onRequest7");
-__name2(onRequest7, "onRequest");
+__name(onRequest8, "onRequest8");
+__name2(onRequest8, "onRequest");
+var ALL_MENU_KEYS2 = [
+  "corrugated-box-price",
+  "coc",
+  "packing-slip",
+  "coa",
+  "admin-configurations"
+];
 var AUTHENTICATION_REQUIRED = "Authentication required";
-function json8(payload, status, headers) {
+function json9(payload, status, headers) {
   return Response.json(payload, { status, headers });
 }
-__name(json8, "json8");
-__name2(json8, "json");
+__name(json9, "json9");
+__name2(json9, "json");
 function authenticationRequired5() {
-  return json8({ success: false, error: AUTHENTICATION_REQUIRED }, 401);
+  return json9({ success: false, error: AUTHENTICATION_REQUIRED }, 401);
 }
 __name(authenticationRequired5, "authenticationRequired5");
 __name2(authenticationRequired5, "authenticationRequired");
-async function onRequest8(context) {
+async function getMenuAccess2(env, roleId, roleName) {
+  if (roleName === "SUPERADMIN") {
+    return ALL_MENU_KEYS2;
+  }
+  try {
+    const result = await env.DB.prepare(
+      `SELECT menu_key
+      FROM role_menu_permissions
+      WHERE role_id = ?
+        AND (
+          can_full = 1
+          OR can_view = 1
+          OR can_create = 1
+          OR can_edit = 1
+          OR can_delete = 1
+          OR can_approve = 1
+        )
+      ORDER BY menu_key ASC`
+    ).bind(roleId).all();
+    if (!result.success) {
+      throw new Error("Menu access query failed");
+    }
+    return result.results.map((row) => row.menu_key).filter((menuKey) => menuKey !== "admin-configurations");
+  } catch {
+    console.error("[current-user] Unable to load menu access");
+    return [];
+  }
+}
+__name(getMenuAccess2, "getMenuAccess2");
+__name2(getMenuAccess2, "getMenuAccess");
+async function onRequest9(context) {
   if (context.request.method !== "GET") {
-    return json8({ success: false, error: "Method not allowed" }, 405, { Allow: "GET" });
+    return json9({ success: false, error: "Method not allowed" }, 405, { Allow: "GET" });
   }
   const sessionToken = getSessionTokenFromRequest(context.request);
   if (!sessionToken) return authenticationRequired5();
@@ -1037,6 +1308,8 @@ async function onRequest8(context) {
         u.full_name AS user_full_name,
         u.status AS user_status,
         u.session_version AS user_session_version,
+        u.must_change_password AS user_must_change_password,
+        r.id AS role_id,
         r.name AS role_name,
         r.is_active AS role_is_active
       FROM sessions s
@@ -1051,10 +1324,10 @@ async function onRequest8(context) {
       return authenticationRequired5();
     }
     if (session.user_status !== "ACTIVE") {
-      return json8({ success: false, error: "User account is inactive" }, 403);
+      return json9({ success: false, error: "User account is inactive" }, 403);
     }
     if (session.role_is_active !== 1) {
-      return json8({ success: false, error: "User role is inactive" }, 403);
+      return json9({ success: false, error: "User role is inactive" }, 403);
     }
     const updateResult = await context.env.DB.prepare(
       "UPDATE sessions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?"
@@ -1062,30 +1335,33 @@ async function onRequest8(context) {
     if (!updateResult.success || updateResult.meta.changes !== 1) {
       throw new Error("Session last-used update failed");
     }
-    return json8({
+    const menuAccess = await getMenuAccess2(context.env, session.role_id, session.role_name);
+    return json9({
       success: true,
       user: {
         id: session.user_id,
         email: session.user_email,
         fullName: session.user_full_name,
         role: session.role_name,
-        status: session.user_status
+        status: session.user_status,
+        mustChangePassword: session.user_must_change_password === 1,
+        menuAccess
       }
     }, 200);
   } catch {
     console.error("[current-user] Unexpected session validation error");
-    return json8({ success: false, error: "Unable to validate session" }, 500);
+    return json9({ success: false, error: "Unable to validate session" }, 500);
   }
 }
-__name(onRequest8, "onRequest8");
-__name2(onRequest8, "onRequest");
-function json9(payload, status, headers) {
+__name(onRequest9, "onRequest9");
+__name2(onRequest9, "onRequest");
+function json10(payload, status, headers) {
   return Response.json(payload, { status, headers });
 }
-__name(json9, "json9");
-__name2(json9, "json");
+__name(json10, "json10");
+__name2(json10, "json");
 function authenticationRequired6() {
-  return json9({ success: false, error: "Authentication required" }, 401);
+  return json10({ success: false, error: "Authentication required" }, 401);
 }
 __name(authenticationRequired6, "authenticationRequired6");
 __name2(authenticationRequired6, "authenticationRequired");
@@ -1115,13 +1391,13 @@ async function requireSuperadmin5(context) {
     return authenticationRequired6();
   }
   if (session.user_status !== "ACTIVE") {
-    return json9({ success: false, error: "User account is inactive" }, 403);
+    return json10({ success: false, error: "User account is inactive" }, 403);
   }
   if (session.role_is_active !== 1) {
-    return json9({ success: false, error: "User role is inactive" }, 403);
+    return json10({ success: false, error: "User role is inactive" }, 403);
   }
   if (session.role_name !== "SUPERADMIN") {
-    return json9({ success: false, error: "SUPERADMIN access required" }, 403);
+    return json10({ success: false, error: "SUPERADMIN access required" }, 403);
   }
   await context.env.DB.prepare(
     "UPDATE sessions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?"
@@ -1130,9 +1406,9 @@ async function requireSuperadmin5(context) {
 }
 __name(requireSuperadmin5, "requireSuperadmin5");
 __name2(requireSuperadmin5, "requireSuperadmin");
-async function onRequest9(context) {
+async function onRequest10(context) {
   if (context.request.method !== "GET") {
-    return json9({ success: false, error: "Method not allowed" }, 405, { Allow: "GET" });
+    return json10({ success: false, error: "Method not allowed" }, 405, { Allow: "GET" });
   }
   try {
     const authError = await requireSuperadmin5(context);
@@ -1146,12 +1422,12 @@ async function onRequest9(context) {
         created_at,
         updated_at
       FROM roles
-      ORDER BY id ASC`
+      ORDER BY created_at ASC, id ASC`
     ).all();
     if (!result.success) {
       throw new Error("Role list query failed");
     }
-    return json9({
+    return json10({
       success: true,
       roles: result.results.map((role) => ({
         id: role.id,
@@ -1164,51 +1440,51 @@ async function onRequest9(context) {
     }, 200);
   } catch {
     console.error("[admin-roles] Unable to load roles");
-    return json9({ success: false, error: "Unable to load roles" }, 500);
+    return json10({ success: false, error: "Unable to load roles" }, 500);
   }
 }
-__name(onRequest9, "onRequest9");
-__name2(onRequest9, "onRequest");
-var COMMON_PASSWORDS2 = /* @__PURE__ */ new Set([
+__name(onRequest10, "onRequest10");
+__name2(onRequest10, "onRequest");
+var COMMON_PASSWORDS3 = /* @__PURE__ */ new Set([
   "1234567890",
   "password123",
   "qwerty12345",
   "letmein1234",
   "superadmin"
 ]);
-function json10(payload, status, headers) {
+function json11(payload, status, headers) {
   return Response.json(payload, { status, headers });
 }
-__name(json10, "json10");
-__name2(json10, "json");
-function validatePassword2(password) {
+__name(json11, "json11");
+__name2(json11, "json");
+function validatePassword3(password) {
   if (password.length < 10) return "Password must be at least 10 characters";
-  if (COMMON_PASSWORDS2.has(password.toLowerCase())) return "Password is too weak";
+  if (COMMON_PASSWORDS3.has(password.toLowerCase())) return "Password is too weak";
   const characterGroups = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/];
   const groupsPresent = characterGroups.filter((pattern) => pattern.test(password)).length;
   return groupsPresent >= 2 ? null : "Password must include characters from at least two of these groups: lowercase, uppercase, numbers, symbols";
 }
-__name(validatePassword2, "validatePassword2");
-__name2(validatePassword2, "validatePassword");
-async function onRequest10(context) {
+__name(validatePassword3, "validatePassword3");
+__name2(validatePassword3, "validatePassword");
+async function onRequest11(context) {
   if (context.request.method !== "POST") {
-    return json10({ success: false, error: "Method not allowed" }, 405, { Allow: "POST" });
+    return json11({ success: false, error: "Method not allowed" }, 405, { Allow: "POST" });
   }
   let body;
   try {
     const parsedBody = await context.request.json();
     body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody) ? parsedBody : {};
   } catch {
-    return json10({ success: false, error: "Request body must be valid JSON" }, 400);
+    return json11({ success: false, error: "Request body must be valid JSON" }, 400);
   }
   const token = typeof body.token === "string" ? body.token.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
   if (!token) {
-    return json10({ success: false, error: "Setup token is required" }, 400);
+    return json11({ success: false, error: "Setup token is required" }, 400);
   }
-  const passwordError = validatePassword2(password);
+  const passwordError = validatePassword3(password);
   if (passwordError) {
-    return json10({ success: false, error: passwordError }, 400);
+    return json11({ success: false, error: passwordError }, 400);
   }
   try {
     const tokenHash = await hashSessionToken(token);
@@ -1225,17 +1501,17 @@ async function onRequest10(context) {
       LIMIT 1`
     ).bind(tokenHash).first();
     if (!setupToken) {
-      return json10({ success: false, error: "Password setup link is invalid" }, 400);
+      return json11({ success: false, error: "Password setup link is invalid" }, 400);
     }
     if (setupToken.used_at !== null) {
-      return json10({ success: false, error: "Password setup link has already been used" }, 400);
+      return json11({ success: false, error: "Password setup link has already been used" }, 400);
     }
     const expiresAt = Date.parse(setupToken.expires_at);
     if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
-      return json10({ success: false, error: "Password setup link has expired" }, 400);
+      return json11({ success: false, error: "Password setup link has expired" }, 400);
     }
     if (setupToken.user_status === "ACTIVE") {
-      return json10({ success: false, error: "Password has already been set" }, 400);
+      return json11({ success: false, error: "Password has already been set" }, 400);
     }
     const passwordData = await hashPassword(password);
     const updateResult = await context.env.DB.prepare(
@@ -1253,54 +1529,42 @@ async function onRequest10(context) {
     await context.env.DB.prepare(
       "UPDATE password_setup_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?"
     ).bind(setupToken.id).run();
-    return json10({ success: true }, 200);
+    return json11({ success: true }, 200);
   } catch {
     console.error("[setup-password] Unable to set password");
-    return json10({ success: false, error: "Unable to set password" }, 500);
+    return json11({ success: false, error: "Unable to set password" }, 500);
   }
 }
-__name(onRequest10, "onRequest10");
-__name2(onRequest10, "onRequest");
-async function sendPasswordSetupEmail(env, input) {
-  const apiKey = env.RESEND_API_KEY?.trim();
-  const from = env.EMAIL_FROM?.trim();
-  if (!apiKey || !from) {
-    return { sent: false, reason: "Email provider is not configured" };
-  }
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      from,
-      to: input.to,
-      subject: "Set up your PC-Tech password",
-      html: `
-        <p>Hello ${input.fullName},</p>
-        <p>Your PC-Tech account has been created. Use the link below to set your password.</p>
-        <p><a href="${input.setupLink}">Set password</a></p>
-        <p>This link expires in 24 hours.</p>
-      `
-    })
-  });
-  if (!response.ok) {
-    return { sent: false, reason: `Email provider returned ${response.status}` };
-  }
-  return { sent: true };
-}
-__name(sendPasswordSetupEmail, "sendPasswordSetupEmail");
-__name2(sendPasswordSetupEmail, "sendPasswordSetupEmail");
+__name(onRequest11, "onRequest11");
+__name2(onRequest11, "onRequest");
 var EMAIL_PATTERN4 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-var INVITE_DURATION_SECONDS = 24 * 60 * 60;
-function json11(payload, status, headers) {
+function json12(payload, status, headers) {
   return Response.json(payload, { status, headers });
 }
-__name(json11, "json11");
-__name2(json11, "json");
+__name(json12, "json12");
+__name2(json12, "json");
+function getDefaultPassword2(fullName) {
+  return `${fullName.replace(/\s+/g, "")}@123$`;
+}
+__name(getDefaultPassword2, "getDefaultPassword2");
+__name2(getDefaultPassword2, "getDefaultPassword");
+function mapUser2(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.full_name,
+    role: user.role_name,
+    status: user.status,
+    sessionVersion: user.session_version,
+    mustChangePassword: user.must_change_password === 1,
+    createdAt: user.created_at,
+    updatedAt: user.updated_at
+  };
+}
+__name(mapUser2, "mapUser2");
+__name2(mapUser2, "mapUser");
 function authenticationRequired7() {
-  return json11({ success: false, error: "Authentication required" }, 401);
+  return json12({ success: false, error: "Authentication required" }, 401);
 }
 __name(authenticationRequired7, "authenticationRequired7");
 __name2(authenticationRequired7, "authenticationRequired");
@@ -1330,13 +1594,13 @@ async function requireSuperadmin6(context) {
     return authenticationRequired7();
   }
   if (session.user_status !== "ACTIVE") {
-    return json11({ success: false, error: "User account is inactive" }, 403);
+    return json12({ success: false, error: "User account is inactive" }, 403);
   }
   if (session.role_is_active !== 1) {
-    return json11({ success: false, error: "User role is inactive" }, 403);
+    return json12({ success: false, error: "User role is inactive" }, 403);
   }
   if (session.role_name !== "SUPERADMIN") {
-    return json11({ success: false, error: "SUPERADMIN access required" }, 403);
+    return json12({ success: false, error: "SUPERADMIN access required" }, 403);
   }
   await context.env.DB.prepare(
     "UPDATE sessions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?"
@@ -1345,9 +1609,9 @@ async function requireSuperadmin6(context) {
 }
 __name(requireSuperadmin6, "requireSuperadmin6");
 __name2(requireSuperadmin6, "requireSuperadmin");
-async function onRequest11(context) {
+async function onRequest12(context) {
   if (context.request.method !== "GET" && context.request.method !== "POST") {
-    return json11({ success: false, error: "Method not allowed" }, 405, { Allow: "GET, POST" });
+    return json12({ success: false, error: "Method not allowed" }, 405, { Allow: "GET, POST" });
   }
   try {
     const authError = await requireSuperadmin6(context);
@@ -1358,32 +1622,34 @@ async function onRequest11(context) {
         const parsedBody = await context.request.json();
         body = parsedBody && typeof parsedBody === "object" && !Array.isArray(parsedBody) ? parsedBody : {};
       } catch {
-        return json11({ success: false, error: "Request body must be valid JSON" }, 400);
+        return json12({ success: false, error: "Request body must be valid JSON" }, 400);
       }
       const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
       const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
       const roleName = typeof body.role === "string" ? body.role.trim().toUpperCase() : "";
       if (!EMAIL_PATTERN4.test(email)) {
-        return json11({ success: false, error: "Email must be a valid email address" }, 400);
+        return json12({ success: false, error: "Email must be a valid email address" }, 400);
       }
       if (!fullName) {
-        return json11({ success: false, error: "Name is required" }, 400);
+        return json12({ success: false, error: "Name is required" }, 400);
       }
       const role = await context.env.DB.prepare(
         "SELECT id, name, is_active FROM roles WHERE name = ? LIMIT 1"
       ).bind(roleName).first();
       if (!role) {
-        return json11({ success: false, error: "Role not found" }, 400);
+        return json12({ success: false, error: "Role not found" }, 400);
       }
       if (role.is_active !== 1) {
-        return json11({ success: false, error: "Cannot assign an inactive role" }, 400);
+        return json12({ success: false, error: "Cannot assign an inactive role" }, 400);
       }
       const existingEmail = await context.env.DB.prepare(
         "SELECT id FROM users WHERE email = ? LIMIT 1"
       ).bind(email).first();
       if (existingEmail) {
-        return json11({ success: false, error: "A user with this email already exists" }, 409);
+        return json12({ success: false, error: "A user with this email already exists" }, 409);
       }
+      const defaultPassword = getDefaultPassword2(fullName);
+      const passwordData = await hashPassword(defaultPassword);
       const user = await context.env.DB.prepare(
         `INSERT INTO users (
           email,
@@ -1393,50 +1659,18 @@ async function onRequest11(context) {
           role_id,
           status,
           session_version,
+          must_change_password,
           created_by,
           updated_by
-        ) VALUES (?, ?, 'PENDING_PASSWORD_HASH', 'PENDING_PASSWORD_SALT', ?, 'INACTIVE', 1, NULL, NULL)
-        RETURNING id, email, full_name, status, session_version, created_at, updated_at`
-      ).bind(email, fullName, role.id).first();
+        ) VALUES (?, ?, ?, ?, ?, 'ACTIVE', 1, 1, NULL, NULL)
+        RETURNING id, email, full_name, status, session_version, must_change_password, created_at, updated_at`
+      ).bind(email, fullName, passwordData.hash, passwordData.salt, role.id).first();
       if (!user) {
         throw new Error("User insert did not return a record");
       }
-      const setupToken = generateSessionToken();
-      const setupTokenHash = await hashSessionToken(setupToken);
-      const expiresAt = new Date(Date.now() + INVITE_DURATION_SECONDS * 1e3).toISOString();
-      const setupLink = `${new URL(context.request.url).origin}/?setup_token=${encodeURIComponent(setupToken)}`;
-      const tokenResult = await context.env.DB.prepare(
-        `INSERT INTO password_setup_tokens (
-          user_id,
-          token_hash,
-          expires_at
-        ) VALUES (?, ?, ?)`
-      ).bind(user.id, setupTokenHash, expiresAt).run();
-      if (!tokenResult.success) {
-        throw new Error("Password setup token insert failed");
-      }
-      const emailResult = await sendPasswordSetupEmail(context.env, {
-        to: email,
-        fullName,
-        setupLink
-      });
-      return json11({
+      return json12({
         success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          fullName: user.full_name,
-          role: role.name,
-          status: user.status,
-          sessionVersion: user.session_version,
-          createdAt: user.created_at,
-          updatedAt: user.updated_at
-        },
-        invite: {
-          emailSent: emailResult.sent,
-          setupLink: emailResult.sent ? void 0 : setupLink,
-          message: emailResult.sent ? "Invite email sent" : emailResult.reason
-        }
+        user: mapUser2({ ...user, role_name: role.name })
       }, 201);
     }
     const result = await context.env.DB.prepare(
@@ -1447,35 +1681,27 @@ async function onRequest11(context) {
         r.name AS role_name,
         u.status,
         u.session_version,
+        u.must_change_password,
         u.created_at,
         u.updated_at
       FROM users u
       INNER JOIN roles r ON r.id = u.role_id
-      ORDER BY u.created_at DESC, u.id DESC`
+      ORDER BY u.created_at ASC, u.id ASC`
     ).all();
     if (!result.success) {
       throw new Error("User list query failed");
     }
-    return json11({
+    return json12({
       success: true,
-      users: result.results.map((user) => ({
-        id: user.id,
-        email: user.email,
-        fullName: user.full_name,
-        role: user.role_name,
-        status: user.status,
-        sessionVersion: user.session_version,
-        createdAt: user.created_at,
-        updatedAt: user.updated_at
-      }))
+      users: result.results.map(mapUser2)
     }, 200);
   } catch {
     console.error("[admin-users] Unable to load users");
-    return json11({ success: false, error: "Unable to load users" }, 500);
+    return json12({ success: false, error: "Unable to load users" }, 500);
   }
 }
-__name(onRequest11, "onRequest11");
-__name2(onRequest11, "onRequest");
+__name(onRequest12, "onRequest12");
+__name2(onRequest12, "onRequest");
 var ZOHO_REGION_URLS = {
   in: {
     tokenUrl: "https://accounts.zoho.in/oauth/v2/token",
@@ -2051,46 +2277,53 @@ var routes = [
     modules: [onRequest5]
   },
   {
-    routePath: "/api/auth/login",
+    routePath: "/api/auth/change-password",
     mountPath: "/api/auth",
     method: "",
     middlewares: [],
     modules: [onRequest6]
   },
   {
-    routePath: "/api/auth/logout",
+    routePath: "/api/auth/login",
     mountPath: "/api/auth",
     method: "",
     middlewares: [],
     modules: [onRequest7]
   },
   {
-    routePath: "/api/auth/me",
+    routePath: "/api/auth/logout",
     mountPath: "/api/auth",
     method: "",
     middlewares: [],
     modules: [onRequest8]
   },
   {
-    routePath: "/api/auth/roles",
+    routePath: "/api/auth/me",
     mountPath: "/api/auth",
     method: "",
     middlewares: [],
     modules: [onRequest9]
   },
   {
-    routePath: "/api/auth/setup-password",
+    routePath: "/api/auth/roles",
     mountPath: "/api/auth",
     method: "",
     middlewares: [],
     modules: [onRequest10]
   },
   {
-    routePath: "/api/auth/users",
+    routePath: "/api/auth/setup-password",
     mountPath: "/api/auth",
     method: "",
     middlewares: [],
     modules: [onRequest11]
+  },
+  {
+    routePath: "/api/auth/users",
+    mountPath: "/api/auth",
+    method: "",
+    middlewares: [],
+    modules: [onRequest12]
   },
   {
     routePath: "/api/customers",

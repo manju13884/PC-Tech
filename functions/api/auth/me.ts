@@ -19,10 +19,19 @@ interface AuthenticatedSessionRow {
   user_full_name: string
   user_status: string
   user_session_version: number
+  user_must_change_password: number
+  role_id: number
   role_name: string
   role_is_active: number
 }
 
+const ALL_MENU_KEYS = [
+  'corrugated-box-price',
+  'coc',
+  'packing-slip',
+  'coa',
+  'admin-configurations',
+]
 const AUTHENTICATION_REQUIRED = 'Authentication required'
 
 function json(payload: unknown, status: number, headers?: HeadersInit): Response {
@@ -31,6 +40,40 @@ function json(payload: unknown, status: number, headers?: HeadersInit): Response
 
 function authenticationRequired(): Response {
   return json({ success: false, error: AUTHENTICATION_REQUIRED }, 401)
+}
+
+async function getMenuAccess(env: Env, roleId: number, roleName: string): Promise<string[]> {
+  if (roleName === 'SUPERADMIN') {
+    return ALL_MENU_KEYS
+  }
+
+  try {
+    const result = await env.DB.prepare(
+      `SELECT menu_key
+      FROM role_menu_permissions
+      WHERE role_id = ?
+        AND (
+          can_full = 1
+          OR can_view = 1
+          OR can_create = 1
+          OR can_edit = 1
+          OR can_delete = 1
+          OR can_approve = 1
+        )
+      ORDER BY menu_key ASC`,
+    ).bind(roleId).all<{ menu_key: string }>()
+
+    if (!result.success) {
+      throw new Error('Menu access query failed')
+    }
+
+    return result.results
+      .map((row) => row.menu_key)
+      .filter((menuKey) => menuKey !== 'admin-configurations')
+  } catch {
+    console.error('[current-user] Unable to load menu access')
+    return []
+  }
 }
 
 export async function onRequest(context: FunctionContext): Promise<Response> {
@@ -54,6 +97,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         u.full_name AS user_full_name,
         u.status AS user_status,
         u.session_version AS user_session_version,
+        u.must_change_password AS user_must_change_password,
+        r.id AS role_id,
         r.name AS role_name,
         r.is_active AS role_is_active
       FROM sessions s
@@ -91,6 +136,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       throw new Error('Session last-used update failed')
     }
 
+    const menuAccess = await getMenuAccess(context.env, session.role_id, session.role_name)
+
     // TEMPORARY_LEGACY_LOGIN must remain until the new D1 login, sessions, route protection and user management are verified and explicitly approved for cutover.
     return json({
       success: true,
@@ -100,6 +147,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         fullName: session.user_full_name,
         role: session.role_name,
         status: session.user_status,
+        mustChangePassword: session.user_must_change_password === 1,
+        menuAccess,
       },
     }, 200)
   } catch {

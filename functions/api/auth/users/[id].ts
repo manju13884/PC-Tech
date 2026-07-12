@@ -1,3 +1,4 @@
+import { hashPassword } from '../../../lib/password'
 import { getSessionTokenFromRequest, hashSessionToken } from '../../../lib/session'
 
 interface Env {
@@ -31,6 +32,7 @@ interface UserRow {
   role_name: string
   status: string
   session_version: number
+  must_change_password: number
   created_at: string
   updated_at: string
 }
@@ -40,6 +42,7 @@ interface UserUpdateRequest {
   fullName?: unknown
   role?: unknown
   status?: unknown
+  resetPassword?: unknown
 }
 
 interface RoleRow {
@@ -54,6 +57,10 @@ function json(payload: unknown, status: number, headers?: HeadersInit): Response
   return Response.json(payload, { status, headers })
 }
 
+function getDefaultPassword(fullName: string): string {
+  return `${fullName.replace(/\s+/g, '')}@123$`
+}
+
 function authenticationRequired(): Response {
   return json({ success: false, error: 'Authentication required' }, 401)
 }
@@ -66,6 +73,7 @@ function mapUser(user: UserRow) {
     role: user.role_name,
     status: user.status,
     sessionVersion: user.session_version,
+    mustChangePassword: user.must_change_password === 1,
     createdAt: user.created_at,
     updatedAt: user.updated_at,
   }
@@ -159,6 +167,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         r.name AS role_name,
         u.status,
         u.session_version,
+        u.must_change_password,
         u.created_at,
         u.updated_at
       FROM users u
@@ -224,13 +233,91 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       return json({ success: false, error: 'A user with this email already exists' }, 409)
     }
 
+    if (body.resetPassword === true) {
+      const defaultPassword = getDefaultPassword(existingUser.full_name)
+      const passwordData = await hashPassword(defaultPassword)
+      const updatedUser = await context.env.DB.prepare(
+        `UPDATE users
+        SET password_hash = ?,
+          password_salt = ?,
+          must_change_password = 1,
+          session_version = session_version + 1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        RETURNING
+          id,
+          email,
+          full_name,
+          role_id,
+          ? AS role_name,
+          status,
+          session_version,
+          must_change_password,
+          created_at,
+          updated_at`,
+      ).bind(passwordData.hash, passwordData.salt, userId, existingUser.role_name).first<UserRow>()
+
+      if (!updatedUser) {
+        throw new Error('Password reset did not return a record')
+      }
+
+      return json({ success: true, user: mapUser(updatedUser) }, 200)
+    }
+
+    const isActivatingUser = existingUser.status === 'INACTIVE' && nextStatus === 'ACTIVE'
     const securityChanged = (
       nextRole.id !== existingUser.role_id ||
-      nextStatus !== existingUser.status
+      nextStatus !== existingUser.status ||
+      isActivatingUser
     )
     const nextSessionVersion = securityChanged
       ? existingUser.session_version + 1
       : existingUser.session_version
+
+    if (isActivatingUser) {
+      const defaultPassword = getDefaultPassword(nextFullName)
+      const passwordData = await hashPassword(defaultPassword)
+      const updatedUser = await context.env.DB.prepare(
+        `UPDATE users
+        SET email = ?,
+          full_name = ?,
+          password_hash = ?,
+          password_salt = ?,
+          role_id = ?,
+          status = ?,
+          must_change_password = 1,
+          session_version = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        RETURNING
+          id,
+          email,
+          full_name,
+          role_id,
+          ? AS role_name,
+          status,
+          session_version,
+          must_change_password,
+          created_at,
+          updated_at`,
+      ).bind(
+        nextEmail,
+        nextFullName,
+        passwordData.hash,
+        passwordData.salt,
+        nextRole.id,
+        nextStatus,
+        nextSessionVersion,
+        userId,
+        nextRole.name,
+      ).first<UserRow>()
+
+      if (!updatedUser) {
+        throw new Error('User activation did not return a record')
+      }
+
+      return json({ success: true, user: mapUser(updatedUser) }, 200)
+    }
 
     const updatedUser = await context.env.DB.prepare(
       `UPDATE users
@@ -249,6 +336,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         ? AS role_name,
         status,
         session_version,
+        must_change_password,
         created_at,
         updated_at`,
     ).bind(
