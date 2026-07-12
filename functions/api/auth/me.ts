@@ -76,6 +76,20 @@ async function getMenuAccess(env: Env, roleId: number, roleName: string): Promis
   }
 }
 
+function getSafeCurrentUserError(caughtError: unknown): string {
+  const message = caughtError instanceof Error ? caughtError.message : ''
+
+  if (message.includes('must_change_password') || message.includes('no such column')) {
+    return 'Database migration missing. Apply D1 migrations to production.'
+  }
+
+  if (message.includes('no such table') || message.includes('users') || message.includes('sessions')) {
+    return 'Authentication database is not ready. Check production D1 binding and migrations.'
+  }
+
+  return 'Unable to validate session'
+}
+
 export async function onRequest(context: FunctionContext): Promise<Response> {
   if (context.request.method !== 'GET') {
     return json({ success: false, error: 'Method not allowed' }, 405, { Allow: 'GET' })
@@ -151,8 +165,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         menuAccess,
       },
     }, 200)
-  } catch {
+  } catch (caughtError) {
     console.error('[current-user] Unexpected session validation error')
-    return json({ success: false, error: 'Unable to validate session' }, 500)
+    return json({ success: false, error: getSafeCurrentUserError(caughtError) }, 500)
   }
 }

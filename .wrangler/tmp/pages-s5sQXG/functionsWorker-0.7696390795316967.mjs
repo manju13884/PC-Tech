@@ -1091,6 +1091,17 @@ async function getMenuAccess(env, roleId, roleName) {
   }
 }
 __name(getMenuAccess, "getMenuAccess");
+function getSafeLoginError(caughtError) {
+  const message = caughtError instanceof Error ? caughtError.message : "";
+  if (message.includes("must_change_password") || message.includes("no such column")) {
+    return "Database migration missing. Apply D1 migrations to production.";
+  }
+  if (message.includes("no such table") || message.includes("users") || message.includes("sessions")) {
+    return "Authentication database is not ready. Check production D1 binding and migrations.";
+  }
+  return "Unable to authenticate";
+}
+__name(getSafeLoginError, "getSafeLoginError");
 async function onRequest7(context) {
   if (context.request.method !== "POST") {
     return json7({ success: false, error: "Method not allowed" }, 405, { Allow: "POST" });
@@ -1173,9 +1184,9 @@ async function onRequest7(context) {
         menuAccess
       }
     }, 200, { "Set-Cookie": sessionCookie });
-  } catch {
+  } catch (caughtError) {
     console.error("[d1-login] Unexpected authentication error");
-    return json7({ success: false, error: "Unable to authenticate" }, 500);
+    return json7({ success: false, error: getSafeLoginError(caughtError) }, 500);
   }
 }
 __name(onRequest7, "onRequest");
@@ -1255,6 +1266,17 @@ async function getMenuAccess2(env, roleId, roleName) {
   }
 }
 __name(getMenuAccess2, "getMenuAccess");
+function getSafeCurrentUserError(caughtError) {
+  const message = caughtError instanceof Error ? caughtError.message : "";
+  if (message.includes("must_change_password") || message.includes("no such column")) {
+    return "Database migration missing. Apply D1 migrations to production.";
+  }
+  if (message.includes("no such table") || message.includes("users") || message.includes("sessions")) {
+    return "Authentication database is not ready. Check production D1 binding and migrations.";
+  }
+  return "Unable to validate session";
+}
+__name(getSafeCurrentUserError, "getSafeCurrentUserError");
 async function onRequest9(context) {
   if (context.request.method !== "GET") {
     return json9({ success: false, error: "Method not allowed" }, 405, { Allow: "GET" });
@@ -1314,9 +1336,9 @@ async function onRequest9(context) {
         menuAccess
       }
     }, 200);
-  } catch {
+  } catch (caughtError) {
     console.error("[current-user] Unexpected session validation error");
-    return json9({ success: false, error: "Unable to validate session" }, 500);
+    return json9({ success: false, error: getSafeCurrentUserError(caughtError) }, 500);
   }
 }
 __name(onRequest9, "onRequest");
@@ -2777,7 +2799,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-faPQvE/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-WKwIZ7/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -2809,7 +2831,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-faPQvE/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-WKwIZ7/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

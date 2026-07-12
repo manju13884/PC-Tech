@@ -1123,6 +1123,18 @@ async function getMenuAccess(env, roleId, roleName) {
 }
 __name(getMenuAccess, "getMenuAccess");
 __name2(getMenuAccess, "getMenuAccess");
+function getSafeLoginError(caughtError) {
+  const message = caughtError instanceof Error ? caughtError.message : "";
+  if (message.includes("must_change_password") || message.includes("no such column")) {
+    return "Database migration missing. Apply D1 migrations to production.";
+  }
+  if (message.includes("no such table") || message.includes("users") || message.includes("sessions")) {
+    return "Authentication database is not ready. Check production D1 binding and migrations.";
+  }
+  return "Unable to authenticate";
+}
+__name(getSafeLoginError, "getSafeLoginError");
+__name2(getSafeLoginError, "getSafeLoginError");
 async function onRequest7(context) {
   if (context.request.method !== "POST") {
     return json7({ success: false, error: "Method not allowed" }, 405, { Allow: "POST" });
@@ -1205,9 +1217,9 @@ async function onRequest7(context) {
         menuAccess
       }
     }, 200, { "Set-Cookie": sessionCookie });
-  } catch {
+  } catch (caughtError) {
     console.error("[d1-login] Unexpected authentication error");
-    return json7({ success: false, error: "Unable to authenticate" }, 500);
+    return json7({ success: false, error: getSafeLoginError(caughtError) }, 500);
   }
 }
 __name(onRequest7, "onRequest7");
@@ -1289,6 +1301,18 @@ async function getMenuAccess2(env, roleId, roleName) {
 }
 __name(getMenuAccess2, "getMenuAccess2");
 __name2(getMenuAccess2, "getMenuAccess");
+function getSafeCurrentUserError(caughtError) {
+  const message = caughtError instanceof Error ? caughtError.message : "";
+  if (message.includes("must_change_password") || message.includes("no such column")) {
+    return "Database migration missing. Apply D1 migrations to production.";
+  }
+  if (message.includes("no such table") || message.includes("users") || message.includes("sessions")) {
+    return "Authentication database is not ready. Check production D1 binding and migrations.";
+  }
+  return "Unable to validate session";
+}
+__name(getSafeCurrentUserError, "getSafeCurrentUserError");
+__name2(getSafeCurrentUserError, "getSafeCurrentUserError");
 async function onRequest9(context) {
   if (context.request.method !== "GET") {
     return json9({ success: false, error: "Method not allowed" }, 405, { Allow: "GET" });
@@ -1348,9 +1372,9 @@ async function onRequest9(context) {
         menuAccess
       }
     }, 200);
-  } catch {
+  } catch (caughtError) {
     console.error("[current-user] Unexpected session validation error");
-    return json9({ success: false, error: "Unable to validate session" }, 500);
+    return json9({ success: false, error: getSafeCurrentUserError(caughtError) }, 500);
   }
 }
 __name(onRequest9, "onRequest9");

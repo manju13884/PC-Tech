@@ -84,6 +84,20 @@ async function getMenuAccess(env: Env, roleId: number, roleName: string): Promis
   }
 }
 
+function getSafeLoginError(caughtError: unknown): string {
+  const message = caughtError instanceof Error ? caughtError.message : ''
+
+  if (message.includes('must_change_password') || message.includes('no such column')) {
+    return 'Database migration missing. Apply D1 migrations to production.'
+  }
+
+  if (message.includes('no such table') || message.includes('users') || message.includes('sessions')) {
+    return 'Authentication database is not ready. Check production D1 binding and migrations.'
+  }
+
+  return 'Unable to authenticate'
+}
+
 export async function onRequest(context: FunctionContext): Promise<Response> {
   if (context.request.method !== 'POST') {
     return json({ success: false, error: 'Method not allowed' }, 405, { Allow: 'POST' })
@@ -183,8 +197,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         menuAccess,
       },
     }, 200, { 'Set-Cookie': sessionCookie })
-  } catch {
+  } catch (caughtError) {
     console.error('[d1-login] Unexpected authentication error')
-    return json({ success: false, error: 'Unable to authenticate' }, 500)
+    return json({ success: false, error: getSafeLoginError(caughtError) }, 500)
   }
 }
