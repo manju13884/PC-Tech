@@ -12,5 +12,3 @@ dist
 
 # Logs
 *.log
-
-.wrangler/
