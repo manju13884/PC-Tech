@@ -630,6 +630,7 @@ main.app-shell::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
 }
 
 .admin-config-tabs button:not(.active) {
@@ -818,6 +819,10 @@ main.app-shell::after {
 }
 
 .admin-panel-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   min-height: 30px;
   padding: 0.32rem 0.62rem;
   border: 1px solid #2563eb;
@@ -902,7 +907,13 @@ main.app-shell::after {
 }
 
 .admin-access-table {
+  border-spacing: 0;
+  border-collapse: separate;
+  overflow: hidden;
   min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
 }
 
 .admin-roles-table td:nth-child(3) {
@@ -923,17 +934,59 @@ main.app-shell::after {
 .admin-access-table th:not(:first-child),
 .admin-access-table td:not(:first-child) {
   text-align: center;
+  width: 116px;
 }
 
 .admin-access-table td:first-child {
   min-width: 260px;
 }
 
+.admin-access-table th,
+.admin-access-table td {
+  padding: 0.55rem 0.7rem;
+  border-bottom-color: #edf2f7;
+}
+
+.admin-access-table th {
+  background: #f8fafc;
+  color: #53657d;
+  font-size: 0.68rem;
+}
+
+.admin-access-table tbody tr {
+  background: #ffffff;
+}
+
+.admin-access-table tbody tr:nth-child(even) {
+  background: #fbfdff;
+}
+
+.admin-access-table tbody tr:hover {
+  background: #f6f9fd;
+}
+
+.admin-access-table tbody tr.admin-access-row-locked {
+  background: #f8fafc;
+}
+
+.admin-access-row-locked td:first-child strong::after {
+  content: 'SUPERADMIN only';
+  display: inline-flex;
+  margin-left: 0.45rem;
+  padding: 0.1rem 0.34rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 0.58rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
 .admin-access-module {
   display: block;
-  margin-bottom: 0.15rem;
-  color: #64748b;
-  font-size: 0.68rem;
+  margin-bottom: 0.12rem;
+  color: #6b7c93;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -941,20 +994,24 @@ main.app-shell::after {
 
 .admin-access-table td strong {
   color: #1e293b;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 650;
 }
 
 .admin-access-checkbox {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   margin: 0;
-  accent-color: #60a5fa;
+  accent-color: #3b82f6;
   cursor: pointer;
 }
 
+.admin-access-checkbox:not(:checked) {
+  opacity: 0.72;
+}
+
 .admin-access-checkbox:disabled {
-  cursor: wait;
+  cursor: not-allowed;
   opacity: 0.65;
 }
 

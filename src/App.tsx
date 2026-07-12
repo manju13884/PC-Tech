@@ -53,8 +53,14 @@ function App() {
     let isCurrent = true
 
     async function loadCurrentUser() {
+      const controller = new AbortController()
+      const timeoutId = window.setTimeout(() => controller.abort(), 6000)
+
       try {
-        const response = await fetch('/api/auth/me', { credentials: 'include' })
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+          signal: controller.signal,
+        })
         const data: LoginResponse = await response.json()
 
         if (!isCurrent || !response.ok || !data.success || !data.user) {
@@ -66,6 +72,7 @@ function App() {
       } catch {
         // Stay on the login screen when no valid session can be loaded.
       } finally {
+        window.clearTimeout(timeoutId)
         if (isCurrent) {
           setCheckingSession(false)
         }
