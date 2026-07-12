@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Ban, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, PackageCheck, Pencil, Printer, Save, Settings, X, type LucideIcon } from 'lucide-react'
+import { Ban, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
 import { deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
@@ -1313,6 +1313,7 @@ export default function Dashboard({
                         role="tab"
                         aria-selected={adminConfigTab === 'users'}
                       >
+                        <Users size={15} aria-hidden="true" />
                         <span>Users</span>
                       </button>
                       <button
@@ -1322,6 +1323,7 @@ export default function Dashboard({
                         role="tab"
                         aria-selected={adminConfigTab === 'roles'}
                       >
+                        <ShieldCheck size={15} aria-hidden="true" />
                         <span>Roles</span>
                       </button>
                       <button
@@ -1331,6 +1333,7 @@ export default function Dashboard({
                         role="tab"
                         aria-selected={adminConfigTab === 'access'}
                       >
+                        <KeyRound size={15} aria-hidden="true" />
                         <span>Access</span>
                       </button>
                     </div>
@@ -1340,7 +1343,8 @@ export default function Dashboard({
                       <section className="admin-config-panel admin-users-panel">
                         <div className="admin-panel-toolbar">
                           <button type="button" onClick={openCreateUser}>
-                            Create User
+                            <UserPlus size={15} aria-hidden="true" />
+                            <span>Create User</span>
                           </button>
                         </div>
                         {adminUsersLoading && (
@@ -1641,24 +1645,31 @@ export default function Dashboard({
                               </thead>
                               <tbody>
                                 {accessMatrix.map((accessItem) => (
-                                  <tr key={accessItem.key}>
+                                  <tr
+                                    key={accessItem.key}
+                                    className={accessItem.key === 'admin-configurations' ? 'admin-access-row-locked' : undefined}
+                                  >
                                     <td>
                                       <span className="admin-access-module">{accessItem.module}</span>
                                       <strong>{accessItem.subMenu}</strong>
                                     </td>
                                     {accessRoles.map((role) => {
                                       const checkboxKey = `${role.id}:${accessItem.key}`
+                                      const isAccessManagementRow = accessItem.key === 'admin-configurations'
+                                      const hasRoleMenuAccess = getRoleMenuAccess(role.id, accessItem.key)
+                                      const isProtectedSuperadminAccess = isAccessManagementRow && role.name === 'SUPERADMIN'
+                                      const isRestrictedAccessGrant = isAccessManagementRow && role.name !== 'SUPERADMIN' && !hasRoleMenuAccess
 
                                       return (
                                         <td key={role.id}>
                                           <input
                                             className="admin-access-checkbox"
                                             type="checkbox"
-                                            checked={getRoleMenuAccess(role.id, accessItem.key)}
+                                            checked={hasRoleMenuAccess}
                                             onChange={(event) => (
                                               toggleRoleMenuAccess(role.id, accessItem.key, event.target.checked)
                                             )}
-                                            disabled={savingAccessKey === checkboxKey}
+                                            disabled={isProtectedSuperadminAccess || isRestrictedAccessGrant || savingAccessKey === checkboxKey}
                                             aria-label={`${role.name} access for ${accessItem.subMenu}`}
                                           />
                                         </td>

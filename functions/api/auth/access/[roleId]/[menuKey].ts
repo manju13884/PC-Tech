@@ -195,7 +195,9 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       return json({ success: false, error: 'Role not found' }, 404)
     }
 
-    if (menuKey === 'admin-configurations' && role.name !== 'SUPERADMIN') {
+    const requestedAccessValue = typeof body.access === 'boolean' ? body.access : body.value
+
+    if (menuKey === 'admin-configurations' && role.name !== 'SUPERADMIN' && requestedAccessValue === true) {
       return json({ success: false, error: 'Access Management is restricted to SUPERADMIN' }, 400)
     }
 
