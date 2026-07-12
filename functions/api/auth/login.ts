@@ -7,7 +7,7 @@ import {
 } from '../../lib/session'
 
 interface Env {
-  DB: D1Database
+  DB?: D1Database
 }
 
 interface FunctionContext {
@@ -55,6 +55,11 @@ async function getMenuAccess(env: Env, roleId: number, roleName: string): Promis
     return ALL_MENU_KEYS
   }
 
+  if (!env.DB) {
+    console.error('[d1-login] Missing DB binding while loading menu access')
+    return []
+  }
+
   try {
     const result = await env.DB.prepare(
       `SELECT menu_key
@@ -86,6 +91,10 @@ async function getMenuAccess(env: Env, roleId: number, roleName: string): Promis
 
 function getSafeLoginError(caughtError: unknown): string {
   const message = caughtError instanceof Error ? caughtError.message : ''
+
+  if (message.includes('DB binding') || message.includes('undefined')) {
+    return 'Authentication database binding is missing in production.'
+  }
 
   if (message.includes('must_change_password') || message.includes('no such column')) {
     return 'Database migration missing. Apply D1 migrations to production.'
@@ -127,6 +136,10 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
   }
 
   try {
+    if (!context.env.DB) {
+      throw new Error('DB binding is missing')
+    }
+
     const user = await context.env.DB.prepare(
       `SELECT
         u.id,

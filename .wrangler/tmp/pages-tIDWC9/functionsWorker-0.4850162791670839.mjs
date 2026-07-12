@@ -1066,6 +1066,10 @@ async function getMenuAccess(env, roleId, roleName) {
   if (roleName === "SUPERADMIN") {
     return ALL_MENU_KEYS;
   }
+  if (!env.DB) {
+    console.error("[d1-login] Missing DB binding while loading menu access");
+    return [];
+  }
   try {
     const result = await env.DB.prepare(
       `SELECT menu_key
@@ -1093,6 +1097,9 @@ async function getMenuAccess(env, roleId, roleName) {
 __name(getMenuAccess, "getMenuAccess");
 function getSafeLoginError(caughtError) {
   const message = caughtError instanceof Error ? caughtError.message : "";
+  if (message.includes("DB binding") || message.includes("undefined")) {
+    return "Authentication database binding is missing in production.";
+  }
   if (message.includes("must_change_password") || message.includes("no such column")) {
     return "Database migration missing. Apply D1 migrations to production.";
   }
@@ -1123,6 +1130,9 @@ async function onRequest7(context) {
     return json7({ success: false, error: "Validation failed", details: errors }, 400);
   }
   try {
+    if (!context.env.DB) {
+      throw new Error("DB binding is missing");
+    }
     const user = await context.env.DB.prepare(
       `SELECT
         u.id,
@@ -1241,6 +1251,10 @@ async function getMenuAccess2(env, roleId, roleName) {
   if (roleName === "SUPERADMIN") {
     return ALL_MENU_KEYS2;
   }
+  if (!env.DB) {
+    console.error("[current-user] Missing DB binding while loading menu access");
+    return [];
+  }
   try {
     const result = await env.DB.prepare(
       `SELECT menu_key
@@ -1268,6 +1282,9 @@ async function getMenuAccess2(env, roleId, roleName) {
 __name(getMenuAccess2, "getMenuAccess");
 function getSafeCurrentUserError(caughtError) {
   const message = caughtError instanceof Error ? caughtError.message : "";
+  if (message.includes("DB binding") || message.includes("undefined")) {
+    return "Authentication database binding is missing in production.";
+  }
   if (message.includes("must_change_password") || message.includes("no such column")) {
     return "Database migration missing. Apply D1 migrations to production.";
   }
@@ -1284,6 +1301,9 @@ async function onRequest9(context) {
   const sessionToken = getSessionTokenFromRequest(context.request);
   if (!sessionToken) return authenticationRequired5();
   try {
+    if (!context.env.DB) {
+      throw new Error("DB binding is missing");
+    }
     const tokenHash = await hashSessionToken(sessionToken);
     const session = await context.env.DB.prepare(
       `SELECT
@@ -2799,7 +2819,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-RqLVzq/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-XncHn0/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -2831,7 +2851,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-RqLVzq/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-XncHn0/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
