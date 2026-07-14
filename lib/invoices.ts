@@ -9,6 +9,7 @@ export interface ZohoInvoice {
   purchaseorder?: string
   po_number?: string
   salesorders?: ZohoSalesOrder | ZohoSalesOrder[]
+  salesorder_number?: string
   custom_fields?: ZohoCustomField[]
   custom_field_hash?: Record<string, unknown>
   line_items?: ZohoLineItem[]
@@ -18,6 +19,7 @@ export interface ZohoInvoice {
 
 interface ZohoSalesOrder {
   reference_number?: string
+  salesorder_number?: string
 }
 
 interface ZohoCustomField {
@@ -41,6 +43,7 @@ export interface InvoiceDetail extends InvoiceSummary {
   date: string
   customer_name: string
   po_number: string
+  sales_order_number: string
   line_items: InvoiceLineItem[]
 }
 
@@ -147,6 +150,9 @@ function mapInvoiceDetail(invoice: ZohoInvoice): InvoiceDetail | null {
   const salesOrderPoNumbers = salesOrders
     .map((salesOrder) => normalizeText(salesOrder.reference_number))
     .filter(Boolean)
+  const salesOrderNumbers = salesOrders
+    .map((salesOrder) => normalizeText(salesOrder.salesorder_number))
+    .filter(Boolean)
 
   return {
     ...summary,
@@ -158,6 +164,10 @@ function mapInvoiceDetail(invoice: ZohoInvoice): InvoiceDetail | null {
       normalizeText(invoice.reference_number) ||
       normalizeText(invoice.purchaseorder) ||
       normalizeText(invoice.po_number),
+    sales_order_number:
+      salesOrderNumbers.join(', ') ||
+      normalizeText(invoice.salesorder_number) ||
+      salesOrderPoNumbers.join(', '),
     line_items: Array.isArray(invoice.line_items) ? invoice.line_items.map(mapLineItem) : [],
   }
 }

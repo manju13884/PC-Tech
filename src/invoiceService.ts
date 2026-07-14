@@ -7,6 +7,7 @@ export interface InvoiceDetail extends Invoice {
   date: string
   customer_name: string
   po_number: string
+  sales_order_number: string
   line_items: InvoiceLineItem[]
 }
 
@@ -62,6 +63,7 @@ function isInvoiceDetail(value: unknown): value is InvoiceDetail {
     typeof invoice.date === 'string' &&
     typeof invoice.customer_name === 'string' &&
     typeof invoice.po_number === 'string' &&
+    typeof invoice.sales_order_number === 'string' &&
     Array.isArray(invoice.line_items)
   )
 }
