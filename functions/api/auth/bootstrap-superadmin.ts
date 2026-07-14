@@ -56,7 +56,7 @@ function secretsMatch(submitted: string | null, expected: string | undefined): b
 }
 
 function validatePassword(password: string): string | null {
-  if (password.length < 10) return 'Password must be at least 10 characters'
+  if (password.length < 6) return 'Password must be at least 6 characters'
   if (COMMON_PASSWORDS.has(password.toLowerCase())) return 'Password is too weak'
 
   const characterGroups = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/]

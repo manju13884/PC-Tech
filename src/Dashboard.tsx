@@ -5,7 +5,7 @@ import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAc
 import { deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
-import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice } from './invoiceService'
+import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
 import { loadCocTemplate } from './lib/templateLoader'
 import { loadPackingSlipLogo, loadPackingSlipTemplate } from './lib/packingSlipTemplateLoader'
 
@@ -82,6 +82,80 @@ const menuGroups: MenuGroup[] = [
 
 const menuItems = menuGroups.flatMap((group) => group.items)
 const defaultMenuKey = 'coc'
+const coaAnalysisHeadings = ['Board GSM', 'GSM', 'Bursting Strength', 'Moisture', 'Ply'] as const
+type CoaAnalysisHeading = (typeof coaAnalysisHeadings)[number]
+type CoaAnalysisDefaults = Record<CoaAnalysisHeading, string>
+
+const coaAnalysisDefaults: Record<string, Record<string, CoaAnalysisDefaults>> = {
+  NILKAMAL: {
+    '206725': {
+      'Board GSM': '1120',
+      GSM: '202/24, 180/22, 200/24, 176/22, 206/24',
+      'Bursting Strength': '17.3',
+      Moisture: '8.3',
+      Ply: '5',
+    },
+    '206726': {
+      'Board GSM': '1118',
+      GSM: '200/24, 180/22, 198/24, 178/22, 206/24',
+      'Bursting Strength': '17.5',
+      Moisture: '8.4',
+      Ply: '5',
+    },
+    '206249': {
+      'Board GSM': '1120',
+      GSM: '200/24, 178/22, 200/24, 178/22, 200/24',
+      'Bursting Strength': '17.4',
+      Moisture: '8.5',
+      Ply: '5',
+    },
+    '206588': {
+      'Board GSM': '1120',
+      GSM: '198/24, 176/22, 200/24, 177/22, 206/24',
+      'Bursting Strength': '17.2',
+      Moisture: '8.2',
+      Ply: '5',
+    },
+  },
+}
+
+function randomInteger(minimum: number, maximum: number): number {
+  return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum
+}
+
+function randomOneDecimal(minimumTenths: number, maximumTenths: number): string {
+  return (randomInteger(minimumTenths, maximumTenths) / 10).toFixed(1)
+}
+
+function getCoaAnalysisDefaults(
+  customerName: string,
+  productDescription: string,
+): CoaAnalysisDefaults | undefined {
+  const normalizedCustomerName = customerName.trim().toUpperCase()
+  const customerKey = Object.keys(coaAnalysisDefaults).find((key) => (
+    new RegExp(`(^|[^A-Z0-9])${key}([^A-Z0-9]|$)`).test(normalizedCustomerName)
+  ))
+  const customerDefaults = customerKey ? coaAnalysisDefaults[customerKey] : undefined
+
+  if (!customerDefaults) {
+    return undefined
+  }
+
+  const productCode = productDescription.trim().toUpperCase().match(/^([A-Z0-9]+)/)?.[1] ?? ''
+  const defaults = customerDefaults[productCode]
+
+  if (!defaults) {
+    return undefined
+  }
+
+  return {
+    ...defaults,
+    'Board GSM': String(randomInteger(1117, 1120)),
+    'Bursting Strength': randomOneDecimal(170, 176),
+    Moisture: randomOneDecimal(82, 85),
+  }
+}
+
 const accessMatrix: AccessMatrixItem[] = menuGroups.flatMap((group) => (
   group.items.map((item) => ({
     key: item.key,
@@ -238,6 +312,37 @@ function formatAdminDate(value: string): string {
   return `${day}-${month}-${year}`
 }
 
+function ensureCoaDocumentFooter(previewElement: HTMLElement) {
+  const pages = Array.from(previewElement.querySelectorAll<HTMLElement>('section.docx'))
+
+  pages.forEach((page, index) => {
+    let footer = page.querySelector<HTMLElement>(':scope > footer')
+
+    if (!footer) {
+      footer = document.createElement('footer')
+      page.appendChild(footer)
+    }
+
+    const footerLine = document.createElement('p')
+    footerLine.textContent = `Polar Canvas Technologies Private Limited | Page ${index + 1} of ${pages.length}`
+    footer.replaceChildren(footerLine)
+    footer.classList.add('coa-document-footer')
+  })
+}
+
+function formatCoaInvoiceDate(value: string): string {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+
+  if (!match) {
+    return value
+  }
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const month = monthNames[Number(match[2]) - 1]
+
+  return month ? `${match[3]}-${month}-${match[1]}` : value
+}
+
 function sortByCreatedDateAsc<T extends { id: number; createdAt: string }>(items: T[]): T[] {
   return [...items].sort((left, right) => {
     const leftTime = Date.parse(left.createdAt)
@@ -287,6 +392,19 @@ export default function Dashboard({
   const [packingPreviewLoading, setPackingPreviewLoading] = useState(false)
   const [packingPreviewError, setPackingPreviewError] = useState('')
   const packingPreviewRef = useRef<HTMLDivElement>(null)
+  const [coaCustomerId, setCoaCustomerId] = useState('')
+  const [coaInvoiceId, setCoaInvoiceId] = useState('')
+  const [coaInvoices, setCoaInvoices] = useState<Invoice[]>([])
+  const [coaInvoicesLoading, setCoaInvoicesLoading] = useState(false)
+  const [coaInvoicesError, setCoaInvoicesError] = useState<string | null>(null)
+  const [coaInvoiceDetail, setCoaInvoiceDetail] = useState<InvoiceDetail | null>(null)
+  const [coaInvoiceDetailLoading, setCoaInvoiceDetailLoading] = useState(false)
+  const [coaInvoiceDetailError, setCoaInvoiceDetailError] = useState('')
+  const [coaPreviewTemplate, setCoaPreviewTemplate] = useState<ArrayBuffer | null>(null)
+  const [coaPreviewLoading, setCoaPreviewLoading] = useState(false)
+  const [coaPreviewError, setCoaPreviewError] = useState('')
+  const coaAnalysisTableRef = useRef<HTMLTableElement>(null)
+  const coaPreviewRef = useRef<HTMLDivElement>(null)
   const [templateReady, setTemplateReady] = useState(false)
   const [previewTemplate, setPreviewTemplate] = useState<ArrayBuffer | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -358,7 +476,7 @@ export default function Dashboard({
       setPreviewError('')
     }
 
-    if (selectedKey !== 'coc' && selectedKey !== 'packing-slip') {
+    if (selectedKey !== 'coc' && selectedKey !== 'packing-slip' && selectedKey !== 'coa') {
       return
     }
 
@@ -580,6 +698,55 @@ export default function Dashboard({
   }, [packingPreviewTemplate])
 
   useEffect(() => {
+    if (!coaPreviewTemplate || !coaPreviewRef.current) {
+      return
+    }
+
+    let isCurrent = true
+    let previewResizeObserver: ResizeObserver | null = null
+    const previewElement = coaPreviewRef.current
+
+    previewElement.replaceChildren()
+    setCoaPreviewLoading(true)
+    setCoaPreviewError('')
+
+    renderAsync(coaPreviewTemplate, previewElement, undefined, {
+      breakPages: true,
+      renderHeaders: true,
+      renderFooters: true,
+    })
+      .then(() => {
+        if (isCurrent) {
+          centerCocLetterhead(previewElement)
+          centerRenderedCocWatermark(previewElement)
+          alignCocRegistrationLine(previewElement)
+          applyCocPageBorder(previewElement)
+          styleCocDetailLines(previewElement)
+          removeEmptyCocPages(previewElement)
+          ensureCoaDocumentFooter(previewElement)
+          fitCocPreview(previewElement)
+          previewResizeObserver = new ResizeObserver(() => fitCocPreview(previewElement))
+          previewResizeObserver.observe(previewElement)
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setCoaPreviewError('Unable to preview COA template')
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setCoaPreviewLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+      previewResizeObserver?.disconnect()
+    }
+  }, [coaPreviewTemplate])
+
+  useEffect(() => {
     setInvoiceId('')
     setInvoices([])
     setInvoicesError(null)
@@ -648,6 +815,92 @@ export default function Dashboard({
   }, [packingCustomerId, selectedKey])
 
   useEffect(() => {
+    setCoaInvoiceId('')
+    setCoaInvoices([])
+    setCoaInvoicesError(null)
+    setCoaInvoicesLoading(false)
+
+    if (selectedKey !== 'coa' || !coaCustomerId) {
+      return
+    }
+
+    let isCurrent = true
+
+    async function loadCoaInvoices() {
+      setCoaInvoicesLoading(true)
+      setCoaInvoicesError(null)
+
+      const invoiceList = await getInvoicesByCustomer(coaCustomerId)
+
+      if (!isCurrent) {
+        return
+      }
+
+      setCoaInvoices(invoiceList)
+      setCoaInvoicesError(getInvoicesError())
+      setCoaInvoicesLoading(false)
+    }
+
+    loadCoaInvoices()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [coaCustomerId, selectedKey])
+
+  useEffect(() => {
+    if (selectedKey !== 'coa') {
+      return
+    }
+
+    setCoaCustomerId('')
+    setCoaInvoiceId('')
+    setCoaInvoiceDetail(null)
+    setCoaPreviewTemplate(null)
+    setCoaPreviewError('')
+  }, [selectedKey])
+
+  useEffect(() => {
+    setCoaInvoiceDetail(null)
+    setCoaInvoiceDetailError('')
+    setCoaInvoiceDetailLoading(false)
+
+    if (selectedKey !== 'coa' || !coaInvoiceId) {
+      return
+    }
+
+    let isCurrent = true
+
+    async function loadCoaInvoiceDetail() {
+      setCoaInvoiceDetailLoading(true)
+
+      try {
+        const invoice = await getInvoiceById(coaInvoiceId)
+
+        if (isCurrent) {
+          setCoaInvoiceDetail(invoice)
+        }
+      } catch (caughtError) {
+        if (isCurrent) {
+          setCoaInvoiceDetailError(
+            caughtError instanceof Error ? caughtError.message : 'Unable to load invoice details',
+          )
+        }
+      } finally {
+        if (isCurrent) {
+          setCoaInvoiceDetailLoading(false)
+        }
+      }
+    }
+
+    loadCoaInvoiceDetail()
+
+    return () => {
+      isCurrent = false
+    }
+  }, [coaInvoiceId, selectedKey])
+
+  useEffect(() => {
     if (selectedKey !== 'coc') {
       return
     }
@@ -695,6 +948,46 @@ export default function Dashboard({
       }))
     } catch {
       setPreviewError('Unable to generate COC preview')
+    }
+  }
+
+  async function generateCoa() {
+    if (!coaInvoiceDetail || !coaAnalysisTableRef.current) {
+      return
+    }
+
+    setCoaPreviewError('')
+
+    try {
+      const tableRows = Array.from(coaAnalysisTableRef.current.tBodies[0]?.rows ?? [])
+      const analysisItems = coaInvoiceDetail.line_items.map((item, index) => {
+        const row = tableRows[index]
+        const getFieldValue = (cellIndex: number) => (
+          row?.cells[cellIndex]?.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea')?.value ?? ''
+        )
+
+        return {
+          name: item.name,
+          description: item.description,
+          boardGsm: getFieldValue(2),
+          gsm: getFieldValue(3),
+          burstingStrength: getFieldValue(4),
+          moisture: getFieldValue(5),
+          ply: getFieldValue(6),
+        }
+      })
+      const template = await loadCocTemplate()
+      const { generateCoaTemplate } = await import('./lib/coaGenerator')
+
+      setCoaPreviewTemplate(generateCoaTemplate(template, {
+        invoiceDate: coaInvoiceDetail.date,
+        customer: coaInvoiceDetail.customer_name,
+        poNumber: coaInvoiceDetail.po_number,
+        invoiceNumber: coaInvoiceDetail.invoice_number,
+        items: analysisItems,
+      }))
+    } catch {
+      setCoaPreviewError('Unable to generate COA preview')
     }
   }
 
@@ -1170,7 +1463,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}`}>
             <header className="dashboard-page-heading">
               <h2>{selectedItem.title}</h2>
               <p>{selectedItem.description}</p>
@@ -1296,10 +1589,182 @@ export default function Dashboard({
                 </div>
               )}
               {selectedItem.key === 'coa' && (
-                <div>
-                  <p>
-                    The Certificate of Analysis provides the quality and testing information for the packaging material.
-                  </p>
+                <div className="coc-form">
+                  <div className="coc-form-field">
+                    <label htmlFor="coa-customer-name">Customer Name</label>
+                    <select
+                      id="coa-customer-name"
+                      value={coaCustomerId}
+                      onChange={(event) => setCoaCustomerId(event.target.value)}
+                      disabled={customersLoading || Boolean(customersError)}
+                    >
+                      <option value="">
+                        {customersLoading
+                          ? 'Loading customers...'
+                          : customersError
+                            ? 'Unable to load customers'
+                            : 'Select customer'}
+                      </option>
+                      {customers.map((customer) => (
+                        <option key={customer.customer_id} value={customer.customer_id}>
+                          {formatCustomerOption(customer)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {customersError && (
+                    <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
+                      {customersError}
+                    </p>
+                  )}
+                  <div className="coc-form-field">
+                    <label htmlFor="coa-invoice-number">Invoice Number</label>
+                    <select
+                      id="coa-invoice-number"
+                      value={coaInvoiceId}
+                      onChange={(event) => {
+                        setCoaInvoiceId(event.target.value)
+                        setCoaPreviewTemplate(null)
+                        setCoaPreviewError('')
+                      }}
+                      disabled={!coaCustomerId || coaInvoicesLoading || Boolean(coaInvoicesError)}
+                    >
+                      <option value="">
+                        {!coaCustomerId
+                          ? 'Select customer first'
+                          : coaInvoicesLoading
+                            ? 'Loading invoices...'
+                            : coaInvoicesError
+                              ? 'Unable to load invoices'
+                              : coaInvoices.length === 0
+                                ? 'No invoices found'
+                                : 'Select invoice'}
+                      </option>
+                      {coaInvoices.map((invoice) => (
+                        <option key={invoice.invoice_id} value={invoice.invoice_id}>
+                          {invoice.invoice_number}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {coaInvoicesError && (
+                    <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
+                      {coaInvoicesError}
+                    </p>
+                  )}
+                  {coaInvoiceId && (
+                    <div className="coa-invoice-details" aria-live="polite">
+                      {coaInvoiceDetailLoading && <p>Loading invoice details...</p>}
+                      {coaInvoiceDetailError && <p className="coa-invoice-details-error">{coaInvoiceDetailError}</p>}
+                      {coaInvoiceDetail && (
+                        <>
+                          <dl>
+                            <div><dt>DATE:</dt><dd>{coaInvoiceDetail.date ? formatCoaInvoiceDate(coaInvoiceDetail.date) : '-'}</dd></div>
+                            <div><dt>CUSTOMER:</dt><dd>{coaInvoiceDetail.customer_name || '-'}</dd></div>
+                            <div><dt>PO#:</dt><dd>{coaInvoiceDetail.po_number || '-'}</dd></div>
+                            <div><dt>Invoice#:</dt><dd>{coaInvoiceDetail.invoice_number || '-'}</dd></div>
+                            <div><dt>Ref#:</dt><dd>{coaInvoiceDetail.sales_order_number || '-'}</dd></div>
+                          </dl>
+                          <div className="coa-analysis-table-wrap">
+                            <table ref={coaAnalysisTableRef} className="coa-analysis-table">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Sl No</th>
+                                  <th scope="col">Product</th>
+                                  <th scope="col">Board<br />GSM</th>
+                                  <th scope="col">GSM</th>
+                                  <th scope="col">Bursting Strength</th>
+                                  <th scope="col">Moisture</th>
+                                  <th scope="col">Ply</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {coaInvoiceDetail.line_items.map((item, index) => {
+                                  const defaults = getCoaAnalysisDefaults(
+                                    coaInvoiceDetail.customer_name,
+                                    item.description,
+                                  )
+
+                                  return (
+                                    <tr key={`${coaInvoiceDetail.invoice_id}-${item.name}-${item.description}-${index}`}>
+                                      <td>{index + 1}</td>
+                                      <td>
+                                        <textarea
+                                          aria-label={`Product ${index + 1}`}
+                                          rows={2}
+                                          value={[item.name, item.description].filter(Boolean).join('\n')}
+                                          readOnly
+                                        />
+                                      </td>
+                                      {coaAnalysisHeadings.map((heading) => (
+                                        <td key={heading}>
+                                          {heading === 'GSM' ? (
+                                            <textarea
+                                              aria-label={`${heading} ${index + 1}`}
+                                              rows={2}
+                                              defaultValue={defaults?.[heading] ?? ''}
+                                            />
+                                          ) : (
+                                            <input
+                                              type="text"
+                                              aria-label={`${heading} ${index + 1}`}
+                                              defaultValue={defaults?.[heading] ?? ''}
+                                            />
+                                          )}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <div className="coc-action-row packing-slip-actions">
+                    <button
+                      type="button"
+                      className="packing-action-button packing-action-primary"
+                      onClick={generateCoa}
+                      disabled={!coaInvoiceDetail || coaInvoiceDetailLoading}
+                    >
+                      <FlaskConical aria-hidden="true" />
+                      <span>Generate COA</span>
+                    </button>
+                    {coaPreviewTemplate && !coaPreviewLoading && !coaPreviewError && (
+                      <>
+                        <button
+                          type="button"
+                          className="packing-action-button packing-action-pdf"
+                          onClick={() => openDocumentPrintDialog(coaPreviewRef.current, coaInvoices, coaInvoiceId, 'COA')}
+                        >
+                          <FileDown aria-hidden="true" />
+                          <span>Save As PDF</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="packing-action-button packing-action-print"
+                          onClick={() => openDocumentPrintDialog(coaPreviewRef.current, coaInvoices, coaInvoiceId, 'COA')}
+                        >
+                          <Printer aria-hidden="true" />
+                          <span>Print COA</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {(coaPreviewTemplate || coaPreviewError) && (
+                    <div className="coc-preview">
+                      {coaPreviewLoading && (
+                        <p style={{ margin: 0, padding: '1rem', background: '#fff' }}>Loading COA preview...</p>
+                      )}
+                      {coaPreviewError && (
+                        <p style={{ margin: 0, padding: '1rem', color: '#b42318', background: '#fff' }}>{coaPreviewError}</p>
+                      )}
+                      <div ref={coaPreviewRef} className="coc-preview-document" />
+                    </div>
+                  )}
                 </div>
               )}
               {selectedItem.key === 'admin-configurations' && (
