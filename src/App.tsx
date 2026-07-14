@@ -229,6 +229,7 @@ function App() {
                   value={changePassword}
                   onChange={(event) => setChangePassword(event.target.value)}
                   autoComplete="new-password"
+                  minLength={6}
                   required
                 />
 
@@ -239,6 +240,7 @@ function App() {
                   value={changeConfirmPassword}
                   onChange={(event) => setChangeConfirmPassword(event.target.value)}
                   autoComplete="new-password"
+                  minLength={6}
                   required
                 />
 
@@ -292,6 +294,7 @@ function App() {
                   value={setupPassword}
                   onChange={(event) => setSetupPassword(event.target.value)}
                   autoComplete="new-password"
+                  minLength={6}
                   required
                 />
 
@@ -302,6 +305,7 @@ function App() {
                   value={setupConfirmPassword}
                   onChange={(event) => setSetupConfirmPassword(event.target.value)}
                   autoComplete="new-password"
+                  minLength={6}
                   required
                 />
 
