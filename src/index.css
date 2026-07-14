@@ -26,13 +26,26 @@ main.dashboard-shell {
 }
 
 main.app-shell {
+  position: relative;
   place-items: center;
-  padding: 1rem;
+  padding: 1rem 1rem 3rem;
   overflow: hidden;
   background:
     radial-gradient(circle at 22% 16%, rgba(80, 164, 255, 0.2), transparent 28%),
     radial-gradient(circle at 86% 72%, rgba(59, 130, 246, 0.16), transparent 30%),
     linear-gradient(135deg, #172554 0%, #1e3a8a 48%, #243b77 100%);
+}
+
+.login-copyright {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.85rem;
+  left: 1rem;
+  z-index: 2;
+  color: #bfdbfe;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
 }
 
 main.app-shell::before,

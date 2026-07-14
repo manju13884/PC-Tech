@@ -23,6 +23,8 @@ interface BasicResponse {
   error?: string
 }
 
+const currentYear = new Date().getFullYear()
+
 function App() {
   const initialSetupToken = new URLSearchParams(window.location.search).get('setup_token') ?? ''
   const [email, setEmail] = useState('')
@@ -374,6 +376,7 @@ function App() {
           </div>
         </div>
       </section>
+      <footer className="login-copyright">Copyright &copy; {currentYear} - Polar Canvas Technologies Private Limited</footer>
     </main>
   )
 }
