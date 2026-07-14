@@ -6,6 +6,8 @@ import { deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
+import CardBoxCalculator from './features/corrugated-box-price-calculator/CardBoxCalculator'
+import './features/corrugated-box-price-calculator-compat.css'
 import { loadCocTemplate } from './lib/templateLoader'
 import { loadPackingSlipLogo, loadPackingSlipTemplate } from './lib/packingSlipTemplateLoader'
 
@@ -1470,10 +1472,8 @@ export default function Dashboard({
             </header>
             <div className="dashboard-details">
               {selectedItem.key === 'corrugated-box-price' && (
-                <div>
-                  <p>
-                    Use the corrugated box calculator to check pricing on boxes of different dimensions and quantities.
-                  </p>
+                <div className="pc-corrugated-calculator-compat">
+                  <CardBoxCalculator />
                 </div>
               )}
               {selectedItem.key === 'coc' && (
