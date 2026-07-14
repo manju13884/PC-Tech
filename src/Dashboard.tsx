@@ -849,6 +849,18 @@ export default function Dashboard({
   }, [coaCustomerId, selectedKey])
 
   useEffect(() => {
+    if (selectedKey !== 'coa') {
+      return
+    }
+
+    setCoaCustomerId('')
+    setCoaInvoiceId('')
+    setCoaInvoiceDetail(null)
+    setCoaPreviewTemplate(null)
+    setCoaPreviewError('')
+  }, [selectedKey])
+
+  useEffect(() => {
     setCoaInvoiceDetail(null)
     setCoaInvoiceDetailError('')
     setCoaInvoiceDetailLoading(false)
