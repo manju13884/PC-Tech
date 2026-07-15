@@ -1,7 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 .pc-corrugated-calculator-compat {
-  font-family: 'Poppins', sans-serif;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .pc-corrugated-calculator-compat *,
@@ -27,46 +25,49 @@
   cursor: pointer;
 }
 
-.pc-corrugated-calculator-compat button[title="Refresh"] {
+.pc-corrugated-calculator-compat .calculator-refresh-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.5rem;
-  gap: 0.4rem;
-  padding: 0.55rem 0.9rem;
+  min-height: 2.25rem;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
   border: 1px solid #2563eb;
-  border-radius: 8px;
+  border-radius: 6px;
   background-color: #2563eb;
   box-shadow: 0 2px 5px rgb(37 99 235 / 22%);
   color: #ffffff;
-  font-size: 0;
-  line-height: 1;
-  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.pc-corrugated-calculator-compat button[title="Refresh"]::before {
-  content: '\21bb';
-  font-size: 1.1rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  line-height: 1;
-}
-
-.pc-corrugated-calculator-compat button[title="Refresh"]::after {
-  content: 'Refresh';
-  font-size: 0.875rem;
-  font-weight: 700;
   line-height: 1.25rem;
+  transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
-.pc-corrugated-calculator-compat button[title="Refresh"]:hover {
+.pc-corrugated-calculator-compat .calculator-refresh-button:hover {
   border-color: #1d4ed8;
   background-color: #1d4ed8;
-  box-shadow: 0 3px 7px rgb(29 78 216 / 28%);
+  box-shadow: 0 3px 8px rgb(29 78 216 / 28%);
+  color: #ffffff;
+  transform: translateY(-1px);
 }
 
-.pc-corrugated-calculator-compat button[title="Refresh"]:focus-visible {
+.pc-corrugated-calculator-compat .calculator-refresh-button:hover svg {
+  transform: rotate(-45deg);
+}
+
+.pc-corrugated-calculator-compat .calculator-refresh-button:active {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 8%);
+  transform: translateY(0);
+}
+
+.pc-corrugated-calculator-compat .calculator-refresh-button:focus-visible {
   outline: 2px solid #60a5fa;
   outline-offset: 2px;
+}
+
+.pc-corrugated-calculator-compat .calculator-refresh-button svg {
+  flex: 0 0 auto;
+  transition: transform 150ms ease;
 }
 
 .pc-corrugated-calculator-compat .max-w-6xl > .flex.justify-between.items-center {
@@ -213,6 +214,27 @@
 
 .pc-corrugated-calculator-compat .bg-gray-100 {
   background-color: #f3f4f6;
+}
+
+.pc-corrugated-calculator-compat .paper-layers-grid {
+  gap: 0.75rem;
+}
+
+.pc-corrugated-calculator-compat .paper-layer-block {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid #dbe3ee;
+  border-radius: 6px;
+  background-color: #ffffff;
+}
+
+.pc-corrugated-calculator-compat .paper-layer-block:nth-child(even) {
+  border-color: #dbe3ee;
+  background-color: #f8fafc;
+}
+
+.pc-corrugated-calculator-compat .paper-layer-block input {
+  background-color: #ffffff;
 }
 
 .pc-corrugated-calculator-compat .text-xs {
@@ -434,4 +456,124 @@
 .pc-corrugated-calculator-compat .max-w-6xl > .flex.justify-between.items-center + form {
   margin-top: 0.25rem;
   gap: 0.75rem;
+}
+
+.pc-corrugated-calculator-compat label.text-xs {
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.pc-corrugated-calculator-compat input.text-xs {
+  min-height: 38px;
+  padding: 0.52rem 0.68rem;
+  border-color: #bfdbfe;
+  border-radius: 7px;
+  background-color: #eff6ff;
+  color: #1e293b;
+  font-size: 0.84rem;
+  line-height: 1.3;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.pc-corrugated-calculator-compat input.text-xs:hover:not(:read-only) {
+  border-color: #94a3b8;
+}
+
+.pc-corrugated-calculator-compat input.text-xs:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgb(96 165 250 / 20%);
+}
+
+.pc-corrugated-calculator-compat input.text-xs.calculated-field,
+.pc-corrugated-calculator-compat input.text-xs[readonly] {
+  border-color: #a7d7bd;
+  background-color: #ecfdf3;
+  color: #166534;
+}
+
+.pc-corrugated-calculator-compat .calculated-result {
+  border-color: #a7d7bd;
+  background-color: #ecfdf3;
+}
+
+/* Compact operational layout for repeated calculator use. */
+.pc-corrugated-calculator-compat > .p-4 {
+  padding: 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgb(15 23 42 / 5%);
+}
+
+.pc-corrugated-calculator-compat .max-w-6xl > .flex.justify-between.items-center + form {
+  margin-top: 0.15rem;
+  gap: 0.55rem;
+}
+
+.pc-corrugated-calculator-compat form > section {
+  padding: 0.7rem;
+  border: 1px solid #dbe3ee;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.pc-corrugated-calculator-compat form h2.text-xs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: -0.7rem -0.7rem 0.65rem;
+  padding: 0.48rem 0.65rem;
+  border: 0;
+  border-bottom: 1px solid #dbe3ee;
+  border-radius: 5px 5px 0 0;
+  background-color: #f8fafc;
+  color: #172033;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.pc-corrugated-calculator-compat .calculator-section-heading svg {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.pc-corrugated-calculator-compat .paper-layers-grid {
+  gap: 0.55rem;
+}
+
+.pc-corrugated-calculator-compat .paper-layer-block {
+  gap: 0.4rem;
+  padding: 0.6rem;
+}
+
+.pc-corrugated-calculator-compat .paper-layer-block > .grid,
+.pc-corrugated-calculator-compat form > section .grid {
+  gap: 0.45rem;
+}
+
+.pc-corrugated-calculator-compat .calculated-result {
+  padding: 0.55rem;
+}
+
+.pc-corrugated-calculator-compat .calculated-result p.text-xs {
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.pc-corrugated-calculator-compat .calculated-result p.text-lg {
+  margin-top: 0.15rem;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.pc-corrugated-calculator-compat .grid.grid-cols-3.mt-2 {
+  margin-top: 0.45rem;
 }

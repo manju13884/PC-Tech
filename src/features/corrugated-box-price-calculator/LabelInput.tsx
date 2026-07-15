@@ -6,6 +6,7 @@ export type InputProps = {
   onChange: React.ChangeEventHandler<HTMLInputElement>;
   readOnly?: boolean;
   isBold?: boolean;
+  calculated?: boolean;
 };
 
 const LabelInput: React.FC<InputProps> = ({ 
@@ -13,7 +14,8 @@ const LabelInput: React.FC<InputProps> = ({
   value, 
   onChange, 
   readOnly = false, 
-  isBold = false 
+  isBold = false,
+  calculated = false
 }) => (
   <div className="flex flex-col gap-1">
     <label 
@@ -27,7 +29,7 @@ const LabelInput: React.FC<InputProps> = ({
       onChange={onChange}
       readOnly={readOnly}
       maxLength={5}
-      className={`px-2 py-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+      className={`px-2 py-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${calculated ? 'calculated-field ' : ''}${
         readOnly ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
       }`}
     />
