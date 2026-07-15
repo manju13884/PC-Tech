@@ -489,9 +489,11 @@
 
 .pc-corrugated-calculator-compat input.text-xs.calculated-field,
 .pc-corrugated-calculator-compat input.text-xs[readonly] {
-  border-color: #a7d7bd;
-  background-color: #ecfdf3;
+  border-color: #65bd84;
+  background-color: #def4e6;
+  box-shadow: inset 4px 0 0 #16a34a;
   color: #166534;
+  font-weight: 700;
 }
 
 .pc-corrugated-calculator-compat .calculated-result {
@@ -568,7 +570,7 @@
 }
 
 .pc-corrugated-calculator-compat .paper-layers-header .calculator-section-subtitle {
-  margin: 0.28rem 0 0 2rem;
+  margin: 0 0 0 2rem;
 }
 
 .pc-corrugated-calculator-compat .paper-layers-grid {
@@ -624,7 +626,7 @@
 }
 
 .pc-corrugated-calculator-compat .box-specifications-header p {
-  margin: 0.28rem 0 0 2rem;
+  margin: 0 0 0 2rem;
   color: #64748b;
   font-size: 0.78rem;
   line-height: 1.4;
@@ -657,7 +659,7 @@
 
 .pc-corrugated-calculator-compat .box-result-card {
   min-width: 0;
-  padding: 0.65rem 0.75rem;
+  padding: 0.5rem 0.7rem;
   border: 1px solid #d5dde8;
   border-radius: 6px;
   background-color: #f8fafc;
@@ -681,10 +683,38 @@
   text-align: right;
 }
 
+.pc-corrugated-calculator-compat .box-result-card:nth-child(1) {
+  border-color: #86b6e2;
+  background-color: #e7f1fb;
+  box-shadow: inset 4px 0 0 #3b82f6;
+}
+
+.pc-corrugated-calculator-compat .box-result-card:nth-child(1) p {
+  color: #315f8c;
+}
+
+.pc-corrugated-calculator-compat .box-result-card:nth-child(1) strong {
+  color: #1e3a5f;
+}
+
+.pc-corrugated-calculator-compat .box-result-card:nth-child(2) {
+  border-color: #e0b55f;
+  background-color: #fff4dd;
+  box-shadow: inset 4px 0 0 #d18a12;
+}
+
+.pc-corrugated-calculator-compat .box-result-card:nth-child(2) p {
+  color: #815713;
+}
+
+.pc-corrugated-calculator-compat .box-result-card:nth-child(2) strong {
+  color: #70420a;
+}
+
 .pc-corrugated-calculator-compat .box-result-card.selling-price {
-  border-color: #86c99f;
-  background-color: #eaf8ef;
-  box-shadow: inset 3px 0 0 #22a653;
+  border-color: #65bd84;
+  background-color: #def4e6;
+  box-shadow: inset 4px 0 0 #16a34a;
 }
 
 .pc-corrugated-calculator-compat .box-result-card.selling-price p {
@@ -706,6 +736,18 @@
   .pc-corrugated-calculator-compat .box-specifications-inputs,
   .pc-corrugated-calculator-compat .box-specifications-results {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .pc-corrugated-calculator-compat .box-result-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 46px;
+  }
+
+  .pc-corrugated-calculator-compat .box-result-card strong {
+    margin-top: 0;
   }
 }
 

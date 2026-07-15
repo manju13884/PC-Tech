@@ -36,7 +36,10 @@ const PaperLayers: React.FC<PaperLayersProps> = ({ layers, onLayerChange }) => (
         <Layers3 size={16} strokeWidth={2} aria-hidden="true" />
         <span>Paper Layers</span>
       </h2>
-      <p className="calculator-section-subtitle">3 Layers : 3 ply box, 5 Layers : 5 ply box, 7 Layers : 7 ply box</p>
+      <p className="calculator-section-subtitle">
+        Configure the paper composition of the box.{' '}
+        <em>Available Configurations: 3-Ply box (3 Layers), 5-Ply box (5 Layers), 7-Ply box (7 Layers)</em>
+      </p>
     </header>
     <div className="paper-layers-grid grid grid-cols-2 sm:grid-cols-4 gap-2">
       <LayerInput label="Top" gsm={layers.top.gsm} bf={layers.top.bf} price={layers.top.price} onGsmChange={(v) => onLayerChange('top', 'gsm', v)} onBfChange={(v) => onLayerChange('top', 'bf', v)} onPriceChange={(v) => onLayerChange('top', 'price', v)} />
