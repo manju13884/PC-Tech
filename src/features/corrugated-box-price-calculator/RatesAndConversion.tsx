@@ -24,7 +24,7 @@ const RatesAndConversion: React.FC<RatesAndConversionProps> = ({
     </h2>
     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
       <LabelInput label="Rate/KG"   value={ratePerKg}        onChange={(e) => onRatePerKgChange(e.target.value)} />
-      <LabelInput label="Val/BOX"   value={valueBox.toFixed(3)} onChange={() => {}} readOnly isBold calculated />
+      <LabelInput label="Val/Box"   value={valueBox.toFixed(3)} onChange={() => {}} readOnly isBold calculated />
       <LabelInput label="Printing"  value={printingCharges}  onChange={(e) => onPrintingChargesChange(e.target.value)} />
       <LabelInput label="Transport" value={transportCharges} onChange={(e) => onTransportChargesChange(e.target.value)} />
       <LabelInput label="Margin %"  value={margin}           onChange={(e) => onMarginChange(e.target.value)} />
