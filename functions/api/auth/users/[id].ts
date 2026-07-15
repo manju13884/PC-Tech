@@ -27,6 +27,7 @@ interface AuthenticatedSessionRow {
 interface UserRow {
   id: number
   email: string
+  mobile_no: string
   full_name: string
   role_id: number
   role_name: string
@@ -39,6 +40,7 @@ interface UserRow {
 
 interface UserUpdateRequest {
   email?: unknown
+  mobileNo?: unknown
   fullName?: unknown
   role?: unknown
   status?: unknown
@@ -52,6 +54,7 @@ interface RoleRow {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MOBILE_NO_PATTERN = /^\d{10}$/
 
 function json(payload: unknown, status: number, headers?: HeadersInit): Response {
   return Response.json(payload, { status, headers })
@@ -69,6 +72,7 @@ function mapUser(user: UserRow) {
   return {
     id: user.id,
     email: user.email,
+    mobileNo: user.mobile_no,
     fullName: user.full_name,
     role: user.role_name,
     status: user.status,
@@ -162,6 +166,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       `SELECT
         u.id,
         u.email,
+        u.mobile_no,
         u.full_name,
         u.role_id,
         r.name AS role_name,
@@ -183,6 +188,9 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
     const nextEmail = typeof body.email === 'string'
       ? body.email.trim().toLowerCase()
       : existingUser.email
+    const nextMobileNo = typeof body.mobileNo === 'string'
+      ? body.mobileNo.trim()
+      : existingUser.mobile_no
     const nextFullName = typeof body.fullName === 'string'
       ? body.fullName.trim()
       : existingUser.full_name
@@ -199,6 +207,14 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
 
     if (!nextFullName) {
       return json({ success: false, error: 'Full name is required' }, 400)
+    }
+
+    if (body.mobileNo !== undefined && !nextMobileNo) {
+      return json({ success: false, error: 'Mobile No. is required' }, 400)
+    }
+
+    if (body.mobileNo !== undefined && !MOBILE_NO_PATTERN.test(nextMobileNo)) {
+      return json({ success: false, error: 'Mobile No. must contain exactly 10 digits' }, 400)
     }
 
     if (nextStatus !== 'ACTIVE' && nextStatus !== 'INACTIVE') {
@@ -247,6 +263,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         RETURNING
           id,
           email,
+          mobile_no,
           full_name,
           role_id,
           ? AS role_name,
@@ -280,6 +297,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       const updatedUser = await context.env.DB.prepare(
         `UPDATE users
         SET email = ?,
+          mobile_no = ?,
           full_name = ?,
           password_hash = ?,
           password_salt = ?,
@@ -292,6 +310,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         RETURNING
           id,
           email,
+          mobile_no,
           full_name,
           role_id,
           ? AS role_name,
@@ -302,6 +321,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
           updated_at`,
       ).bind(
         nextEmail,
+        nextMobileNo,
         nextFullName,
         passwordData.hash,
         passwordData.salt,
@@ -322,6 +342,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
     const updatedUser = await context.env.DB.prepare(
       `UPDATE users
       SET email = ?,
+        mobile_no = ?,
         full_name = ?,
         role_id = ?,
         status = ?,
@@ -331,6 +352,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       RETURNING
         id,
         email,
+        mobile_no,
         full_name,
         role_id,
         ? AS role_name,
@@ -341,6 +363,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
         updated_at`,
     ).bind(
       nextEmail,
+      nextMobileNo,
       nextFullName,
       nextRole.id,
       nextStatus,

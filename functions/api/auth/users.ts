@@ -24,6 +24,7 @@ interface AuthenticatedSessionRow {
 interface UserRow {
   id: number
   email: string
+  mobile_no: string
   full_name: string
   role_name: string
   status: string
@@ -35,6 +36,7 @@ interface UserRow {
 
 interface UserCreateRequest {
   email?: unknown
+  mobileNo?: unknown
   fullName?: unknown
   role?: unknown
 }
@@ -46,6 +48,7 @@ interface RoleRow {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MOBILE_NO_PATTERN = /^\d{10}$/
 
 function json(payload: unknown, status: number, headers?: HeadersInit): Response {
   return Response.json(payload, { status, headers })
@@ -59,6 +62,7 @@ function mapUser(user: UserRow) {
   return {
     id: user.id,
     email: user.email,
+    mobileNo: user.mobile_no,
     fullName: user.full_name,
     role: user.role_name,
     status: user.status,
@@ -147,6 +151,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       }
 
       const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+      const mobileNo = typeof body.mobileNo === 'string' ? body.mobileNo.trim() : ''
       const fullName = typeof body.fullName === 'string' ? body.fullName.trim() : ''
       const roleName = typeof body.role === 'string' ? body.role.trim().toUpperCase() : ''
 
@@ -156,6 +161,14 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
 
       if (!fullName) {
         return json({ success: false, error: 'Name is required' }, 400)
+      }
+
+      if (!mobileNo) {
+        return json({ success: false, error: 'Mobile No. is required' }, 400)
+      }
+
+      if (!MOBILE_NO_PATTERN.test(mobileNo)) {
+        return json({ success: false, error: 'Mobile No. must contain exactly 10 digits' }, 400)
       }
 
       const role = await context.env.DB.prepare(
@@ -183,6 +196,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       const user = await context.env.DB.prepare(
         `INSERT INTO users (
           email,
+          mobile_no,
           full_name,
           password_hash,
           password_salt,
@@ -192,9 +206,9 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
           must_change_password,
           created_by,
           updated_by
-        ) VALUES (?, ?, ?, ?, ?, 'ACTIVE', 1, 1, NULL, NULL)
-        RETURNING id, email, full_name, status, session_version, must_change_password, created_at, updated_at`,
-      ).bind(email, fullName, passwordData.hash, passwordData.salt, role.id).first<Omit<UserRow, 'role_name'>>()
+        ) VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', 1, 1, NULL, NULL)
+        RETURNING id, email, mobile_no, full_name, status, session_version, must_change_password, created_at, updated_at`,
+      ).bind(email, mobileNo, fullName, passwordData.hash, passwordData.salt, role.id).first<Omit<UserRow, 'role_name'>>()
 
       if (!user) {
         throw new Error('User insert did not return a record')
@@ -210,6 +224,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       `SELECT
         u.id,
         u.email,
+        u.mobile_no,
         u.full_name,
         r.name AS role_name,
         u.status,
