@@ -1126,6 +1126,14 @@ export default function Dashboard({
     setSelectedKey(key)
   }
 
+  function goToDashboardHome() {
+    const homeKey = visibleMenuKeys.has(defaultMenuKey) ? defaultMenuKey : visibleMenuItems[0]?.key
+
+    if (homeKey) {
+      selectMenuItem(homeKey)
+    }
+  }
+
   function startEditRole(role: AdminRole) {
     setEditingRoleId(role.id)
     setEditRoleName(role.name)
@@ -1415,7 +1423,13 @@ export default function Dashboard({
   return (
     <main className="dashboard-shell">
       <header className="dashboard-header">
-        <div className="dashboard-brand">
+        <button
+          type="button"
+          className="dashboard-brand dashboard-brand-button"
+          onClick={goToDashboardHome}
+          title="Go to dashboard home"
+          aria-label="Go to PolarCanvas dashboard home"
+        >
           <img
             className="site-logo"
             src="/assets/PC-Bord-Logo-only-transparent.png"
@@ -1425,7 +1439,7 @@ export default function Dashboard({
             <span>PolarCanvas</span>
             <em>Tech Portal</em>
           </div>
-        </div>
+        </button>
         <div className="dashboard-header-actions">
           <span className="dashboard-welcome">Welcome, {username}</span>
           <button className="logout-button" onClick={onLogout}>

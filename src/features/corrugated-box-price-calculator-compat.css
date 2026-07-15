@@ -666,11 +666,18 @@
 }
 
 .pc-corrugated-calculator-compat .box-result-card p {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
   margin: 0;
   color: #64748b;
   font-size: 0.76rem;
   font-weight: 600;
   line-height: 1.3;
+}
+
+.pc-corrugated-calculator-compat .box-result-card p svg {
+  flex: 0 0 auto;
 }
 
 .pc-corrugated-calculator-compat .box-result-card strong {
@@ -754,5 +761,136 @@
 @media (min-width: 860px) {
   .pc-corrugated-calculator-compat .box-specifications-inputs {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+/* Mobile-first calculator layout overrides. */
+.pc-corrugated-calculator-compat,
+.pc-corrugated-calculator-compat > .p-4,
+.pc-corrugated-calculator-compat form,
+.pc-corrugated-calculator-compat form > section,
+.pc-corrugated-calculator-compat .max-w-6xl {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pc-corrugated-calculator-compat {
+  overflow-x: hidden;
+}
+
+.pc-corrugated-calculator-compat .flex-col,
+.pc-corrugated-calculator-compat label,
+.pc-corrugated-calculator-compat input {
+  min-width: 0;
+}
+
+.pc-corrugated-calculator-compat input.text-xs {
+  width: 100%;
+}
+
+.pc-corrugated-calculator-compat .paper-layers-grid,
+.pc-corrugated-calculator-compat .rates-conversion-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 480px) {
+  .pc-corrugated-calculator-compat .paper-layers-grid,
+  .pc-corrugated-calculator-compat .rates-conversion-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 860px) {
+  .pc-corrugated-calculator-compat .paper-layers-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .pc-corrugated-calculator-compat .rates-conversion-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-card:has(.pc-corrugated-calculator-compat) {
+    padding: 0.75rem;
+  }
+
+  .dashboard-card:has(.pc-corrugated-calculator-compat) .dashboard-page-heading {
+    padding-bottom: 0.7rem;
+  }
+
+  .dashboard-card:has(.pc-corrugated-calculator-compat) .dashboard-page-heading h2 {
+    font-size: 1.05rem;
+  }
+
+  .dashboard-card:has(.pc-corrugated-calculator-compat) .dashboard-page-heading p {
+    font-size: 0.78rem;
+  }
+
+  .dashboard-details:has(> .pc-corrugated-calculator-compat) {
+    margin-top: 0.7rem;
+  }
+
+  .pc-corrugated-calculator-compat > .p-4 {
+    padding: 0.5rem;
+    border-radius: 6px;
+  }
+
+  .pc-corrugated-calculator-compat form > section {
+    padding: 0.6rem;
+  }
+
+  .pc-corrugated-calculator-compat .box-specifications-header,
+  .pc-corrugated-calculator-compat .paper-layers-header {
+    margin-right: -0.6rem;
+    margin-left: -0.6rem;
+    padding-right: 0.6rem;
+    padding-left: 0.6rem;
+  }
+
+  .pc-corrugated-calculator-compat .box-specifications-header p,
+  .pc-corrugated-calculator-compat .paper-layers-header .calculator-section-subtitle {
+    margin-left: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.74rem;
+  }
+
+  .pc-corrugated-calculator-compat form h2.text-xs {
+    font-size: 0.86rem;
+  }
+
+  .pc-corrugated-calculator-compat input.text-xs {
+    min-height: 42px;
+    font-size: 1rem;
+  }
+
+  .pc-corrugated-calculator-compat .calculator-refresh-button {
+    min-height: 38px;
+  }
+
+  .pc-corrugated-calculator-compat .paper-layer-block {
+    padding: 0.55rem;
+  }
+
+  .pc-corrugated-calculator-compat .box-specifications-results {
+    gap: 0.45rem;
+  }
+
+  .pc-corrugated-calculator-compat .box-result-card {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 380px) {
+  .dashboard-card:has(.pc-corrugated-calculator-compat) {
+    padding: 0.55rem;
+  }
+
+  .pc-corrugated-calculator-compat > .p-4 {
+    padding: 0.4rem;
+  }
+
+  .pc-corrugated-calculator-compat .paper-layer-block > .grid.grid-cols-2 {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Ruler } from 'lucide-react';
+import { BadgeIndianRupee, ReceiptIndianRupee, Ruler, Weight } from 'lucide-react';
 import LabelInput from './LabelInput';
 
 type N = number | '';
@@ -43,15 +43,15 @@ const BoxDimensions: React.FC<BoxDimensionsProps> = ({
 
       <div className="box-specifications-results" aria-live="polite" aria-atomic="true">
         <div className="box-result-card">
-          <p>Box Weight</p>
+          <p><Weight size={14} aria-hidden="true" /> Box Weight</p>
           <strong>{boxWeight.toFixed(3)} kg</strong>
         </div>
         <div className="box-result-card">
-          <p>Total Cost</p>
+          <p><ReceiptIndianRupee size={14} aria-hidden="true" /> Total Cost</p>
           <strong>₹{totalCost.toFixed(2)}</strong>
         </div>
         <div className="box-result-card selling-price">
-          <p>Selling Price</p>
+          <p><BadgeIndianRupee size={14} aria-hidden="true" /> Selling Price</p>
           <strong>₹{price.toFixed(2)}</strong>
         </div>
       </div>

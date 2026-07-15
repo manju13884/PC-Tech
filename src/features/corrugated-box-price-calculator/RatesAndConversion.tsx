@@ -22,7 +22,7 @@ const RatesAndConversion: React.FC<RatesAndConversionProps> = ({
       <BadgePercent size={16} strokeWidth={2} aria-hidden="true" />
       <span>Rates & Conversion</span>
     </h2>
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+    <div className="rates-conversion-grid grid grid-cols-2 sm:grid-cols-5 gap-2">
       <LabelInput label="Rate/KG"   value={ratePerKg}        onChange={(e) => onRatePerKgChange(e.target.value)} />
       <LabelInput label="Val/Box"   value={valueBox.toFixed(3)} onChange={() => {}} readOnly isBold calculated />
       <LabelInput label="Printing"  value={printingCharges}  onChange={(e) => onPrintingChargesChange(e.target.value)} />
