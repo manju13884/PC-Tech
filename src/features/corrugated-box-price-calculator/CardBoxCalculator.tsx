@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import BoxDimensions from './BoxDimensions';
 import PaperLayers from './PaperLayers';
 import RatesAndConversion from './RatesAndConversion';
@@ -37,6 +38,13 @@ const CardBoxCalculator: React.FC = () => {
   const [aFluteBF, setAFluteBF] = useState<N>('');
   const [aLinerGsm, setALinerGsm] = useState<N>('');
   const [aLinerBF, setALinerBF] = useState<N>('');
+  const [topPr, setTopPr] = useState<N>(DEFAULT_VALUES.prices.topPr);
+  const [bFlutePr, setBFlutePr] = useState<N>(DEFAULT_VALUES.prices.bFlutePr);
+  const [bLinerPr, setBLinerPr] = useState<N>(DEFAULT_VALUES.prices.bLinerPr);
+  const [cFlutePr, setCFlutePr] = useState<N>(DEFAULT_VALUES.prices.cFlutePr);
+  const [cLinerPr, setCLinerPr] = useState<N>(DEFAULT_VALUES.prices.cLinerPr);
+  const [aFlutePr, setAFlutePr] = useState<N>(DEFAULT_VALUES.prices.aFlutePr);
+  const [aLinerPr, setALinerPr] = useState<N>(DEFAULT_VALUES.prices.aLinerPr);
 
   // Conversion — pre-filled on page load
   const [ratePerKg, setRatePerKg] = useState<N>(10);
@@ -74,8 +82,7 @@ const CardBoxCalculator: React.FC = () => {
 
     const costPerBox = calculateCostPerBox(
       wprTop, wprBF, wprBL, wprCF, wprCL, wprAF, wprAL,
-      DEFAULT_VALUES.prices.topPr, DEFAULT_VALUES.prices.bFlutePr, DEFAULT_VALUES.prices.bLinerPr,
-      DEFAULT_VALUES.prices.cFlutePr, DEFAULT_VALUES.prices.cLinerPr, DEFAULT_VALUES.prices.aFlutePr, DEFAULT_VALUES.prices.aLinerPr
+      n(topPr), n(bFlutePr), n(bLinerPr), n(cFlutePr), n(cLinerPr), n(aFlutePr), n(aLinerPr)
     );
 
     const { totalCost: newTotalCost, price: newPrice } = calculateFinalPrice(
@@ -89,6 +96,7 @@ const CardBoxCalculator: React.FC = () => {
     topGSM, topBF, bFluteGsm, bFluteBF, bLinerGsm, bLinerBF,
     cFluteGsm, cFluteBF, cLinerGsm, cLinerBF,
     aFluteGsm, aFluteBF, aLinerGsm, aLinerBF,
+    topPr, bFlutePr, bLinerPr, cFlutePr, cLinerPr, aFlutePr, aLinerPr,
     ratePerKg, printingCharges, transportCharges, margin,
   ]);
 
@@ -101,21 +109,28 @@ const CardBoxCalculator: React.FC = () => {
     setCLinerGsm(''); setCLinerBF('');
     setAFluteGsm(''); setAFluteBF('');
     setALinerGsm(''); setALinerBF('');
+    setTopPr(DEFAULT_VALUES.prices.topPr);
+    setBFlutePr(DEFAULT_VALUES.prices.bFlutePr);
+    setBLinerPr(DEFAULT_VALUES.prices.bLinerPr);
+    setCFlutePr(DEFAULT_VALUES.prices.cFlutePr);
+    setCLinerPr(DEFAULT_VALUES.prices.cLinerPr);
+    setAFlutePr(DEFAULT_VALUES.prices.aFlutePr);
+    setALinerPr(DEFAULT_VALUES.prices.aLinerPr);
     setRatePerKg(10); setPrintingCharges('');
     setTransportCharges(''); setMargin(5);
   };
 
   const set = (v: string) => v === '' ? '' : Number(v) as N;
 
-  const handleLayerChange = (layer: string, field: 'gsm' | 'bf', value: string) => {
-    const setters: Record<string, Record<'gsm' | 'bf', (val: N) => void>> = {
-      top:    { gsm: setTopGSM,    bf: setTopBF    },
-      bFlute: { gsm: setBFluteGsm, bf: setBFluteBF },
-      bLiner: { gsm: setBLinerGsm, bf: setBLinerBF },
-      cFlute: { gsm: setCFluteGsm, bf: setCFluteBF },
-      cLiner: { gsm: setCLinerGsm, bf: setCLinerBF },
-      aFlute: { gsm: setAFluteGsm, bf: setAFluteBF },
-      aLiner: { gsm: setALinerGsm, bf: setALinerBF },
+  const handleLayerChange = (layer: string, field: 'gsm' | 'bf' | 'price', value: string) => {
+    const setters: Record<string, Record<'gsm' | 'bf' | 'price', (val: N) => void>> = {
+      top:    { gsm: setTopGSM,    bf: setTopBF,    price: setTopPr    },
+      bFlute: { gsm: setBFluteGsm, bf: setBFluteBF, price: setBFlutePr },
+      bLiner: { gsm: setBLinerGsm, bf: setBLinerBF, price: setBLinerPr },
+      cFlute: { gsm: setCFluteGsm, bf: setCFluteBF, price: setCFlutePr },
+      cLiner: { gsm: setCLinerGsm, bf: setCLinerBF, price: setCLinerPr },
+      aFlute: { gsm: setAFluteGsm, bf: setAFluteBF, price: setAFlutePr },
+      aLiner: { gsm: setALinerGsm, bf: setALinerBF, price: setALinerPr },
     };
     setters[layer][field](set(value));
   };
@@ -125,7 +140,10 @@ const CardBoxCalculator: React.FC = () => {
       <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-lg sm:text-2xl font-bold text-blue-600">Card Box Calculator</h1>
-          <button onClick={resetAll} className="px-3 py-1 text-xs sm:text-sm text-red-600 font-semibold rounded hover:bg-red-50" title="Refresh">↻</button>
+          <button type="button" onClick={resetAll} className="calculator-refresh-button" title="Reset calculator">
+            <RotateCcw size={16} strokeWidth={2} aria-hidden="true" />
+            <span>Reset</span>
+          </button>
         </div>
 
         <form className="grid grid-cols-1 gap-4 sm:gap-6">
@@ -143,13 +161,13 @@ const CardBoxCalculator: React.FC = () => {
           <section className="bg-white p-2 sm:p-4 rounded shadow">
             <PaperLayers
               layers={{
-                top:    { gsm: topGSM,    bf: topBF    },
-                bFlute: { gsm: bFluteGsm, bf: bFluteBF },
-                bLiner: { gsm: bLinerGsm, bf: bLinerBF },
-                cFlute: { gsm: cFluteGsm, bf: cFluteBF },
-                cLiner: { gsm: cLinerGsm, bf: cLinerBF },
-                aFlute: { gsm: aFluteGsm, bf: aFluteBF },
-                aLiner: { gsm: aLinerGsm, bf: aLinerBF },
+                top:    { gsm: topGSM,    bf: topBF,    price: topPr    },
+                bFlute: { gsm: bFluteGsm, bf: bFluteBF, price: bFlutePr },
+                bLiner: { gsm: bLinerGsm, bf: bLinerBF, price: bLinerPr },
+                cFlute: { gsm: cFluteGsm, bf: cFluteBF, price: cFlutePr },
+                cLiner: { gsm: cLinerGsm, bf: cLinerBF, price: cLinerPr },
+                aFlute: { gsm: aFluteGsm, bf: aFluteBF, price: aFlutePr },
+                aLiner: { gsm: aLinerGsm, bf: aLinerBF, price: aLinerPr },
               }}
               onLayerChange={handleLayerChange}
             />
