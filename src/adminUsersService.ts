@@ -1,6 +1,7 @@
 export interface AdminUser {
   id: number
   email: string
+  mobileNo: string
   fullName: string
   role: string
   status: string
@@ -49,6 +50,7 @@ function isAdminUser(value: unknown): value is AdminUser {
   return (
     typeof user.id === 'number' &&
     typeof user.email === 'string' &&
+    typeof user.mobileNo === 'string' &&
     typeof user.fullName === 'string' &&
     typeof user.role === 'string' &&
     typeof user.status === 'string' &&
@@ -111,7 +113,7 @@ async function readUserResponse(response: Response): Promise<AdminUser> {
 
 export async function updateAdminUser(
   userId: number,
-  values: { email: string; fullName: string; role: string },
+  values: { email: string; mobileNo: string; fullName: string; role: string },
 ): Promise<AdminUser> {
   const response = await fetch(`/api/auth/users/${userId}`, {
     method: 'PATCH',
@@ -183,6 +185,7 @@ export async function resetAdminUserPassword(userId: number): Promise<AdminUser>
 export async function createAdminUser(values: {
   fullName: string
   email: string
+  mobileNo: string
   role: string
 }): Promise<CreateAdminUserResult> {
   const response = await fetch('/api/auth/users', {

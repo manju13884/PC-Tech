@@ -936,7 +936,22 @@ main.app-shell::after {
 
 .admin-users-management-table {
   table-layout: fixed;
-  min-width: 0;
+  min-width: 1180px;
+}
+
+.admin-users-management-wrap {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+.admin-users-management-table th,
+.admin-users-management-table td {
+  padding-right: 0.4rem;
+  padding-left: 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-access-table {
@@ -1073,41 +1088,73 @@ main.app-shell::after {
   border-bottom: 0;
 }
 
-.admin-users-management-table th:last-child,
-.admin-users-management-table td:last-child {
-  width: 25%;
-}
-
 .admin-users-management-table th:nth-child(1),
 .admin-users-management-table td:nth-child(1) {
-  width: 4%;
+  width: 48px;
 }
 
 .admin-users-management-table th:nth-child(2),
 .admin-users-management-table td:nth-child(2) {
-  width: 10%;
+  width: 140px;
 }
 
 .admin-users-management-table th:nth-child(3),
 .admin-users-management-table td:nth-child(3) {
-  width: 22%;
+  width: 205px;
 }
 
 .admin-users-management-table th:nth-child(4),
 .admin-users-management-table td:nth-child(4) {
-  width: 11%;
+  width: 140px;
 }
 
 .admin-users-management-table th:nth-child(5),
 .admin-users-management-table td:nth-child(5) {
-  width: 9%;
+  width: 105px;
 }
 
 .admin-users-management-table th:nth-child(6),
-.admin-users-management-table td:nth-child(6),
+.admin-users-management-table td:nth-child(6) {
+  width: 88px;
+}
+
 .admin-users-management-table th:nth-child(7),
 .admin-users-management-table td:nth-child(7) {
-  width: 9.5%;
+  width: 115px;
+}
+
+.admin-users-management-table th:nth-child(8),
+.admin-users-management-table td:nth-child(8) {
+  width: 115px;
+}
+
+.admin-users-management-table th:nth-child(9),
+.admin-users-management-table td:nth-child(9) {
+  width: 224px;
+}
+
+.admin-users-management-table .admin-inline-input {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 0.32rem 0.42rem;
+  border-color: #b8c5d6;
+  background: #f8fbff;
+  font-size: 0.72rem;
+}
+
+.admin-users-management-table .admin-inline-input:focus {
+  border-color: #3b82f6;
+  outline: 2px solid rgba(59, 130, 246, 0.16);
+  outline-offset: 1px;
+  background: #ffffff;
+}
+
+.admin-users-management-table .admin-inline-input:disabled {
+  cursor: not-allowed;
+  background: #eef2f7;
+  color: #64748b;
 }
 
 .admin-status-pill {
@@ -1134,6 +1181,7 @@ main.app-shell::after {
 }
 
 .admin-row-actions {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   width: 100%;
@@ -1145,9 +1193,11 @@ main.app-shell::after {
 }
 
 .admin-row-actions button {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   flex: 1 1 0;
+  min-width: 0;
   justify-content: center;
   gap: 0.2rem;
   min-height: 24px;

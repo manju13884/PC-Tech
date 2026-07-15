@@ -84,6 +84,7 @@ const menuGroups: MenuGroup[] = [
 
 const menuItems = menuGroups.flatMap((group) => group.items)
 const defaultMenuKey = 'coc'
+const MOBILE_NO_PATTERN = /^\d{10}$/
 const coaAnalysisHeadings = ['Board GSM', 'GSM', 'Bursting Strength', 'Moisture', 'Ply'] as const
 type CoaAnalysisHeading = (typeof coaAnalysisHeadings)[number]
 type CoaAnalysisDefaults = Record<CoaAnalysisHeading, string>
@@ -419,6 +420,7 @@ export default function Dashboard({
   const [editingUserId, setEditingUserId] = useState<number | null>(null)
   const [editUserFullName, setEditUserFullName] = useState('')
   const [editUserEmail, setEditUserEmail] = useState('')
+  const [editUserMobileNo, setEditUserMobileNo] = useState('')
   const [editUserRole, setEditUserRole] = useState('')
   const [savingUserId, setSavingUserId] = useState<number | null>(null)
   const [userPendingActivate, setUserPendingActivate] = useState<AdminUser | null>(null)
@@ -427,6 +429,7 @@ export default function Dashboard({
   const [createUserOpen, setCreateUserOpen] = useState(false)
   const [createUserFullName, setCreateUserFullName] = useState('')
   const [createUserEmail, setCreateUserEmail] = useState('')
+  const [createUserMobileNo, setCreateUserMobileNo] = useState('')
   const [createUserRole, setCreateUserRole] = useState('')
   const [createUserEmailError, setCreateUserEmailError] = useState('')
   const [creatingUser, setCreatingUser] = useState(false)
@@ -1152,6 +1155,7 @@ export default function Dashboard({
     setEditingUserId(user.id)
     setEditUserFullName(user.fullName)
     setEditUserEmail(user.email)
+    setEditUserMobileNo(user.mobileNo)
     setEditUserRole(user.role)
     setRoleActionMessage('')
   }
@@ -1160,17 +1164,31 @@ export default function Dashboard({
     setEditingUserId(null)
     setEditUserFullName('')
     setEditUserEmail('')
+    setEditUserMobileNo('')
     setEditUserRole('')
     setRoleActionMessage('')
   }
 
   async function saveUser(userId: number) {
+    const mobileNo = editUserMobileNo.trim()
+    if (!mobileNo) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage('Mobile No. is required.')
+      return
+    }
+    if (!MOBILE_NO_PATTERN.test(mobileNo)) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage('Mobile No. must contain exactly 10 digits.')
+      return
+    }
+
     setSavingUserId(userId)
     setRoleActionMessage('')
 
     try {
       const updatedUser = await updateAdminUser(userId, {
         email: editUserEmail,
+        mobileNo,
         fullName: editUserFullName,
         role: editUserRole,
       })
@@ -1179,6 +1197,7 @@ export default function Dashboard({
       setEditingUserId(null)
       setEditUserFullName('')
       setEditUserEmail('')
+      setEditUserMobileNo('')
       setEditUserRole('')
       setRoleActionMessageType('success')
       setRoleActionMessage('User updated.')
@@ -1197,6 +1216,7 @@ export default function Dashboard({
     setCreateUserRole(firstAssignableRole?.name ?? '')
     setCreateUserFullName('')
     setCreateUserEmail('')
+    setCreateUserMobileNo('')
     setCreateUserEmailError('')
     setCreateUserOpen(true)
     setRoleActionMessage('')
@@ -1204,6 +1224,13 @@ export default function Dashboard({
 
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const mobileNo = createUserMobileNo.trim()
+    if (!MOBILE_NO_PATTERN.test(mobileNo)) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage('Mobile No. must contain exactly 10 digits.')
+      return
+    }
+
     setCreatingUser(true)
     setCreateUserEmailError('')
     setRoleActionMessage('')
@@ -1212,6 +1239,7 @@ export default function Dashboard({
       const result = await createAdminUser({
         fullName: createUserFullName,
         email: createUserEmail,
+        mobileNo,
         role: createUserRole,
       })
 
@@ -1219,6 +1247,7 @@ export default function Dashboard({
       setCreateUserOpen(false)
       setCreateUserFullName('')
       setCreateUserEmail('')
+      setCreateUserMobileNo('')
       setCreateUserRole('')
       setRoleActionMessageType('success')
       setRoleActionMessage('User created. User must change password on first login.')
@@ -1836,13 +1865,14 @@ export default function Dashboard({
                           <p className="admin-user-message">No users found.</p>
                         )}
                         {!adminUsersLoading && !adminUsersError && sortedAdminUsers.length > 0 && (
-                          <div className="admin-users-table-wrap">
+                          <div className="admin-users-table-wrap admin-users-management-wrap">
                             <table className="admin-users-table admin-users-management-table">
                               <thead>
                                 <tr>
                                   <th>ID</th>
                                   <th>Name</th>
                                   <th>Email</th>
+                                  <th>Mobile No.</th>
                                   <th>Role</th>
                                   <th>Status</th>
                                   <th>Created</th>
@@ -1877,6 +1907,24 @@ export default function Dashboard({
                                         />
                                       ) : (
                                         user.email
+                                      )}
+                                    </td>
+                                    <td>
+                                      {editingUserId === user.id ? (
+                                        <input
+                                          className="admin-inline-input"
+                                          type="tel"
+                                          value={editUserMobileNo}
+                                          onChange={(event) => setEditUserMobileNo(event.target.value.replace(/\D/g, '').slice(0, 10))}
+                                          disabled={savingUserId === user.id}
+                                          inputMode="numeric"
+                                          pattern="[0-9]{10}"
+                                          maxLength={10}
+                                          aria-label={`Mobile No. for ${user.fullName}`}
+                                          required
+                                        />
+                                      ) : (
+                                        user.mobileNo || '-'
                                       )}
                                     </td>
                                     <td>
@@ -2359,6 +2407,21 @@ export default function Dashboard({
                       {createUserEmailError && (
                         <p className="admin-field-error">{createUserEmailError}</p>
                       )}
+
+                      <label htmlFor="admin-create-user-mobile">Mobile No.</label>
+                      <input
+                        id="admin-create-user-mobile"
+                        type="tel"
+                        value={createUserMobileNo}
+                        onChange={(event) => setCreateUserMobileNo(event.target.value.replace(/\D/g, '').slice(0, 10))}
+                        disabled={creatingUser}
+                        autoComplete="tel"
+                        inputMode="numeric"
+                        pattern="[0-9]{10}"
+                        maxLength={10}
+                        placeholder="Enter 10-digit mobile number"
+                        required
+                      />
 
                       <label htmlFor="admin-create-user-role">Role</label>
                       <select
