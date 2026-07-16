@@ -42,6 +42,7 @@ interface PermissionUpdateRequest {
 
 const ALLOWED_MENU_KEYS = new Set([
   'corrugated-box-price',
+  'corrugated-box-price-advanced',
   'coc',
   'packing-slip',
   'coa',

@@ -1,11 +1,18 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Ban, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { Ban, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
 import { deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
+import AdvancedCorrugatedBoxCalculatorPage from './features/advanced-corrugated-box-calculator/AdvancedCorrugatedBoxCalculatorPage'
+import {
+  ADVANCED_BOX_CALCULATOR_DESCRIPTION,
+  ADVANCED_BOX_CALCULATOR_MENU_TITLE,
+  ADVANCED_BOX_CALCULATOR_ROUTE_KEY,
+  ADVANCED_BOX_CALCULATOR_TITLE,
+} from './features/advanced-corrugated-box-calculator/constants/advancedBoxCalculatorConstants'
 import CardBoxCalculator from './features/corrugated-box-price-calculator/CardBoxCalculator'
 import './features/corrugated-box-price-calculator-compat.css'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
@@ -15,6 +22,7 @@ import { loadPackingSlipLogo, loadPackingSlipTemplate } from './lib/packingSlipT
 interface MenuItem {
   key: string
   title: string
+  menuTitle?: string
   description: string
   icon: LucideIcon
 }
@@ -37,9 +45,17 @@ const menuGroups: MenuGroup[] = [
       {
         key: 'corrugated-box-price',
         title: 'Corrugated Box Price Calculator',
+        menuTitle: 'Box Price Calculator',
         description:
           'Estimate the cost of corrugated boxes based on size, material, and quantity for your packaging needs.',
         icon: Calculator,
+      },
+      {
+        key: ADVANCED_BOX_CALCULATOR_ROUTE_KEY,
+        title: ADVANCED_BOX_CALCULATOR_TITLE,
+        menuTitle: ADVANCED_BOX_CALCULATOR_MENU_TITLE,
+        description: ADVANCED_BOX_CALCULATOR_DESCRIPTION,
+        icon: SlidersHorizontal,
       },
     ],
   },
@@ -164,7 +180,7 @@ const accessMatrix: AccessMatrixItem[] = menuGroups.flatMap((group) => (
   group.items.map((item) => ({
     key: item.key,
     module: group.title,
-    subMenu: item.title,
+    subMenu: item.menuTitle ?? item.title,
   }))
 ))
 const accessRoleOrder = ['SUPERADMIN', 'ADMIN', 'SALES', 'ACCOUNTS', 'OPS']
@@ -1554,7 +1570,7 @@ export default function Dashboard({
                         <span className="menu-item-icon" aria-hidden="true">
                           <item.icon size={18} strokeWidth={1.8} />
                         </span>
-                        <span>{item.title}</span>
+                        <span>{item.menuTitle ?? item.title}</span>
                       </span>
                       <ChevronRight className="menu-item-chevron" size={16} aria-hidden="true" />
                     </button>
@@ -1567,7 +1583,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}`}>
             <header className="dashboard-page-heading">
               <h2>{selectedItem.title}</h2>
               <p>{selectedItem.description}</p>
@@ -1577,6 +1593,9 @@ export default function Dashboard({
                 <div className="pc-corrugated-calculator-compat">
                   <CardBoxCalculator />
                 </div>
+              )}
+              {selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY && (
+                <AdvancedCorrugatedBoxCalculatorPage />
               )}
               {selectedItem.key === 'coc' && (
                 <div className="coc-form">
