@@ -36,6 +36,7 @@ interface AuthenticationRow {
 
 const ALL_MENU_KEYS = [
   'corrugated-box-price',
+  'corrugated-box-price-advanced',
   'coc',
   'packing-slip',
   'coa',

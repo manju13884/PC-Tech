@@ -1,0 +1,345 @@
+.advanced-calculator-dashboard-page .dashboard-page-heading h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+.advanced-calculator-dashboard-page .dashboard-page-heading p {
+  margin: 0;
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-section {
+  overflow: hidden;
+  padding: 0.7rem;
+  border: 1px solid #dbe3ee;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.65rem;
+  padding: 0.48rem 0.65rem;
+  border-bottom: 1px solid #dbe3ee;
+  border-radius: 5px 5px 0 0;
+  background: #f8fafc;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-heading-copy {
+  min-width: 0;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: #172033;
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-header h2 svg {
+  flex: 0 0 auto;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-header p {
+  margin: 0 0 0 2rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  padding: 0.36rem 0.65rem;
+  border: 1px solid #8db9e8;
+  border-radius: 999px;
+  background: #dcecff;
+  color: #174f8f;
+  font-size: 0.8rem;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-badge svg {
+  flex: 0 0 auto;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-controls {
+  display: grid;
+  width: min(100%, 18rem);
+  gap: 0.25rem;
+  margin-bottom: 0.65rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-controls label {
+  color: #374151;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-input-row input {
+  width: min(100%, 14rem);
+  min-height: 38px;
+  padding: 0.52rem 0.68rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  background: #eff6ff;
+  color: #1f2937;
+  font-size: 0.84rem;
+  line-height: 1.3;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+  text-align: right;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-input-row input:focus {
+  border-color: #60a5fa;
+  outline: 0;
+  box-shadow: 0 0 0 3px rgb(96 165 250 / 20%);
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-input-row input[aria-invalid='true'] {
+  border-color: #dc2626;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-input-row span {
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-subsection-title {
+  margin: 0 0 0.35rem;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-sheet-summary,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-totals,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-sheet-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 0.65rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-sheet-summary .advanced-sheet-result-card,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-totals > div,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-width: 0;
+  min-height: 46px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #86b6e2;
+  border-radius: 6px;
+  background: #e7f1fb;
+  box-shadow: inset 4px 0 0 #3b82f6;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-sheet-summary .advanced-sheet-result-card p,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-totals span,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals span {
+  margin: 0;
+  color: #526175;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-sheet-summary .advanced-sheet-result-card strong,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-totals strong,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals strong {
+  color: #1e3a5f;
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-sheet-summary .advanced-sheet-result-card strong span {
+  color: #526175;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-result-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-result-label svg {
+  flex: 0 0 auto;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-table-wrap {
+  margin-bottom: 0.65rem;
+  overflow-x: auto;
+  border: 1px solid #d5dde8;
+  border-radius: 4px;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-table {
+  width: 100%;
+  min-width: 50rem;
+  border-collapse: collapse;
+  color: #334155;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-table th,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-table td {
+  padding: 0.38rem 0.55rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: right;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-table th {
+  background: #eef2f7;
+  color: #334155;
+  font-weight: 650;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-table th:first-child,
+.pc-advanced-corrugated-calculator .advanced-paper-weight-table td:first-child {
+  text-align: left;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-table tbody tr:nth-child(even) {
+  background: #fafcff;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-totals {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 0.5rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-totals .advanced-paper-weight-box-total {
+  border-color: #86b6e2;
+  background: #e7f1fb;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals > div {
+  min-height: 62px;
+  padding: 0.7rem 0.85rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals .advanced-paper-weight-grand-total {
+  border-color: #65bd84;
+  background: #def4e6;
+  box-shadow: inset 4px 0 0 #16a34a;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals .advanced-paper-weight-grand-total span {
+  color: #247044;
+  font-size: 0.84rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals .advanced-paper-weight-grand-total strong {
+  color: #166534;
+  font-size: 1.35rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals .advanced-paper-cost-total {
+  border-color: #9bbbd8;
+  background: #eaf2f9;
+  box-shadow: inset 4px 0 0 #3975a8;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals .advanced-paper-cost-total span {
+  color: #315f8c;
+  font-size: 0.84rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals .advanced-paper-cost-total strong {
+  color: #174d7c;
+  font-size: 1.35rem;
+}
+
+.pc-advanced-corrugated-calculator .advanced-paper-cost-message {
+  margin: -0.25rem 0 0.6rem;
+  color: #9a5b13;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 760px) {
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-sheet-summary,
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-totals,
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-badge {
+    margin-left: 2rem;
+  }
+
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-controls {
+    width: 100%;
+  }
+
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-input-row input {
+    width: 100%;
+  }
+
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-sheet-summary,
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-totals,
+  .pc-advanced-corrugated-calculator .advanced-paper-weight-primary-totals {
+    grid-template-columns: 1fr;
+  }
+}
