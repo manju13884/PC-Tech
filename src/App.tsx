@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import Dashboard from './Dashboard'
+import Dashboard, { getDefaultPermittedMenuKey } from './Dashboard'
 
 interface AuthenticatedUser {
   id: number
@@ -24,6 +24,14 @@ interface BasicResponse {
 }
 
 const currentYear = new Date().getFullYear()
+
+function navigateToDefaultAuthenticatedPage(menuAccess: string[]) {
+  const defaultKey = getDefaultPermittedMenuKey(menuAccess)
+
+  if (defaultKey) {
+    window.history.replaceState(null, '', `#${defaultKey}`)
+  }
+}
 
 function App() {
   const initialSetupToken = new URLSearchParams(window.location.search).get('setup_token') ?? ''
@@ -109,6 +117,7 @@ function App() {
       }
 
       if (data.success && data.user) {
+        navigateToDefaultAuthenticatedPage(data.user.menuAccess)
         setUser(data.user)
         setEmail(data.user.email)
         setMessage('')
@@ -164,6 +173,7 @@ function App() {
       }
 
       setUser((currentUser) => currentUser ? { ...currentUser, mustChangePassword: false } : currentUser)
+      navigateToDefaultAuthenticatedPage(user?.menuAccess ?? [])
       setPassword('')
       setChangePassword('')
       setChangeConfirmPassword('')
