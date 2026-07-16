@@ -157,8 +157,9 @@ function scaleCoaSeal(zip: PizZip) {
     }
 
     sealFound = true
-
-    return drawing
+    return drawing.replace(/\b(cx|cy)="(\d+)"/g, (_, dimension, value) => (
+      `${dimension}="${Math.round(Number(value) * 0.5)}"`
+    ))
   })
 
   if (!sealFound) {

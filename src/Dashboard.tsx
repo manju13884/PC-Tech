@@ -269,7 +269,7 @@ function applyCocPageBorder(previewElement: HTMLElement) {
 function styleCocItemTable(previewElement: HTMLElement) {
   const itemTable = Array.from(previewElement.querySelectorAll('table')).find((table) => {
     const text = (table.textContent ?? '').replace(/\s+/g, ' ')
-    return text.includes('Sl No') && text.includes('Item & Description') && text.includes('Quantity')
+    return text.includes('Sl No') && text.includes('ITEM & DESCRIPTION') && text.includes('QUANTITY')
   })
   const headerRow = itemTable?.querySelector('tr')
 
@@ -341,6 +341,37 @@ function ensureCoaDocumentFooter(previewElement: HTMLElement) {
     footerLine.textContent = `Polar Canvas Technologies Private Limited | Page ${index + 1} of ${totalPages}`
     footer.replaceChildren(footerLine)
     footer.classList.add('coa-document-footer')
+  })
+}
+
+function ensureCocDocumentFooter(previewElement: HTMLElement) {
+  const pages = Array.from(previewElement.querySelectorAll<HTMLElement>('section.docx'))
+  const totalPages = pages.length
+
+  pages.forEach((page, index) => {
+    let footer = page.querySelector<HTMLElement>(':scope > footer')
+
+    if (!footer) {
+      footer = document.createElement('footer')
+      page.appendChild(footer)
+    }
+
+    const footerLine = document.createElement('p')
+    const currentPage = document.createElement('span')
+    const totalPageCount = document.createElement('span')
+
+    currentPage.className = 'coc-current-page'
+    currentPage.textContent = String(index + 1)
+    totalPageCount.className = 'coc-total-pages'
+    totalPageCount.textContent = String(totalPages)
+    footerLine.append(
+      'Polar Canvas Technologies Private Limited | Page ',
+      currentPage,
+      ' of ',
+      totalPageCount,
+    )
+    footer.replaceChildren(footerLine)
+    footer.classList.add('coc-document-footer')
   })
 }
 
@@ -637,6 +668,7 @@ export default function Dashboard({
           styleCocItemTable(previewElement)
           styleCocDetailLines(previewElement)
           removeEmptyCocPages(previewElement)
+          ensureCocDocumentFooter(previewElement)
           fitCocPreview(previewElement)
           previewResizeObserver = new ResizeObserver(() => fitCocPreview(previewElement))
           previewResizeObserver.observe(previewElement)
@@ -1052,7 +1084,9 @@ export default function Dashboard({
       ? 'coc-preview-document packing-slip-preview-document'
       : previewElement.classList.contains('coa-preview-document')
         ? 'coc-preview-document coa-preview-document'
-        : 'coc-preview-document'
+        : previewElement.classList.contains('coc-certificate-preview-document')
+          ? 'coc-preview-document coc-certificate-preview-document'
+          : 'coc-preview-document'
 
     printWindow.document.open()
     printWindow.document.write(
@@ -1641,7 +1675,7 @@ export default function Dashboard({
                       {previewError && (
                         <p style={{ margin: 0, padding: '1rem', color: '#b42318', background: '#fff' }}>{previewError}</p>
                       )}
-                      <div ref={previewRef} className="coc-preview-document" />
+                      <div ref={previewRef} className="coc-preview-document coc-certificate-preview-document" />
                     </div>
                   )}
                 </div>
