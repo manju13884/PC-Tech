@@ -84,7 +84,7 @@ const menuGroups: MenuGroup[] = [
 ]
 
 const menuItems = menuGroups.flatMap((group) => group.items)
-const defaultMenuKey = 'coc'
+export const defaultMenuKey = 'corrugated-box-price'
 const MOBILE_NO_PATTERN = /^\d{10}$/
 const coaAnalysisHeadings = ['Board GSM', 'GSM', 'Bursting Strength', 'Moisture', 'Ply'] as const
 type CoaAnalysisHeading = (typeof coaAnalysisHeadings)[number]
@@ -169,10 +169,20 @@ const accessMatrix: AccessMatrixItem[] = menuGroups.flatMap((group) => (
 ))
 const accessRoleOrder = ['SUPERADMIN', 'ADMIN', 'SALES', 'ACCOUNTS', 'OPS']
 
-function getInitialMenuKey(): string {
+export function getDefaultPermittedMenuKey(menuAccess: string[]): string | undefined {
+  const allowedKeys = new Set(menuAccess)
+
+  return allowedKeys.has(defaultMenuKey)
+    ? defaultMenuKey
+    : menuItems.find((item) => allowedKeys.has(item.key))?.key
+}
+
+function getInitialMenuKey(menuAccess: string[]): string {
   const hashKey = window.location.hash.replace(/^#/, '')
 
-  return menuItems.some((item) => item.key === hashKey) ? hashKey : defaultMenuKey
+  return menuItems.some((item) => item.key === hashKey)
+    ? hashKey
+    : getDefaultPermittedMenuKey(menuAccess) ?? defaultMenuKey
 }
 
 function getVisibleMenuGroups(menuAccess: string[]): MenuGroup[] {
@@ -419,7 +429,7 @@ export default function Dashboard({
   menuAccess: string[]
   onLogout: () => void
 }) {
-  const [selectedKey, setSelectedKey] = useState(getInitialMenuKey)
+  const [selectedKey, setSelectedKey] = useState(() => getInitialMenuKey(menuAccess))
   const [customerId, setCustomerId] = useState('')
   const [invoiceId, setInvoiceId] = useState('')
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -1179,7 +1189,7 @@ export default function Dashboard({
   }
 
   function goToDashboardHome() {
-    const homeKey = visibleMenuKeys.has(defaultMenuKey) ? defaultMenuKey : visibleMenuItems[0]?.key
+    const homeKey = getDefaultPermittedMenuKey(menuAccess)
 
     if (homeKey) {
       selectMenuItem(homeKey)
