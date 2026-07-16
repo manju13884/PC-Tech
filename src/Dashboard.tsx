@@ -8,6 +8,7 @@ import { getCustomers, getCustomersError, type Customer } from './customerServic
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
 import CardBoxCalculator from './features/corrugated-box-price-calculator/CardBoxCalculator'
 import './features/corrugated-box-price-calculator-compat.css'
+import { loadCoaTemplate } from './lib/coaTemplateLoader'
 import { loadCocTemplate } from './lib/templateLoader'
 import { loadPackingSlipLogo, loadPackingSlipTemplate } from './lib/packingSlipTemplateLoader'
 
@@ -276,6 +277,15 @@ function styleCocItemTable(previewElement: HTMLElement) {
   headerRow?.classList.add('coc-item-table-header')
 }
 
+function styleCoaAnalysisTable(previewElement: HTMLElement) {
+  const analysisTable = Array.from(previewElement.querySelectorAll('table')).find((table) => {
+    const text = (table.textContent ?? '').replace(/\s+/g, ' ')
+    return text.includes('Sl No') && text.includes('Board GSM') && text.includes('Bursting Strength')
+  })
+
+  analysisTable?.classList.add('coa-preview-analysis-table')
+}
+
 function styleCocDetailLines(previewElement: HTMLElement) {
   for (const paragraph of previewElement.querySelectorAll('article p')) {
     const text = (paragraph.textContent ?? '').trim()
@@ -317,6 +327,7 @@ function formatAdminDate(value: string): string {
 
 function ensureCoaDocumentFooter(previewElement: HTMLElement) {
   const pages = Array.from(previewElement.querySelectorAll<HTMLElement>('section.docx'))
+  const totalPages = pages.length
 
   pages.forEach((page, index) => {
     let footer = page.querySelector<HTMLElement>(':scope > footer')
@@ -327,7 +338,7 @@ function ensureCoaDocumentFooter(previewElement: HTMLElement) {
     }
 
     const footerLine = document.createElement('p')
-    footerLine.textContent = `Polar Canvas Technologies Private Limited | Page ${index + 1} of ${pages.length}`
+    footerLine.textContent = `Polar Canvas Technologies Private Limited | Page ${index + 1} of ${totalPages}`
     footer.replaceChildren(footerLine)
     footer.classList.add('coa-document-footer')
   })
@@ -727,6 +738,7 @@ export default function Dashboard({
           alignCocRegistrationLine(previewElement)
           applyCocPageBorder(previewElement)
           styleCocDetailLines(previewElement)
+          styleCoaAnalysisTable(previewElement)
           removeEmptyCocPages(previewElement)
           ensureCoaDocumentFooter(previewElement)
           fitCocPreview(previewElement)
@@ -981,7 +993,7 @@ export default function Dashboard({
           ply: getFieldValue(6),
         }
       })
-      const template = await loadCocTemplate()
+      const template = await loadCoaTemplate()
       const { generateCoaTemplate } = await import('./lib/coaGenerator')
 
       setCoaPreviewTemplate(generateCoaTemplate(template, {
@@ -989,6 +1001,7 @@ export default function Dashboard({
         customer: coaInvoiceDetail.customer_name,
         poNumber: coaInvoiceDetail.po_number,
         invoiceNumber: coaInvoiceDetail.invoice_number,
+        refNumber: coaInvoiceDetail.sales_order_number || '-',
         items: analysisItems,
       }))
     } catch {
@@ -1037,7 +1050,9 @@ export default function Dashboard({
     const singlePageClass = singlePage ? ' single-page-coc-print' : ''
     const previewClassName = previewElement.classList.contains('packing-slip-preview-document')
       ? 'coc-preview-document packing-slip-preview-document'
-      : 'coc-preview-document'
+      : previewElement.classList.contains('coa-preview-document')
+        ? 'coc-preview-document coa-preview-document'
+        : 'coc-preview-document'
 
     printWindow.document.open()
     printWindow.document.write(
@@ -1805,7 +1820,7 @@ export default function Dashboard({
                       {coaPreviewError && (
                         <p style={{ margin: 0, padding: '1rem', color: '#b42318', background: '#fff' }}>{coaPreviewError}</p>
                       )}
-                      <div ref={coaPreviewRef} className="coc-preview-document" />
+                      <div ref={coaPreviewRef} className="coc-preview-document coa-preview-document" />
                     </div>
                   )}
                 </div>
