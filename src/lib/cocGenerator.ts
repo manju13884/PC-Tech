@@ -37,8 +37,8 @@ function addItemRowLoop(zip: PizZip) {
   }
 
   let itemRowFound = false
-  const titleCaseQuantityXml = documentXml.replace('<w:t>QUANTITY</w:t>', '<w:t>Quantity</w:t>')
-  const updatedRowsXml = titleCaseQuantityXml.replace(/<w:tr\b[\s\S]*?<\/w:tr>/g, (row) => {
+  const exactHeadingXml = documentXml.replace('<w:t>Item &amp; Description</w:t>', '<w:t>ITEM &amp; DESCRIPTION</w:t>')
+  const updatedRowsXml = exactHeadingXml.replace(/<w:tr\b[\s\S]*?<\/w:tr>/g, (row) => {
     const autoHeightRow = row.replace(/<w:trHeight\b[^>]*\/>/g, '')
 
     if (autoHeightRow.includes('<w:t>Sl No</w:t>')) {
@@ -71,7 +71,7 @@ function addItemRowLoop(zip: PizZip) {
   }
 
   const updatedXml = updatedRowsXml.replace(/<w:tbl\b[\s\S]*?<\/w:tbl>/g, (table) => {
-    if (!table.includes('Item &amp; Description')) {
+    if (!table.includes('ITEM &amp; DESCRIPTION')) {
       return table
     }
 
@@ -113,10 +113,20 @@ function reduceCocBodyFontSize(zip: PizZip) {
   }
 
   const bodyXml = documentXml.slice(bodyStart).replace(/<w:(sz|szCs) w:val="(\d+)"\/>/g, (_, tag, value) => (
-    `<w:${tag} w:val="${Math.max(2, Number(value) - 2)}"/>`
+    `<w:${tag} w:val="${Math.max(2, Number(value) - 4)}"/>`
   ))
 
-  zip.file('word/document.xml', documentXml.slice(0, bodyStart) + bodyXml)
+  const titleXml = documentXml.slice(0, bodyStart).replace(/<w:p\b[\s\S]*?<\/w:p>/g, (paragraph) => {
+    if (!paragraph.includes('CERTIFICATE OF COMPLIANCE')) {
+      return paragraph
+    }
+
+    return paragraph.replace(/<w:(sz|szCs) w:val="(\d+)"\/>/g, (_, tag, value) => (
+      `<w:${tag} w:val="${Math.max(2, Number(value) - 4)}"/>`
+    ))
+  })
+
+  zip.file('word/document.xml', titleXml + bodyXml)
 }
 
 function tightenInvoiceDetailSpacing(zip: PizZip) {
@@ -142,7 +152,7 @@ function tightenInvoiceDetailSpacing(zip: PizZip) {
   zip.file('word/document.xml', updatedXml)
 }
 
-function scaleCocSeal(zip: PizZip) {
+function reduceCocSealSize(zip: PizZip) {
   const documentFile = zip.file('word/document.xml')
   const documentXml = documentFile?.asText()
 
@@ -157,9 +167,8 @@ function scaleCocSeal(zip: PizZip) {
     }
 
     sealFound = true
-
     return drawing.replace(/\b(cx|cy)="(\d+)"/g, (_, dimension, value) => (
-      `${dimension}="${Math.round(Number(value) * 0.6)}"`
+      `${dimension}="${Math.round(Number(value) * 0.5)}"`
     ))
   })
 
@@ -249,10 +258,10 @@ function setCocPageLayout(zip: PizZip) {
     const withoutExistingBorder = section.replace(/<w:pgBorders\b[\s\S]*?<\/w:pgBorders>/g, '')
     const equalMargins = withoutExistingBorder.replace(/<w:pgMar\b[^>]*\/>/, (pageMargins) => (
       pageMargins
-        .replace(/w:left="[^"]*"/, 'w:left="720"')
+        .replace(/w:left="[^"]*"/, 'w:left="1440"')
         .replace(/w:top="[^"]*"/, 'w:top="2160"')
         .replace(/w:bottom="[^"]*"/, 'w:bottom="1440"')
-        .replace(/w:right="[^"]*"/, 'w:right="720"')
+        .replace(/w:right="[^"]*"/, 'w:right="1440"')
     ))
 
     return equalMargins.replace(/(<w:pgMar\b[^>]*\/>)/, `$1${pageBorder}`)
@@ -268,7 +277,7 @@ export function generateCocTemplate(template: ArrayBuffer, values: CocInvoiceVal
   addItemRowLoop(zip)
   reduceCocBodyFontSize(zip)
   tightenInvoiceDetailSpacing(zip)
-  scaleCocSeal(zip)
+  reduceCocSealSize(zip)
   setCocPageLayout(zip)
   const document = new Docxtemplater(zip, {
     delimiters: {
