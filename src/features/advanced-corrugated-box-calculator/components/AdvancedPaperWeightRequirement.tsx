@@ -3,12 +3,14 @@ import { BadgeIndianRupee, Layers2, Layers3, Package, Scale, Waves, Weight } fro
 import { calculateAdvancedPaperWeight } from '../calculations/advancedPaperWeightCalculator'
 import type { AdvancedNumericValue } from '../types/advancedBoxCalculatorTypes'
 import type { AdvancedPaperWeightPly } from '../types/advancedPaperWeightTypes'
+import type { ProductionBoxPly } from '../types/advancedBoxCalculatorTypes'
 import {
   validateAdvancedPaperWeightInput,
   validateAdvancedQuantity,
 } from '../validation/advancedPaperWeightValidation'
 
 interface AdvancedPaperWeightRequirementProps {
+  boxPly: ProductionBoxPly
   length: AdvancedNumericValue
   breadth: AdvancedNumericValue
   height: AdvancedNumericValue
@@ -17,17 +19,22 @@ interface AdvancedPaperWeightRequirementProps {
   linerGsm: AdvancedNumericValue
   flute1Gsm: AdvancedNumericValue
   liner1Gsm: AdvancedNumericValue
+  flute2Gsm: AdvancedNumericValue
+  liner2Gsm: AdvancedNumericValue
   topRatePerKg: AdvancedNumericValue
   fluteRatePerKg: AdvancedNumericValue
   linerRatePerKg: AdvancedNumericValue
   flute1RatePerKg: AdvancedNumericValue
   liner1RatePerKg: AdvancedNumericValue
+  flute2RatePerKg: AdvancedNumericValue
+  liner2RatePerKg: AdvancedNumericValue
   boxWeight: number
 }
 
 const numericValue = (value: AdvancedNumericValue): number => value === '' ? 0 : Number(value)
 
 export default function AdvancedPaperWeightRequirement({
+  boxPly,
   length,
   breadth,
   height,
@@ -36,18 +43,22 @@ export default function AdvancedPaperWeightRequirement({
   linerGsm,
   flute1Gsm,
   liner1Gsm,
+  flute2Gsm,
+  liner2Gsm,
   topRatePerKg,
   fluteRatePerKg,
   linerRatePerKg,
   flute1RatePerKg,
   liner1RatePerKg,
+  flute2RatePerKg,
+  liner2RatePerKg,
   boxWeight,
 }: AdvancedPaperWeightRequirementProps) {
   const [quantity, setQuantity] = useState(() => boxWeight < 1 ? '1000' : '500')
   const [quantityTouched, setQuantityTouched] = useState(false)
   const [quantityEdited, setQuantityEdited] = useState(false)
   const quantityError = quantityTouched || quantity !== '' ? validateAdvancedQuantity(quantity) : null
-  const ply: AdvancedPaperWeightPly = flute1Gsm !== '' || liner1Gsm !== '' ? 5 : 3
+  const ply: AdvancedPaperWeightPly = boxPly
 
   useEffect(() => {
     if (!quantityEdited) {
@@ -69,6 +80,8 @@ export default function AdvancedPaperWeightRequirement({
       linerGsm: numericValue(linerGsm),
       flute1Gsm: numericValue(flute1Gsm),
       liner1Gsm: numericValue(liner1Gsm),
+      flute2Gsm: numericValue(flute2Gsm),
+      liner2Gsm: numericValue(liner2Gsm),
     })
 
     return input ? calculateAdvancedPaperWeight({
@@ -78,17 +91,23 @@ export default function AdvancedPaperWeightRequirement({
       linerRatePerKg: numericValue(linerRatePerKg),
       flute1RatePerKg: numericValue(flute1RatePerKg),
       liner1RatePerKg: numericValue(liner1RatePerKg),
+      flute2RatePerKg: numericValue(flute2RatePerKg),
+      liner2RatePerKg: numericValue(liner2RatePerKg),
     }) : null
   }, [
     breadth,
     flute1Gsm,
     flute1RatePerKg,
+    flute2Gsm,
+    flute2RatePerKg,
     fluteGsm,
     fluteRatePerKg,
     height,
     length,
     liner1Gsm,
     liner1RatePerKg,
+    liner2Gsm,
+    liner2RatePerKg,
     linerGsm,
     linerRatePerKg,
     ply,
@@ -205,13 +224,13 @@ export default function AdvancedPaperWeightRequirement({
 
           <h3 className="advanced-paper-weight-subsection-title">Paper Requirement Summary</h3>
           <div className="advanced-paper-weight-totals">
-            {ply === 5 && (
+            {ply >= 5 && (
               <div>
                 <span className="advanced-paper-weight-result-label"><Waves size={14} aria-hidden="true" /> Combined Flute Total</span>
                 <strong>{result.groupedFluteWeightKg.toFixed(3)} kg</strong>
               </div>
             )}
-            {ply === 5 && (
+            {ply >= 5 && (
               <div>
                 <span className="advanced-paper-weight-result-label"><Layers2 size={14} aria-hidden="true" /> Combined Liner Total</span>
                 <strong>{result.groupedLinerWeightKg.toFixed(3)} kg</strong>

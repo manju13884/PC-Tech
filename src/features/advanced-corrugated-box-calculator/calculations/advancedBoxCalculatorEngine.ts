@@ -55,26 +55,11 @@ export const calculateAdvancedWeightPerReem = (
 };
 
 export const calculateAdvancedCostPerBox = (
-  wprTop: number, wprBF: number, wprBL: number,
-  wprCF: number, wprCL: number, wprAF: number, wprAL: number,
-  topPr: number, bFlutePr: number, bLinerPr: number,
-  cFlutePr: number, cLinerPr: number, aFlutePr: number, aLinerPr: number
-): number => {
-  const topCost   = advancedCeilToThreeDecimals(topPr     * wprTop);
-  const bfCost    = advancedCeilToThreeDecimals(bFlutePr  * wprBF);
-  const blCost    = advancedCeilToThreeDecimals(bLinerPr  * wprBL);
-  const cfCost    = advancedCeilToThreeDecimals(cFlutePr  * wprCF);
-  const clCost    = advancedCeilToThreeDecimals(cLinerPr  * wprCL);
-  const afCost    = advancedCeilToThreeDecimals(aFlutePr  * wprAF);
-  const alCost    = advancedCeilToThreeDecimals(aLinerPr  * wprAL);
-  const total     = topCost + bfCost + blCost + cfCost + clCost + afCost + alCost;
-  console.log('[calculateAdvancedCostPerBox]', {
-    topCost, bfCost, blCost, cfCost, clCost, afCost, alCost,
-    rawTotal: topPr*wprTop + bFlutePr*wprBF + bLinerPr*wprBL + cFlutePr*wprCF + cLinerPr*wprCL + aFlutePr*wprAF + aLinerPr*wprAL,
-    ceiledTotal: total,
-  });
-  return total;
-};
+  layers: ReadonlyArray<{ weight: number; price: number }>
+): number => layers.reduce(
+  (total, layer) => total + advancedCeilToThreeDecimals(layer.price * layer.weight),
+  0,
+);
 
 export const calculateAdvancedFinalPrice = (
   costPerBox: number,

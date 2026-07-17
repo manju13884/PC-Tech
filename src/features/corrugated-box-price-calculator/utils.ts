@@ -8,6 +8,23 @@ export const FLUTE_MULTIPLIERS = {
   a: 1.45,
 };
 
+export type BoxPly = 3 | 5 | 7;
+
+export type PaperLayerKey =
+  | 'top'
+  | 'bFlute'
+  | 'bLiner'
+  | 'cFlute'
+  | 'cLiner'
+  | 'aFlute'
+  | 'aLiner';
+
+export const PLY_LAYER_CONFIG: Record<BoxPly, readonly PaperLayerKey[]> = {
+  3: ['top', 'bFlute', 'bLiner'],
+  5: ['top', 'bFlute', 'bLiner', 'cFlute', 'cLiner'],
+  7: ['top', 'bFlute', 'bLiner', 'cFlute', 'cLiner', 'aFlute', 'aLiner'],
+};
+
 export const DEFAULT_VALUES = {
   dimensions: { length: 0, breadth: 0, height: 0 },
   paperLayers: {
@@ -55,26 +72,11 @@ export const calculateWeightPerReem = (
 };
 
 export const calculateCostPerBox = (
-  wprTop: number, wprBF: number, wprBL: number,
-  wprCF: number, wprCL: number, wprAF: number, wprAL: number,
-  topPr: number, bFlutePr: number, bLinerPr: number,
-  cFlutePr: number, cLinerPr: number, aFlutePr: number, aLinerPr: number
-): number => {
-  const topCost   = ceilToThreeDecimals(topPr     * wprTop);
-  const bfCost    = ceilToThreeDecimals(bFlutePr  * wprBF);
-  const blCost    = ceilToThreeDecimals(bLinerPr  * wprBL);
-  const cfCost    = ceilToThreeDecimals(cFlutePr  * wprCF);
-  const clCost    = ceilToThreeDecimals(cLinerPr  * wprCL);
-  const afCost    = ceilToThreeDecimals(aFlutePr  * wprAF);
-  const alCost    = ceilToThreeDecimals(aLinerPr  * wprAL);
-  const total     = topCost + bfCost + blCost + cfCost + clCost + afCost + alCost;
-  console.log('[calculateCostPerBox]', {
-    topCost, bfCost, blCost, cfCost, clCost, afCost, alCost,
-    rawTotal: topPr*wprTop + bFlutePr*wprBF + bLinerPr*wprBL + cFlutePr*wprCF + cLinerPr*wprCL + aFlutePr*wprAF + aLinerPr*wprAL,
-    ceiledTotal: total,
-  });
-  return total;
-};
+  layers: ReadonlyArray<{ weight: number; price: number }>
+): number => layers.reduce(
+  (total, layer) => total + ceilToThreeDecimals(layer.price * layer.weight),
+  0
+);
 
 export const calculateFinalPrice = (
   costPerBox: number,

@@ -648,6 +648,19 @@
   opacity: 1;
 }
 
+.pc-corrugated-calculator-compat .box-ply-select-field {
+  width: 100%;
+  min-width: 0;
+}
+
+.pc-corrugated-calculator-compat .box-ply-select-field select {
+  width: 100%;
+  min-height: 34px;
+  color: #334155;
+  font: inherit;
+  font-size: 0.78rem;
+}
+
 .pc-corrugated-calculator-compat .box-specifications-results {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -760,7 +773,7 @@
 
 @media (min-width: 860px) {
   .pc-corrugated-calculator-compat .box-specifications-inputs {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: minmax(120px, 140px) repeat(5, minmax(0, 1fr));
   }
 }
 

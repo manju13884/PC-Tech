@@ -1,6 +1,6 @@
-export type AdvancedPaperWeightPly = 3 | 5
+export type AdvancedPaperWeightPly = 3 | 5 | 7
 
-export type AdvancedPaperWeightLayerKey = 'top' | 'flute' | 'liner' | 'flute1' | 'liner1'
+export type AdvancedPaperWeightLayerKey = 'top' | 'flute' | 'liner' | 'flute1' | 'liner1' | 'flute2' | 'liner2'
 
 export interface AdvancedPaperWeightInput {
   ply: AdvancedPaperWeightPly
@@ -13,11 +13,15 @@ export interface AdvancedPaperWeightInput {
   linerGsm: number
   flute1Gsm?: number
   liner1Gsm?: number
+  flute2Gsm?: number
+  liner2Gsm?: number
   topRatePerKg?: number
   fluteRatePerKg?: number
   linerRatePerKg?: number
   flute1RatePerKg?: number
   liner1RatePerKg?: number
+  flute2RatePerKg?: number
+  liner2RatePerKg?: number
 }
 
 export interface AdvancedPaperWeightLayerResult {

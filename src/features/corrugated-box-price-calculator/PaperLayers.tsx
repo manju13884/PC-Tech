@@ -1,6 +1,8 @@
 import React from 'react';
 import { Layers3 } from 'lucide-react';
 import LabelInput from './LabelInput';
+import { PLY_LAYER_CONFIG } from './utils';
+import type { BoxPly, PaperLayerKey } from './utils';
 
 type N = number | '';
 
@@ -11,6 +13,7 @@ interface PaperLayersProps {
     top: PaperLayer; bFlute: PaperLayer; bLiner: PaperLayer;
     cFlute: PaperLayer; cLiner: PaperLayer; aFlute: PaperLayer; aLiner: PaperLayer;
   };
+  boxPly: BoxPly;
   onLayerChange: (layer: string, field: 'gsm' | 'bf' | 'price', value: string) => void;
 }
 
@@ -29,7 +32,12 @@ const LayerInput: React.FC<{
   </div>
 );
 
-const PaperLayers: React.FC<PaperLayersProps> = ({ layers, onLayerChange }) => (
+const LAYER_LABELS: Record<PaperLayerKey, string> = {
+  top: 'Top', bFlute: 'BF', bLiner: 'BL', cFlute: 'CF',
+  cLiner: 'CL', aFlute: 'AF', aLiner: 'AL',
+};
+
+const PaperLayers: React.FC<PaperLayersProps> = ({ layers, boxPly, onLayerChange }) => (
   <div>
     <header className="paper-layers-header">
       <h2 className="calculator-section-heading text-xs sm:text-lg font-semibold text-gray-800 mb-2">
@@ -38,17 +46,22 @@ const PaperLayers: React.FC<PaperLayersProps> = ({ layers, onLayerChange }) => (
       </h2>
       <p className="calculator-section-subtitle">
         Configure the paper composition of the box.{' '}
-        <em>Available Configurations: 3-Ply box (3 Layers), 5-Ply box (5 Layers), 7-Ply box (7 Layers)</em>
+        <em>Available Configuration: {boxPly}-Ply Box ({PLY_LAYER_CONFIG[boxPly].length} Layers)</em>
       </p>
     </header>
     <div className="paper-layers-grid grid grid-cols-2 sm:grid-cols-4 gap-2">
-      <LayerInput label="Top" gsm={layers.top.gsm} bf={layers.top.bf} price={layers.top.price} onGsmChange={(v) => onLayerChange('top', 'gsm', v)} onBfChange={(v) => onLayerChange('top', 'bf', v)} onPriceChange={(v) => onLayerChange('top', 'price', v)} />
-      <LayerInput label="BF" gsm={layers.bFlute.gsm} bf={layers.bFlute.bf} price={layers.bFlute.price} onGsmChange={(v) => onLayerChange('bFlute', 'gsm', v)} onBfChange={(v) => onLayerChange('bFlute', 'bf', v)} onPriceChange={(v) => onLayerChange('bFlute', 'price', v)} />
-      <LayerInput label="BL" gsm={layers.bLiner.gsm} bf={layers.bLiner.bf} price={layers.bLiner.price} onGsmChange={(v) => onLayerChange('bLiner', 'gsm', v)} onBfChange={(v) => onLayerChange('bLiner', 'bf', v)} onPriceChange={(v) => onLayerChange('bLiner', 'price', v)} />
-      <LayerInput label="CF" gsm={layers.cFlute.gsm} bf={layers.cFlute.bf} price={layers.cFlute.price} onGsmChange={(v) => onLayerChange('cFlute', 'gsm', v)} onBfChange={(v) => onLayerChange('cFlute', 'bf', v)} onPriceChange={(v) => onLayerChange('cFlute', 'price', v)} />
-      <LayerInput label="CL" gsm={layers.cLiner.gsm} bf={layers.cLiner.bf} price={layers.cLiner.price} onGsmChange={(v) => onLayerChange('cLiner', 'gsm', v)} onBfChange={(v) => onLayerChange('cLiner', 'bf', v)} onPriceChange={(v) => onLayerChange('cLiner', 'price', v)} />
-      <LayerInput label="AF" gsm={layers.aFlute.gsm} bf={layers.aFlute.bf} price={layers.aFlute.price} onGsmChange={(v) => onLayerChange('aFlute', 'gsm', v)} onBfChange={(v) => onLayerChange('aFlute', 'bf', v)} onPriceChange={(v) => onLayerChange('aFlute', 'price', v)} />
-      <LayerInput label="AL" gsm={layers.aLiner.gsm} bf={layers.aLiner.bf} price={layers.aLiner.price} onGsmChange={(v) => onLayerChange('aLiner', 'gsm', v)} onBfChange={(v) => onLayerChange('aLiner', 'bf', v)} onPriceChange={(v) => onLayerChange('aLiner', 'price', v)} />
+      {PLY_LAYER_CONFIG[boxPly].map((layerKey) => (
+        <LayerInput
+          key={layerKey}
+          label={LAYER_LABELS[layerKey]}
+          gsm={layers[layerKey].gsm}
+          bf={layers[layerKey].bf}
+          price={layers[layerKey].price}
+          onGsmChange={(v) => onLayerChange(layerKey, 'gsm', v)}
+          onBfChange={(v) => onLayerChange(layerKey, 'bf', v)}
+          onPriceChange={(v) => onLayerChange(layerKey, 'price', v)}
+        />
+      ))}
     </div>
   </div>
 );
