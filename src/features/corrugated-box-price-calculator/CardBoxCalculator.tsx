@@ -11,7 +11,9 @@ import {
   calculateWeightPerReem,
   calculateCostPerBox,
   calculateFinalPrice,
+  PLY_LAYER_CONFIG,
 } from './utils';
+import type { BoxPly, PaperLayerKey } from './utils';
 
 type N = number | '';
 
@@ -22,6 +24,7 @@ const CardBoxCalculator: React.FC = () => {
   const [height, setHeight] = useState<N>('');
   const [deckleSize, setDeckleSize] = useState<N>('');
   const [deckleLength, setDeckleLength] = useState<N>('');
+  const [boxPly, setBoxPly] = useState<BoxPly>(3);
 
   // Paper Layers — pre-filled on page load
   const [topGSM, setTopGSM] = useState<N>(120);
@@ -75,14 +78,24 @@ const CardBoxCalculator: React.FC = () => {
     const wprAF  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(aFluteGsm), FLUTE_MULTIPLIERS.a);
     const wprAL  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(aLinerGsm));
 
-    const totalBoard = ceilToThreeDecimals(wprTop + wprBF + wprBL + wprCF + wprCL + wprAF + wprAL);
+    const layerWeights: Record<PaperLayerKey, number> = {
+      top: wprTop, bFlute: wprBF, bLiner: wprBL, cFlute: wprCF,
+      cLiner: wprCL, aFlute: wprAF, aLiner: wprAL,
+    };
+    const layerPrices: Record<PaperLayerKey, number> = {
+      top: n(topPr), bFlute: n(bFlutePr), bLiner: n(bLinerPr), cFlute: n(cFlutePr),
+      cLiner: n(cLinerPr), aFlute: n(aFlutePr), aLiner: n(aLinerPr),
+    };
+    const activeLayers = PLY_LAYER_CONFIG[boxPly];
+    const totalBoard = ceilToThreeDecimals(
+      activeLayers.reduce((total, layer) => total + layerWeights[layer], 0)
+    );
     const bw = ceilToThreeDecimals(totalBoard);
     setBoxWeight(bw);
     setValueBox(ceilToThreeDecimals(bw * n(ratePerKg)));
 
     const costPerBox = calculateCostPerBox(
-      wprTop, wprBF, wprBL, wprCF, wprCL, wprAF, wprAL,
-      n(topPr), n(bFlutePr), n(bLinerPr), n(cFlutePr), n(cLinerPr), n(aFlutePr), n(aLinerPr)
+      activeLayers.map((layer) => ({ weight: layerWeights[layer], price: layerPrices[layer] }))
     );
 
     const { totalCost: newTotalCost, price: newPrice } = calculateFinalPrice(
@@ -97,11 +110,12 @@ const CardBoxCalculator: React.FC = () => {
     cFluteGsm, cFluteBF, cLinerGsm, cLinerBF,
     aFluteGsm, aFluteBF, aLinerGsm, aLinerBF,
     topPr, bFlutePr, bLinerPr, cFlutePr, cLinerPr, aFlutePr, aLinerPr,
-    ratePerKg, printingCharges, transportCharges, margin,
+    ratePerKg, printingCharges, transportCharges, margin, boxPly,
   ]);
 
   const resetAll = () => {
     setLength(''); setBreadth(''); setHeight('');
+    setBoxPly(3);
     setTopGSM(120); setTopBF(16);
     setBFluteGsm(120); setBFluteBF(16);
     setBLinerGsm(120); setBLinerBF(16);
@@ -151,6 +165,7 @@ const CardBoxCalculator: React.FC = () => {
             length={length} breadth={breadth} height={height}
             deckleSize={deckleSize} deckleLength={deckleLength}
             totalCost={totalCost} price={price} boxWeight={boxWeight}
+            boxPly={boxPly} onBoxPlyChange={setBoxPly}
             onLengthChange={(v) => setLength(set(v))}
             onBreadthChange={(v) => setBreadth(set(v))}
             onHeightChange={(v) => setHeight(set(v))}
@@ -169,6 +184,7 @@ const CardBoxCalculator: React.FC = () => {
                 aFlute: { gsm: aFluteGsm, bf: aFluteBF, price: aFlutePr },
                 aLiner: { gsm: aLinerGsm, bf: aLinerBF, price: aLinerPr },
               }}
+              boxPly={boxPly}
               onLayerChange={handleLayerChange}
             />
           </section>

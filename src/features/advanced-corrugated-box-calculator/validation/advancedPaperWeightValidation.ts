@@ -11,6 +11,8 @@ export interface AdvancedPaperWeightSourceValues {
   linerGsm: number
   flute1Gsm?: number
   liner1Gsm?: number
+  flute2Gsm?: number
+  liner2Gsm?: number
 }
 
 function isPositiveFinite(value: number | undefined): value is number {
@@ -47,6 +49,11 @@ export function validateAdvancedPaperWeightInput(
   if (values.ply === 5 && (!isPositiveFinite(values.flute1Gsm) || !isPositiveFinite(values.liner1Gsm))) {
     return null
   }
+
+  if (values.ply === 7 && (
+    !isPositiveFinite(values.flute1Gsm) || !isPositiveFinite(values.liner1Gsm) ||
+    !isPositiveFinite(values.flute2Gsm) || !isPositiveFinite(values.liner2Gsm)
+  )) return null
 
   return values as AdvancedPaperWeightInput
 }

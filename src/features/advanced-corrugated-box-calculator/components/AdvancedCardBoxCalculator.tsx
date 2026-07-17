@@ -13,7 +13,8 @@ import {
   calculateAdvancedCostPerBox,
   calculateAdvancedFinalPrice,
 } from '../calculations/advancedBoxCalculatorEngine';
-import type { AdvancedNumericValue } from '../types/advancedBoxCalculatorTypes';
+import { PRODUCTION_PLY_LAYER_CONFIG } from '../types/advancedBoxCalculatorTypes';
+import type { AdvancedNumericValue, ProductionBoxPly, ProductionLayerKey } from '../types/advancedBoxCalculatorTypes';
 import { normalizeAdvancedNumber, parseAdvancedNumericValue } from '../validation/advancedBoxCalculatorValidation';
 
 const AdvancedCardBoxCalculator: React.FC = () => {
@@ -23,6 +24,7 @@ const AdvancedCardBoxCalculator: React.FC = () => {
   const [height, setHeight] = useState<AdvancedNumericValue>('');
   const [deckleSize, setDeckleSize] = useState<AdvancedNumericValue>('');
   const [deckleLength, setDeckleLength] = useState<AdvancedNumericValue>('');
+  const [boxPly, setBoxPly] = useState<ProductionBoxPly>(3);
 
   // Paper Layers — pre-filled on page load
   const [topGSM, setTopGSM] = useState<AdvancedNumericValue>(120);
@@ -76,15 +78,15 @@ const AdvancedCardBoxCalculator: React.FC = () => {
     const wprAF  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(aFluteGsm), ADVANCED_FLUTE_MULTIPLIERS.a);
     const wprAL  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(aLinerGsm));
 
-    const totalBoard = advancedCeilToThreeDecimals(wprTop + wprBF + wprBL + wprCF + wprCL + wprAF + wprAL);
+    const layerWeights: Record<ProductionLayerKey, number> = { top: wprTop, bFlute: wprBF, bLiner: wprBL, cFlute: wprCF, cLiner: wprCL, aFlute: wprAF, aLiner: wprAL };
+    const layerPrices: Record<ProductionLayerKey, number> = { top: n(topPr), bFlute: n(bFlutePr), bLiner: n(bLinerPr), cFlute: n(cFlutePr), cLiner: n(cLinerPr), aFlute: n(aFlutePr), aLiner: n(aLinerPr) };
+    const activeLayers = PRODUCTION_PLY_LAYER_CONFIG[boxPly];
+    const totalBoard = advancedCeilToThreeDecimals(activeLayers.reduce((total, layer) => total + layerWeights[layer], 0));
     const bw = advancedCeilToThreeDecimals(totalBoard);
     setBoxWeight(bw);
     setValueBox(advancedCeilToThreeDecimals(bw * n(ratePerKg)));
 
-    const costPerBox = calculateAdvancedCostPerBox(
-      wprTop, wprBF, wprBL, wprCF, wprCL, wprAF, wprAL,
-      n(topPr), n(bFlutePr), n(bLinerPr), n(cFlutePr), n(cLinerPr), n(aFlutePr), n(aLinerPr)
-    );
+    const costPerBox = calculateAdvancedCostPerBox(activeLayers.map((layer) => ({ weight: layerWeights[layer], price: layerPrices[layer] })));
 
     const { totalCost: newTotalCost, price: newPrice } = calculateAdvancedFinalPrice(
       costPerBox, bw * n(ratePerKg), n(printingCharges), n(transportCharges), n(margin)
@@ -98,11 +100,12 @@ const AdvancedCardBoxCalculator: React.FC = () => {
     cFluteGsm, cFluteBF, cLinerGsm, cLinerBF,
     aFluteGsm, aFluteBF, aLinerGsm, aLinerBF,
     topPr, bFlutePr, bLinerPr, cFlutePr, cLinerPr, aFlutePr, aLinerPr,
-    ratePerKg, printingCharges, transportCharges, margin,
+    ratePerKg, printingCharges, transportCharges, margin, boxPly,
   ]);
 
   const resetAll = () => {
     setLength(''); setBreadth(''); setHeight('');
+    setBoxPly(3);
     setTopGSM(120); setTopBF(16);
     setBFluteGsm(120); setBFluteBF(16);
     setBLinerGsm(120); setBLinerBF(16);
@@ -152,6 +155,7 @@ const AdvancedCardBoxCalculator: React.FC = () => {
             length={length} breadth={breadth} height={height}
             deckleSize={deckleSize} deckleLength={deckleLength}
             totalCost={totalCost} price={price} boxWeight={boxWeight}
+            boxPly={boxPly} onBoxPlyChange={setBoxPly}
             onLengthChange={(v) => setLength(set(v))}
             onBreadthChange={(v) => setBreadth(set(v))}
             onHeightChange={(v) => setHeight(set(v))}
@@ -170,6 +174,7 @@ const AdvancedCardBoxCalculator: React.FC = () => {
                 aFlute: { gsm: aFluteGsm, bf: aFluteBF, price: aFlutePr },
                 aLiner: { gsm: aLinerGsm, bf: aLinerBF, price: aLinerPr },
               }}
+              boxPly={boxPly}
               onLayerChange={handleLayerChange}
             />
           </section>
@@ -186,6 +191,7 @@ const AdvancedCardBoxCalculator: React.FC = () => {
           </section>
 
           <AdvancedPaperWeightRequirement
+            boxPly={boxPly}
             length={length}
             breadth={breadth}
             height={height}
@@ -194,11 +200,15 @@ const AdvancedCardBoxCalculator: React.FC = () => {
             linerGsm={bLinerGsm}
             flute1Gsm={cFluteGsm}
             liner1Gsm={cLinerGsm}
+            flute2Gsm={aFluteGsm}
+            liner2Gsm={aLinerGsm}
             topRatePerKg={topPr}
             fluteRatePerKg={bFlutePr}
             linerRatePerKg={bLinerPr}
             flute1RatePerKg={cFlutePr}
             liner1RatePerKg={cLinerPr}
+            flute2RatePerKg={aFlutePr}
+            liner2RatePerKg={aLinerPr}
             boxWeight={boxWeight}
           />
         </form>
