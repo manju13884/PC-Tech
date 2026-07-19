@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
 import { Ban, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
-import { deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
+import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
@@ -512,6 +512,12 @@ export default function Dashboard({
   const [adminRoles, setAdminRoles] = useState<AdminRole[]>([])
   const [adminRolesLoading, setAdminRolesLoading] = useState(false)
   const [adminRolesError, setAdminRolesError] = useState<string | null>(null)
+  const [createRoleOpen, setCreateRoleOpen] = useState(false)
+  const [createRoleName, setCreateRoleName] = useState('')
+  const [createRoleDescription, setCreateRoleDescription] = useState('')
+  const [createRoleStatus, setCreateRoleStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE')
+  const [createRoleNameError, setCreateRoleNameError] = useState('')
+  const [creatingRole, setCreatingRole] = useState(false)
   const [editingRoleId, setEditingRoleId] = useState<number | null>(null)
   const [editRoleName, setEditRoleName] = useState('')
   const [editRoleDescription, setEditRoleDescription] = useState('')
@@ -655,8 +661,9 @@ export default function Dashboard({
       setAdminAccessError(null)
 
       const activeRoles = sortAccessRoles(adminRoles.filter((role) => role.status === 'ACTIVE'))
+      const menuKeys = accessMatrix.map((accessItem) => accessItem.key)
       const accessEntries = await Promise.all(
-        activeRoles.map(async (role) => [role.id, await getAdminAccess(role.id)] as const),
+        activeRoles.map(async (role) => [role.id, await getAdminAccess(role.id, menuKeys)] as const),
       )
 
       if (!isCurrent) {
@@ -1463,6 +1470,55 @@ export default function Dashboard({
     }
   }
 
+  function openCreateRole() {
+    setCreateRoleName('')
+    setCreateRoleDescription('')
+    setCreateRoleStatus('ACTIVE')
+    setCreateRoleNameError('')
+    setCreateRoleOpen(true)
+    setRoleActionMessage('')
+  }
+
+  async function createRole(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (creatingRole) return
+
+    const normalizedName = createRoleName.trim().toUpperCase()
+    if (!normalizedName) {
+      setCreateRoleNameError('Role name is required')
+      return
+    }
+
+    setCreatingRole(true)
+    setCreateRoleNameError('')
+    setRoleActionMessage('')
+
+    try {
+      const createdRole = await createAdminRole({
+        name: normalizedName,
+        description: createRoleDescription.trim(),
+        status: createRoleStatus,
+      })
+
+      setAdminRoles((roles) => [...roles, createdRole])
+      setCreateRoleOpen(false)
+      setCreateRoleName('')
+      setCreateRoleDescription('')
+      setCreateRoleStatus('ACTIVE')
+      setRoleActionMessageType('success')
+      setRoleActionMessage('Role created.')
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Unable to create role'
+      if (message.toLowerCase().includes('already exists')) {
+        setCreateRoleNameError('Role name already exists')
+      }
+      setRoleActionMessageType('error')
+      setRoleActionMessage(message)
+    } finally {
+      setCreatingRole(false)
+    }
+  }
+
   function requestDeactivateRole(role: AdminRole) {
     if (role.name === 'SUPERADMIN') {
       setRoleActionMessageType('error')
@@ -2121,6 +2177,12 @@ export default function Dashboard({
                   {adminConfigTab === 'roles' && (
                     <div className="admin-config-grid">
                       <section className="admin-config-panel admin-users-panel">
+                        <div className="admin-panel-toolbar">
+                          <button type="button" onClick={openCreateRole}>
+                            <UserPlus size={15} aria-hidden="true" />
+                            <span>Create Role</span>
+                          </button>
+                        </div>
                         {adminRolesLoading && (
                           <p className="admin-user-message">Loading roles...</p>
                         )}
@@ -2242,6 +2304,12 @@ export default function Dashboard({
                   {adminConfigTab === 'access' && (
                     <div className="admin-config-grid">
                       <section className="admin-config-panel admin-users-panel">
+                        <p
+                          className="admin-user-message"
+                          title="SUPERADMIN automatically has access to all menus."
+                        >
+                          SUPERADMIN automatically has access to all menus.
+                        </p>
                         {adminAccessLoading && (
                           <p className="admin-user-message">Loading access...</p>
                         )}
@@ -2273,7 +2341,7 @@ export default function Dashboard({
                                       const checkboxKey = `${role.id}:${accessItem.key}`
                                       const isAccessManagementRow = accessItem.key === 'admin-configurations'
                                       const hasRoleMenuAccess = getRoleMenuAccess(role.id, accessItem.key)
-                                      const isProtectedSuperadminAccess = isAccessManagementRow && role.name === 'SUPERADMIN'
+                                      const isProtectedSuperadminAccess = role.name === 'SUPERADMIN'
                                       const isRestrictedAccessGrant = isAccessManagementRow && role.name !== 'SUPERADMIN' && !hasRoleMenuAccess
 
                                       return (
@@ -2287,6 +2355,9 @@ export default function Dashboard({
                                             )}
                                             disabled={isProtectedSuperadminAccess || isRestrictedAccessGrant || savingAccessKey === checkboxKey}
                                             aria-label={`${role.name} access for ${accessItem.subMenu}`}
+                                            title={isProtectedSuperadminAccess
+                                              ? 'SUPERADMIN automatically has access to all menus.'
+                                              : undefined}
                                           />
                                         </td>
                                       )
@@ -2538,6 +2609,76 @@ export default function Dashboard({
                         </button>
                         <button type="submit" className="primary" disabled={creatingUser}>
                           Create User
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+              {createRoleOpen && (
+                <div className="admin-dialog-backdrop" role="presentation">
+                  <div
+                    className="admin-dialog admin-create-user-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="admin-create-role-title"
+                  >
+                    <div className="admin-dialog-copy">
+                      <h3 id="admin-create-role-title">Create role</h3>
+                      <p>Add a role for user assignment and menu access configuration.</p>
+                    </div>
+                    <form onSubmit={createRole} className="admin-create-user-form">
+                      <label htmlFor="admin-create-role-name">Role Name</label>
+                      <input
+                        id="admin-create-role-name"
+                        value={createRoleName}
+                        onChange={(event) => {
+                          setCreateRoleName(event.target.value.toUpperCase())
+                          setCreateRoleNameError('')
+                        }}
+                        disabled={creatingRole}
+                        maxLength={50}
+                        autoFocus
+                        required
+                      />
+                      {createRoleNameError && (
+                        <p className="admin-field-error">{createRoleNameError}</p>
+                      )}
+
+                      <label htmlFor="admin-create-role-description">Description</label>
+                      <input
+                        id="admin-create-role-description"
+                        value={createRoleDescription}
+                        onChange={(event) => setCreateRoleDescription(event.target.value)}
+                        disabled={creatingRole}
+                        maxLength={300}
+                      />
+
+                      <label htmlFor="admin-create-role-status">Status</label>
+                      <select
+                        id="admin-create-role-status"
+                        value={createRoleStatus}
+                        onChange={(event) => setCreateRoleStatus(
+                          event.target.value === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
+                        )}
+                        disabled={creatingRole}
+                        required
+                      >
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                      </select>
+
+                      <div className="admin-dialog-actions">
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => setCreateRoleOpen(false)}
+                          disabled={creatingRole}
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit" className="primary" disabled={creatingRole}>
+                          Create Role
                         </button>
                       </div>
                     </form>

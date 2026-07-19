@@ -1,4 +1,9 @@
 import { getSessionTokenFromRequest, hashSessionToken } from '../../../../lib/session'
+import {
+  ensureSuperadminMenuAccess,
+  getMenuPermission,
+  isValidMenuKey,
+} from '../../../../lib/superadminAccess'
 
 interface Env {
   DB: D1Database
@@ -40,15 +45,6 @@ interface PermissionUpdateRequest {
   value?: unknown
 }
 
-const ALLOWED_MENU_KEYS = new Set([
-  'corrugated-box-price',
-  'corrugated-box-price-advanced',
-  'corrugated-board-price',
-  'coc',
-  'packing-slip',
-  'coa',
-  'admin-configurations',
-])
 const PERMISSION_COLUMNS = {
   full: 'can_full',
   view: 'can_view',
@@ -165,7 +161,7 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       return json({ success: false, error: 'Role id is invalid' }, 400)
     }
 
-    if (!ALLOWED_MENU_KEYS.has(menuKey)) {
+    if (!isValidMenuKey(menuKey)) {
       return json({ success: false, error: 'Menu key is invalid' }, 400)
     }
 
@@ -203,8 +199,14 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
       return json({ success: false, error: 'Access Management is restricted to SUPERADMIN' }, 400)
     }
 
-    if (role.name === 'SUPERADMIN' && (body.access === false || body.value === false)) {
-      return json({ success: false, error: 'SUPERADMIN access cannot be revoked' }, 400)
+    if (role.name === 'SUPERADMIN') {
+      await ensureSuperadminMenuAccess(context.env.DB, [menuKey])
+      const restored = await getMenuPermission(context.env.DB, roleId, menuKey)
+      if (!restored) {
+        throw new Error('SUPERADMIN access restoration did not return a record')
+      }
+
+      return json({ success: true, access: mapPermission(restored) }, 200)
     }
 
     if (typeof body.access === 'boolean') {

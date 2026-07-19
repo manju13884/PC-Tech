@@ -54,11 +54,15 @@ export function getAdminAccessError(): string | null {
   return error
 }
 
-export async function getAdminAccess(roleId: number): Promise<AdminAccessPermission[]> {
+export async function getAdminAccess(
+  roleId: number,
+  menuKeys: readonly string[] = [],
+): Promise<AdminAccessPermission[]> {
   error = null
 
   try {
     const params = new URLSearchParams({ role_id: String(roleId) })
+    menuKeys.forEach((menuKey) => params.append('menu_key', menuKey))
     const response = await fetch(`/api/auth/access?${params.toString()}`, {
       credentials: 'include',
     })

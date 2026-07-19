@@ -1,4 +1,5 @@
 import { getSessionTokenFromRequest, hashSessionToken } from '../../lib/session'
+import { ensureSuperadminMenuAccess } from '../../lib/superadminAccess'
 
 interface Env {
   DB: D1Database
@@ -128,6 +129,8 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
     if (!Number.isInteger(roleId) || roleId <= 0) {
       return json({ success: false, error: 'Role id is required' }, 400)
     }
+
+    await ensureSuperadminMenuAccess(context.env.DB, url.searchParams.getAll('menu_key'))
 
     const result = await context.env.DB.prepare(
       `SELECT

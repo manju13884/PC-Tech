@@ -115,6 +115,27 @@ export async function updateAdminRole(
   return readRoleResponse(response)
 }
 
+export async function createAdminRole(values: {
+  name: string
+  description: string
+  status: 'ACTIVE' | 'INACTIVE'
+}): Promise<AdminRole> {
+  const response = await fetch('/api/auth/roles', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(values),
+  })
+
+  if (!response.ok) {
+    throw new Error(await getResponseError(response, `Unable to create role (${response.status})`))
+  }
+
+  return readRoleResponse(response)
+}
+
 export async function deactivateAdminRole(roleId: number): Promise<AdminRole> {
   const response = await fetch(`/api/auth/roles/${roleId}`, {
     method: 'PATCH',
