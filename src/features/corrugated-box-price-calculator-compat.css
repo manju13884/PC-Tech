@@ -907,3 +907,79 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Shared calculator-suite ERP typography refinement. */
+.dashboard-card:has(.pc-corrugated-calculator-compat) .dashboard-page-heading h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.dashboard-card:has(.pc-corrugated-calculator-compat) .dashboard-page-heading p {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.pc-corrugated-calculator-compat form h2.text-xs,
+.pc-corrugated-calculator-compat .box-specifications-header h2.calculator-section-heading,
+.pc-corrugated-calculator-compat .paper-layers-header h2.calculator-section-heading {
+  color: #1e293b;
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.pc-corrugated-calculator-compat .box-specifications-header p,
+.pc-corrugated-calculator-compat .calculator-section-subtitle {
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.pc-corrugated-calculator-compat label.text-xs {
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.pc-corrugated-calculator-compat input.text-xs,
+.pc-corrugated-calculator-compat .box-ply-select-field select {
+  min-height: 38px;
+  padding: 0.48rem 0.65rem;
+  border-color: #d6e4f0;
+  border-radius: 8px;
+  background-color: #f8fbff;
+  color: #1e293b;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.pc-corrugated-calculator-compat form > section,
+.pc-corrugated-calculator-compat .paper-layer-block,
+.pc-corrugated-calculator-compat .box-result-card {
+  border-color: #d6e4f0;
+  border-radius: 8px;
+}
+
+.pc-corrugated-calculator-compat .box-result-card p {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.pc-corrugated-calculator-compat .box-result-card strong {
+  font-size: 1rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .pc-corrugated-calculator-compat input.text-xs,
+  .pc-corrugated-calculator-compat .box-ply-select-field select {
+    min-height: 42px;
+    font-size: 1rem;
+  }
+}

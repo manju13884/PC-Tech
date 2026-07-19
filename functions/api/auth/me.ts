@@ -28,6 +28,7 @@ interface AuthenticatedSessionRow {
 const ALL_MENU_KEYS = [
   'corrugated-box-price',
   'corrugated-box-price-advanced',
+  'corrugated-board-price',
   'coc',
   'packing-slip',
   'coa',
