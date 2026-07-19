@@ -907,3 +907,79 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Shared calculator-suite ERP typography refinement. */
+.dashboard-card:has(.pc-advanced-corrugated-calculator) .dashboard-page-heading h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.dashboard-card:has(.pc-advanced-corrugated-calculator) .dashboard-page-heading p {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.pc-advanced-corrugated-calculator form h2.text-xs,
+.pc-advanced-corrugated-calculator .advanced-box-specifications-header h2.advanced-calculator-section-heading,
+.pc-advanced-corrugated-calculator .advanced-paper-layers-header h2.advanced-calculator-section-heading {
+  color: #1e293b;
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.pc-advanced-corrugated-calculator .advanced-box-specifications-header p,
+.pc-advanced-corrugated-calculator .advanced-calculator-section-subtitle {
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.pc-advanced-corrugated-calculator label.text-xs {
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.pc-advanced-corrugated-calculator input.text-xs,
+.pc-advanced-corrugated-calculator .advanced-box-ply-select-field select {
+  min-height: 38px;
+  padding: 0.48rem 0.65rem;
+  border-color: #d6e4f0;
+  border-radius: 8px;
+  background-color: #f8fbff;
+  color: #1e293b;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.pc-advanced-corrugated-calculator form > section,
+.pc-advanced-corrugated-calculator .advanced-paper-layer-block,
+.pc-advanced-corrugated-calculator .advanced-box-result-card {
+  border-color: #d6e4f0;
+  border-radius: 8px;
+}
+
+.pc-advanced-corrugated-calculator .advanced-box-result-card p {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.pc-advanced-corrugated-calculator .advanced-box-result-card strong {
+  font-size: 1rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .pc-advanced-corrugated-calculator input.text-xs,
+  .pc-advanced-corrugated-calculator .advanced-box-ply-select-field select {
+    min-height: 42px;
+    font-size: 1rem;
+  }
+}

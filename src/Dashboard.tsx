@@ -15,6 +15,7 @@ import {
 } from './features/advanced-corrugated-box-calculator/constants/advancedBoxCalculatorConstants'
 import CardBoxCalculator from './features/corrugated-box-price-calculator/CardBoxCalculator'
 import './features/corrugated-box-price-calculator-compat.css'
+import CorrugatedBoardPriceCalculator from './features/corrugated-board-price-calculator/CorrugatedBoardPriceCalculator'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
 import { loadCocTemplate } from './lib/templateLoader'
 import { loadPackingSlipLogo, loadPackingSlipTemplate } from './lib/packingSlipTemplateLoader'
@@ -56,6 +57,13 @@ const menuGroups: MenuGroup[] = [
         menuTitle: ADVANCED_BOX_CALCULATOR_MENU_TITLE,
         description: ADVANCED_BOX_CALCULATOR_DESCRIPTION,
         icon: SlidersHorizontal,
+      },
+      {
+        key: 'corrugated-board-price',
+        title: 'Corrugated Board Price Calculator',
+        menuTitle: 'Board Price Calculator',
+        description: 'Calculate the weight, manufacturing cost and selling price of 3-ply, 5-ply and 7-ply corrugated boards.',
+        icon: Calculator,
       },
     ],
   },
@@ -1596,6 +1604,9 @@ export default function Dashboard({
               )}
               {selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY && (
                 <AdvancedCorrugatedBoxCalculatorPage />
+              )}
+              {selectedItem.key === 'corrugated-board-price' && (
+                <CorrugatedBoardPriceCalculator />
               )}
               {selectedItem.key === 'coc' && (
                 <div className="coc-form">
