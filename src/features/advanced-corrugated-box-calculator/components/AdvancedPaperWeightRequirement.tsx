@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { BadgeIndianRupee, Layers2, Layers3, Package, Scale, Waves, Weight } from 'lucide-react'
 import { calculateAdvancedPaperWeight } from '../calculations/advancedPaperWeightCalculator'
 import type { AdvancedNumericValue } from '../types/advancedBoxCalculatorTypes'
@@ -28,7 +28,7 @@ interface AdvancedPaperWeightRequirementProps {
   liner1RatePerKg: AdvancedNumericValue
   flute2RatePerKg: AdvancedNumericValue
   liner2RatePerKg: AdvancedNumericValue
-  boxWeight: number
+  quantity: string
 }
 
 const numericValue = (value: AdvancedNumericValue): number => value === '' ? 0 : Number(value)
@@ -52,19 +52,10 @@ export default function AdvancedPaperWeightRequirement({
   liner1RatePerKg,
   flute2RatePerKg,
   liner2RatePerKg,
-  boxWeight,
+  quantity,
 }: AdvancedPaperWeightRequirementProps) {
-  const [quantity, setQuantity] = useState(() => boxWeight < 1 ? '1000' : '500')
-  const [quantityTouched, setQuantityTouched] = useState(false)
-  const [quantityEdited, setQuantityEdited] = useState(false)
-  const quantityError = quantityTouched || quantity !== '' ? validateAdvancedQuantity(quantity) : null
+  const quantityError = validateAdvancedQuantity(quantity)
   const ply: AdvancedPaperWeightPly = boxPly
-
-  useEffect(() => {
-    if (!quantityEdited) {
-      setQuantity(boxWeight < 1 ? '1000' : '500')
-    }
-  }, [boxWeight, quantityEdited])
 
   const result = useMemo(() => {
     if (quantityError) return null
@@ -129,7 +120,7 @@ export default function AdvancedPaperWeightRequirement({
             <Scale size={16} strokeWidth={2} aria-hidden="true" />
             <span>Paper Weight Requirement</span>
           </h2>
-          <p>Enter the total box quantity to calculate the paper weight required for each layer.</p>
+          <p>Paper weight required for each layer using the quantity entered in Box Specifications.</p>
         </div>
         <span className="advanced-paper-weight-badge">
           <Layers3 size={14} strokeWidth={2} aria-hidden="true" />
@@ -137,36 +128,7 @@ export default function AdvancedPaperWeightRequirement({
         </span>
       </header>
 
-      <div className="advanced-paper-weight-controls">
-        <label className="text-xs" htmlFor="advanced-total-box-quantity">Total Box Quantity</label>
-        <div className="advanced-paper-weight-input-row">
-          <input
-            id="advanced-total-box-quantity"
-            className="text-xs"
-            type="number"
-            inputMode="numeric"
-            min="1"
-            step="1"
-            required
-            value={quantity}
-            aria-invalid={Boolean(quantityError)}
-            aria-describedby={quantityError ? 'advanced-total-box-quantity-error' : undefined}
-            placeholder="Enter total quantity"
-            onBlur={() => setQuantityTouched(true)}
-            onChange={(event) => {
-              setQuantityEdited(true)
-              setQuantity(event.target.value)
-            }}
-          />
-          <span>boxes</span>
-        </div>
-        {quantityError && (
-          <p id="advanced-total-box-quantity-error" className="advanced-paper-weight-error" role="alert">
-            {quantityError}
-          </p>
-        )}
-        {missingInputMessage && <p className="advanced-paper-weight-error" role="status">{missingInputMessage}</p>}
-      </div>
+      {missingInputMessage && <p className="advanced-paper-weight-error" role="status">{missingInputMessage}</p>}
 
       {result && (
         <div className="advanced-paper-weight-results" aria-live="polite">

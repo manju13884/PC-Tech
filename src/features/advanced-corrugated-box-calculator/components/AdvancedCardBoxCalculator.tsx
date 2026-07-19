@@ -25,6 +25,7 @@ const AdvancedCardBoxCalculator: React.FC = () => {
   const [deckleSize, setDeckleSize] = useState<AdvancedNumericValue>('');
   const [deckleLength, setDeckleLength] = useState<AdvancedNumericValue>('');
   const [boxPly, setBoxPly] = useState<ProductionBoxPly>(3);
+  const [totalBoxQuantity, setTotalBoxQuantity] = useState('500');
 
   // Paper Layers — pre-filled on page load
   const [topGSM, setTopGSM] = useState<AdvancedNumericValue>(120);
@@ -106,6 +107,7 @@ const AdvancedCardBoxCalculator: React.FC = () => {
   const resetAll = () => {
     setLength(''); setBreadth(''); setHeight('');
     setBoxPly(3);
+    setTotalBoxQuantity('500');
     setTopGSM(120); setTopBF(16);
     setBFluteGsm(120); setBFluteBF(16);
     setBLinerGsm(120); setBLinerBF(16);
@@ -156,6 +158,7 @@ const AdvancedCardBoxCalculator: React.FC = () => {
             deckleSize={deckleSize} deckleLength={deckleLength}
             totalCost={totalCost} price={price} boxWeight={boxWeight}
             boxPly={boxPly} onBoxPlyChange={setBoxPly}
+            totalBoxQuantity={totalBoxQuantity} onTotalBoxQuantityChange={setTotalBoxQuantity}
             onLengthChange={(v) => setLength(set(v))}
             onBreadthChange={(v) => setBreadth(set(v))}
             onHeightChange={(v) => setHeight(set(v))}
@@ -209,7 +212,7 @@ const AdvancedCardBoxCalculator: React.FC = () => {
             liner1RatePerKg={cLinerPr}
             flute2RatePerKg={aFlutePr}
             liner2RatePerKg={aLinerPr}
-            boxWeight={boxWeight}
+            quantity={totalBoxQuantity}
           />
         </form>
       </div>
