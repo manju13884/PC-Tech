@@ -19,12 +19,12 @@
 .board-calculator-actions button:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
 .board-section { overflow: hidden; padding: .7rem; border: 1px solid #d6e4f0; border-radius: 6px; background: #fff; box-shadow: none; transition: border-color 150ms ease, box-shadow 150ms ease; }
 .board-section:focus-within { border-color: #bfd3e6; box-shadow: 0 2px 6px rgb(15 23 42 / 5%); }
-.board-section > header { margin: -.7rem -.7rem .65rem; padding: .48rem .65rem; border-bottom: 1px solid #dbe3ee; background: #f8fafc; }
+.board-section > header { margin: -.35rem -.35rem .65rem; padding: .65rem .7rem; border-bottom: 1px solid #dbe3ee; background: #f8fafc; }
 .board-section > header h3 { display: flex; align-items: center; gap: .5rem; margin: 0; color: #1e293b; font-size: 1.06rem; font-weight: 600; line-height: 1.25; }
 .board-section > header h3 svg { flex: 0 0 auto; width: 24px; height: 24px; padding: 4px; border: 1px solid #bfdbfe; border-radius: 4px; background: #eff6ff; color: #2563eb; }
 .board-section > header p { margin: .1rem 0 0 2rem; color: #64748b; font-size: .8125rem; font-weight: 400; line-height: 1.35; }
 .board-paper-layers-header em { color: #64748b; font-size: .8125rem; font-weight: 400; }
-.board-section > .board-paper-layers-header { margin: -.7rem -.7rem .65rem; padding: .65rem .7rem; }
+.board-section > .board-paper-layers-header { margin: -.35rem -.35rem .65rem; padding: .65rem .7rem; }
 .board-paper-layers-header h3 { margin: 0; }
 .board-paper-layers-header p { margin: 0 0 0 2rem; }
 .board-specification-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .55rem; }
@@ -80,6 +80,6 @@
 .board-summary-details { padding-top: .05rem; }
 .board-formula-notice { margin: .65rem 0 0; padding: .55rem .7rem; border: 1px solid #f0c36d; border-radius: 5px; background: #fff8e8; color: #7c4a03; font-size: .73rem; line-height: 1.4; }
 @media (max-width: 899px) { .board-specification-grid, .board-rate-grid, .board-layer-grid, .board-summary-grid, .board-information-grid, .board-summary-primary-grid { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .dashboard-card:has(.pc-corrugated-board-calculator) .dashboard-page-heading { padding-bottom: .7rem; } .dashboard-card:has(.pc-corrugated-board-calculator) .dashboard-page-heading h2 { font-size: 1.05rem; } .dashboard-card:has(.pc-corrugated-board-calculator) .dashboard-page-heading p { font-size: .78rem; } .board-calculator-surface { padding: .5rem; } .board-section { padding: .6rem; } .board-section > header { margin-right: -.6rem; margin-left: -.6rem; padding-right: .6rem; padding-left: .6rem; } .board-section > header p { margin-left: 0; overflow-wrap: anywhere; font-size: .74rem; } .board-field input, .board-field select, .board-rate-grid .board-field input { min-height: 42px; font-size: 1rem; } .board-rate-grid .board-field > span { min-height: 0; } .board-calculator-actions button { min-height: 38px; } }
+@media (max-width: 640px) { .dashboard-card:has(.pc-corrugated-board-calculator) .dashboard-page-heading { padding-bottom: .7rem; } .dashboard-card:has(.pc-corrugated-board-calculator) .dashboard-page-heading h2 { font-size: 1.05rem; } .dashboard-card:has(.pc-corrugated-board-calculator) .dashboard-page-heading p { font-size: .78rem; } .board-calculator-surface { padding: .5rem; } .board-section { padding: .6rem; } .board-section > header { margin-right: -.3rem; margin-left: -.3rem; padding-right: .6rem; padding-left: .6rem; } .board-section > header p { margin-left: 0; overflow-wrap: anywhere; font-size: .74rem; } .board-field input, .board-field select, .board-rate-grid .board-field input { min-height: 42px; font-size: 1rem; } .board-rate-grid .board-field > span { min-height: 0; } .board-calculator-actions button { min-height: 38px; } }
 @media (max-width: 479px) { .board-specification-grid, .board-rate-grid, .board-layer-grid, .board-summary-grid, .board-information-grid, .board-summary-primary-grid { grid-template-columns: 1fr; } .board-summary-primary { min-height: 56px; } .board-summary-primary strong { font-size: 1.15rem; } }
 @media (max-width: 380px) { .board-layer-input-pair { grid-template-columns: 1fr; } }
