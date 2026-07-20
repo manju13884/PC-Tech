@@ -7,7 +7,7 @@
       "name": "Run PC-Tech locally",
       "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}",
-      "preLaunchTask": "npm: dev"
+      "preLaunchTask": "PC-Tech: local services"
     }
   ]
 }
