@@ -24,10 +24,8 @@ export const createInitialBoardCalculatorState = (): BoardCalculatorState => ({
   quantity: '',
   layers: ALL_BOARD_LAYER_KEYS.reduce<BoardLayerInputs>((layers, key) => {
     layers[key] = emptyLayer()
-    if (key === 'top' || key === 'bf' || key === 'bl') {
-      layers[key].gsm = '120'
-      layers[key].burstingFactor = '16'
-    }
+    layers[key].gsm = '120'
+    layers[key].burstingFactor = '16'
     return layers
   }, {} as BoardLayerInputs),
   conversionRatePerKg: String(BOARD_DEFAULT_CONVERSION_RATE_PER_KG),
