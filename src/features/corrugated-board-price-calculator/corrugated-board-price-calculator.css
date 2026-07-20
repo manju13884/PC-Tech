@@ -83,3 +83,13 @@
 @media (max-width: 640px) { .dashboard-card:has(.pc-corrugated-board-calculator) .dashboard-page-heading { padding-bottom: .7rem; } .dashboard-card:has(.pc-corrugated-board-calculator) .dashboard-page-heading h2 { font-size: 1.05rem; } .dashboard-card:has(.pc-corrugated-board-calculator) .dashboard-page-heading p { font-size: .78rem; } .board-calculator-surface { padding: .5rem; } .board-section { padding: .6rem; } .board-section > header { margin-right: -.3rem; margin-left: -.3rem; padding-right: .6rem; padding-left: .6rem; } .board-section > header p { margin-left: 0; overflow-wrap: anywhere; font-size: .74rem; } .board-field input, .board-field select, .board-rate-grid .board-field input { min-height: 42px; font-size: 1rem; } .board-rate-grid .board-field > span { min-height: 0; } .board-calculator-actions button { min-height: 38px; } }
 @media (max-width: 479px) { .board-specification-grid, .board-rate-grid, .board-layer-grid, .board-summary-grid, .board-information-grid, .board-summary-primary-grid { grid-template-columns: 1fr; } .board-summary-primary { min-height: 56px; } .board-summary-primary strong { font-size: 1.15rem; } }
 @media (max-width: 380px) { .board-layer-input-pair { grid-template-columns: 1fr; } }
+.pc-corrugated-board-calculator input[type='number']::-webkit-inner-spin-button,
+.pc-corrugated-board-calculator input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pc-corrugated-board-calculator input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

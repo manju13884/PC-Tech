@@ -17,6 +17,32 @@
           "endsPattern": "Local:\\s+http://localhost:5173/"
         }
       }
+    },
+    {
+      "type": "shell",
+      "label": "PC-Tech: auth API",
+      "command": "npx wrangler pages dev dist --ip 127.0.0.1 --port 8788 --compatibility-date 2026-07-09",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "wrangler",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*Compiled Worker successfully.*",
+          "endsPattern": ".*Ready on http://127\\.0\\.0\\.1:8788.*"
+        }
+      }
+    },
+    {
+      "label": "PC-Tech: local services",
+      "dependsOn": [
+        "npm: dev",
+        "PC-Tech: auth API"
+      ],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
     }
   ]
 }

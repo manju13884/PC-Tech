@@ -1002,3 +1002,13 @@
     font-size: 1rem;
   }
 }
+.pc-advanced-corrugated-calculator input[type='number']::-webkit-inner-spin-button,
+.pc-advanced-corrugated-calculator input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pc-advanced-corrugated-calculator input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

@@ -983,3 +983,13 @@
     font-size: 1rem;
   }
 }
+.pc-corrugated-calculator-compat input[type='number']::-webkit-inner-spin-button,
+.pc-corrugated-calculator-compat input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pc-corrugated-calculator-compat input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
