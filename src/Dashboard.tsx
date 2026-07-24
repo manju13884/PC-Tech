@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Ban, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { Ban, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
 import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
@@ -16,6 +16,7 @@ import {
 import CardBoxCalculator from './features/corrugated-box-price-calculator/CardBoxCalculator'
 import './features/corrugated-box-price-calculator-compat.css'
 import CorrugatedBoardPriceCalculator from './features/corrugated-board-price-calculator/CorrugatedBoardPriceCalculator'
+import PaperPurchaseRequest from './features/paper-purchase-request/PaperPurchaseRequest'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
 import { loadCocTemplate } from './lib/templateLoader'
 import { loadPackingSlipLogo, loadPackingSlipTemplate } from './lib/packingSlipTemplateLoader'
@@ -64,6 +65,17 @@ const menuGroups: MenuGroup[] = [
         menuTitle: 'Board Price Calculator',
         description: 'Calculate the weight, manufacturing cost and selling price of 3-ply, 5-ply and 7-ply corrugated boards.',
         icon: Calculator,
+      },
+    ],
+  },
+  {
+    title: 'Purchases',
+    items: [
+      {
+        key: 'paper-purchase-request',
+        title: 'Paper Purchase Request',
+        description: 'Create and manage paper purchase requests.',
+        icon: ShoppingCart,
       },
     ],
   },
@@ -1663,6 +1675,9 @@ export default function Dashboard({
               )}
               {selectedItem.key === 'corrugated-board-price' && (
                 <CorrugatedBoardPriceCalculator />
+              )}
+              {selectedItem.key === 'paper-purchase-request' && (
+                <PaperPurchaseRequest />
               )}
               {selectedItem.key === 'coc' && (
                 <div className="coc-form">

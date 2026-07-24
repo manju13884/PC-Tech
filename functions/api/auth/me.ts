@@ -29,6 +29,7 @@ const ALL_MENU_KEYS = [
   'corrugated-box-price',
   'corrugated-box-price-advanced',
   'corrugated-board-price',
+  'paper-purchase-request',
   'coc',
   'packing-slip',
   'coa',
