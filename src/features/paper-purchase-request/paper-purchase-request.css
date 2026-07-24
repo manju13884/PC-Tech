@@ -44,12 +44,19 @@
 .paper-request-error { color: #b91c1c; }
 .paper-request-empty { color: #64748b; }
 .paper-request-error svg { flex: 0 0 auto; margin-top: 1px; }
-.paper-order-items { margin-top: 1rem; }
+.pc-paper-purchase-request .paper-order-items { display: flex; flex-direction: column; gap: 0 !important; margin-top: 1rem; }
 .paper-order-items h4 { margin: 0; color: #334155; font-size: .78rem; font-weight: 700; }
-.paper-order-items-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
-.paper-order-items-heading p { margin: .12rem 0 0; color: #64748b; font-size: .8125rem; font-weight: 400; line-height: 1.35; }
-.paper-order-items-heading > span { padding: .2rem .45rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: .7rem; font-weight: 600; white-space: nowrap; }
+.pc-paper-purchase-request .paper-order-items-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0 !important; padding: .58rem .7rem; border: 1px solid #dbe3ee; border-radius: 6px 6px 0 0; background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); box-shadow: 0 1px 3px rgb(15 23 42 / 5%); }
+.pc-paper-purchase-request .paper-order-items-heading > div > p {
+  margin: .12rem 0 0;
+  color: #64748b;
+  font-size: 9.75px !important;
+  font-weight: 400;
+  line-height: 1.35;
+}
+.paper-order-items-heading > span { padding: .25rem .55rem; border: 1px solid #bfdbfe; border-radius: 999px; background: #fff; color: #1d4ed8; font-size: .7rem; font-weight: 700; white-space: nowrap; box-shadow: 0 1px 2px rgb(37 99 235 / 8%); }
 .paper-order-table-wrap { overflow-x: auto; border: 1px solid #dbe3ee; border-radius: 6px; }
+.pc-paper-purchase-request .paper-order-items .paper-order-table-wrap { margin: 0 !important; border-top: 0; border-radius: 0 0 6px 6px; }
 .paper-order-table-wrap table { min-width: 850px; width: 100%; border-collapse: collapse; background: #fff; font-size: .82rem; }
 .paper-order-table-wrap th, .paper-order-table-wrap td { padding: .65rem .75rem; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
 .paper-order-table-wrap th { background: #f8fafc; color: #475569; font-size: .75rem; font-weight: 600; }

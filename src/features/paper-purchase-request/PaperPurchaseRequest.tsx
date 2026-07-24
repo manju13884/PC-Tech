@@ -203,9 +203,9 @@ export default function PaperPurchaseRequest() {
             <div className="paper-order-items-heading">
               <div>
                 <h4>Sales Order Items</h4>
-                <p>Expand the paper requirement calculator.</p>
+                <p>Expand the paper requirement calculator and enter composition.</p>
               </div>
-              <span>{salesOrderDetail.line_items.length} item{salesOrderDetail.line_items.length === 1 ? '' : 's'}</span>
+              <span>{salesOrderDetail.line_items.length} item{salesOrderDetail.line_items.length === 1 ? '' : 's'}.</span>
             </div>
             <div className="paper-order-table-wrap">
               <table>
