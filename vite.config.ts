@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { getZohoCustomers } from './lib/customers'
 import { getZohoInvoiceById, getZohoInvoicesByCustomer } from './lib/invoices'
+import { getZohoSalesOrderById, getZohoSalesOrdersByCustomer } from './lib/salesOrders'
 
 const authConfig = JSON.parse(
   readFileSync(new URL('./server/auth-config.json', import.meta.url), 'utf8'),
@@ -125,6 +126,37 @@ const apiMiddleware = () => ({
         console.error('Unable to load invoices from Zoho Books', error)
         sendJson(res, 502, {
           error: error instanceof Error ? error.message : 'Unable to load invoices',
+        })
+      }
+    })
+
+    server.middlewares.use('/api/sales-orders', async (req, res, next) => {
+      if (req.method !== 'GET') {
+        next()
+        return
+      }
+
+      const url = new URL(req.url ?? '', 'http://localhost')
+      const salesOrderId = url.searchParams.get('salesorder_id')?.trim() ?? ''
+      const customerId = url.searchParams.get('customer_id')?.trim() ?? ''
+
+      if (!salesOrderId && !customerId) {
+        sendJson(res, 400, { error: 'salesorder_id or customer_id is required' })
+        return
+      }
+
+      try {
+        if (salesOrderId) {
+          const salesOrder = await getZohoSalesOrderById(salesOrderId)
+          sendJson(res, salesOrder ? 200 : 404, salesOrder ?? { error: 'Sales Order not found' })
+          return
+        }
+
+        sendJson(res, 200, await getZohoSalesOrdersByCustomer(customerId))
+      } catch (error) {
+        console.error('Unable to load sales orders from Zoho Books', error)
+        sendJson(res, 502, {
+          error: error instanceof Error ? error.message : 'Unable to load sales orders',
         })
       }
     })
