@@ -47,6 +47,7 @@ export interface PaperLayerResult {
 }
 
 export interface PaperCostResult {
+  calculationQuantity: number
   areaSqM: number
   sizeCm?: number
   deckleCm?: number

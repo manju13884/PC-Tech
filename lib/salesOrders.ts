@@ -17,6 +17,7 @@ export interface SalesOrderLineItem {
 }
 
 export interface SalesOrderDetail extends SalesOrderSummary {
+  total: number
   line_items: SalesOrderLineItem[]
 }
 
@@ -24,6 +25,7 @@ interface ZohoSalesOrder {
   salesorder_id?: string | number
   salesorder_number?: string
   customer_id?: string | number
+  total?: string | number
   line_items?: unknown[]
 }
 
@@ -178,6 +180,7 @@ export async function getZohoSalesOrderById(
   return {
     salesorder_id: id,
     salesorder_number: normalizeText(value.salesorder_number),
+    total: Number.isFinite(Number(value.total)) ? Number(value.total) : 0,
     line_items: Array.isArray(value.line_items)
       ? value.line_items
         .map(mapSalesOrderLineItem)

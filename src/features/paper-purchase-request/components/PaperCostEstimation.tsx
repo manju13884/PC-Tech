@@ -96,7 +96,10 @@ export default function PaperCostEstimation({ item, configuration, onResultChang
             </>
           )}
           {result && !isBox && (
-            <label><span>Area per Board/Sheet (m²)</span><input value={formatNumber(result.areaSqM, 6)} readOnly /></label>
+            <label className="paper-half-width-field">
+              <span>Area per Board/Sheet (m²)</span>
+              <input value={formatNumber(result.areaSqM, 6)} readOnly />
+            </label>
           )}
           </div>
         </div>

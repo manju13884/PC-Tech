@@ -10,7 +10,7 @@
 .paper-request-section > header h3 { display: flex; align-items: center; gap: .5rem; margin: 0; color: #1e293b; font-size: 1.06rem; font-weight: 600; line-height: 1.25; }
 .paper-request-section > header h3 svg { width: 24px; height: 24px; padding: 4px; border: 1px solid #bfdbfe; border-radius: 4px; background: #eff6ff; color: #2563eb; }
 .paper-request-section > header p { margin: .1rem 0 0 2rem; color: #64748b; font-size: .8125rem; line-height: 1.35; }
-.paper-request-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: .75rem; }
+.paper-request-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: .75rem; }
 .paper-search-field { position: relative; display: grid; gap: .28rem; min-width: 0; }
 .paper-search-field > label { color: #475569; font-size: .78rem; font-weight: 500; line-height: 1.2; }
 .paper-search-control { display: flex; align-items: center; min-height: 22px; padding: 0 .65rem; border: 1px solid #d6e4f0; border-radius: 8px; background: #f8fbff; color: #64748b; box-shadow: 0 1px 2px rgb(15 23 42 / 3%); }
@@ -19,6 +19,20 @@
 .paper-search-control input { min-width: 0; width: 100%; height: 22px; padding: 0 .5rem; border: 0; outline: 0; background: transparent; color: #1e293b; font: inherit; font-size: .8rem; font-weight: 500; }
 .paper-search-control input:disabled { color: #94a3b8; cursor: not-allowed; }
 .paper-search-control input::placeholder { color: #7c8da5; opacity: 1; }
+.paper-sales-order-amount-field { display: flex; align-items: flex-end; min-width: 0; height: 100%; }
+.paper-sales-order-amount { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .8rem; border: 1px solid #65c887; border-radius: 10px; background: #def4e6; box-shadow: inset 5px 0 #16a34a; color: #176b3a; }
+.paper-sales-order-amount > span { display: flex; min-width: 0; align-items: center; gap: .45rem; font-size: .8rem; font-weight: 600; }
+.paper-sales-order-amount > span span { overflow-wrap: anywhere; }
+.paper-sales-order-amount svg { flex: 0 0 auto; }
+.paper-sales-order-amount strong { flex: 0 0 auto; font-size: 1.05rem; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.paper-sales-order-amount.is-empty { border-color: #cbd5e1; background: #f8fafc; box-shadow: inset 5px 0 #94a3b8; color: #64748b; }
+.paper-requirement-summary { margin-top: .75rem; overflow: hidden; border: 1px solid #bbdfc7; border-radius: 6px; background: #f0fbf4; }
+.paper-requirement-summary h4 { margin: 0; padding: .48rem .7rem; border-bottom: 1px solid #d2ead9; background: #e4f7eb; color: #176b3a; font-size: .78rem; font-weight: 700; }
+.paper-requirement-summary dl { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 0; }
+.paper-requirement-summary dl > div { min-width: 0; padding: .48rem .7rem; border-right: 1px solid #d2ead9; }
+.paper-requirement-summary dl > div:last-child { border-right: 0; }
+.paper-requirement-summary dt { color: #5c6d62; font-size: .65rem; font-weight: 600; }
+.paper-requirement-summary dd { margin: .14rem 0 0; color: #166534; font-size: .78rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .paper-search-clear { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #64748b; cursor: pointer; }
 .paper-search-clear:hover { background: #e2e8f0; color: #1e293b; }
 .paper-search-menu { position: absolute; z-index: 20; top: calc(100% + .3rem); right: 0; left: 0; max-height: 230px; overflow-y: auto; padding: .3rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; box-shadow: 0 10px 24px rgb(15 23 42 / 14%); }
@@ -31,9 +45,9 @@
 .paper-request-empty { color: #64748b; }
 .paper-request-error svg { flex: 0 0 auto; margin-top: 1px; }
 .paper-order-items { margin-top: 1rem; }
-.paper-order-items h4 { margin: 0; color: #334155; font-size: .9rem; font-weight: 600; }
+.paper-order-items h4 { margin: 0; color: #334155; font-size: .78rem; font-weight: 700; }
 .paper-order-items-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
-.paper-order-items-heading p { margin: .15rem 0 0; color: #64748b; font-size: .74rem; }
+.paper-order-items-heading p { margin: .12rem 0 0; color: #64748b; font-size: .8125rem; font-weight: 400; line-height: 1.35; }
 .paper-order-items-heading > span { padding: .2rem .45rem; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: .7rem; font-weight: 600; white-space: nowrap; }
 .paper-order-table-wrap { overflow-x: auto; border: 1px solid #dbe3ee; border-radius: 6px; }
 .paper-order-table-wrap table { min-width: 850px; width: 100%; border-collapse: collapse; background: #fff; font-size: .82rem; }
@@ -42,6 +56,7 @@
 .paper-order-table-wrap th:first-child, .paper-order-table-wrap td:first-child { width: 48px; text-align: center; }
 .paper-order-table-wrap th:last-child, .paper-order-table-wrap td:last-child { width: 110px; text-align: right; }
 .paper-order-table-wrap tbody tr:last-child td { border-bottom: 0; }
+.paper-order-table-wrap tbody tr.paper-item-row > td { border-bottom: 0; }
 .paper-order-table-wrap tbody tr.is-selected { background: #eff6ff; box-shadow: inset 3px 0 #2563eb; }
 .paper-order-table-wrap tbody tr.is-selected > td { border-bottom: 0; }
 .paper-order-table-wrap td strong, .paper-order-table-wrap td span { display: block; }
@@ -52,6 +67,7 @@
 .paper-calculator-toggle span { display: inline !important; margin: 0 !important; color: inherit !important; }
 .paper-calculator-toggle span:last-child { padding-left: .45rem; border-left: 1px solid #bfdbfe; font-weight: 700; }
 .paper-calculator-toggle:hover { border-color: #93c5fd; background: #dbeafe; }
+.paper-calculator-toggle:disabled { border-color: #dbe3ee; background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
 .paper-item-calculator-bar { display: flex; align-items: center; gap: .5rem; width: 100%; margin-top: .42rem; white-space: nowrap; }
 .paper-item-calculator-bar .paper-calculator-toggle { flex: 0 0 auto; margin-top: 0; }
 .paper-inline-summary { display: flex; flex: 1 1 auto; align-items: stretch; gap: 0; min-width: 0; margin: 0; overflow: hidden; border: 1px solid #bbdfc7; border-radius: 4px; background: #f0fbf4; white-space: normal; }
@@ -103,11 +119,29 @@
 .paper-estimation-fields .paper-half-width-field.paper-ply-compact input { width: min(100%, 60px); }
 .paper-estimation-fields .paper-half-width-field.paper-result-compact input { width: min(100%, 80px); }
 .paper-estimation-fields .paper-half-width-field.paper-size-compact input { width: min(100%, 70px); }
+.paper-other-inputs .paper-half-width-field { width: min(100%, 70px); }
 .paper-other-inputs .paper-half-width-field input { width: min(100%, 70px); }
 .paper-estimation-fields label.paper-half-width-field { position: relative; display: block; padding-top: 6px; }
 .paper-estimation-fields label.paper-half-width-field > span { position: absolute; z-index: 1; top: 0; left: 7px; min-height: 0; padding: 0 4px; background: #fff; color: #526079; font-size: .59rem; font-weight: 600; line-height: 12px; }
 .paper-estimation-fields label.paper-half-width-field > input { display: block; }
 .paper-estimation-fields label.paper-half-width-field > small { display: block; width: 100px; margin-top: .2rem; }
+.paper-estimation-fields label.paper-half-width-field {
+  text-align: center;
+}
+.paper-estimation-fields label.paper-half-width-field > span {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.paper-estimation-card.is-flat-product .paper-estimation-fields label.paper-half-width-field {
+  width: 100%;
+}
+.paper-estimation-card.is-flat-product .paper-estimation-fields label.paper-half-width-field > input,
+.paper-estimation-card.is-flat-product .paper-other-inputs .paper-half-width-field input {
+  width: 100%;
+}
+.paper-estimation-card.is-flat-product .paper-estimation-fields label.paper-half-width-field > small {
+  width: 100%;
+}
 .paper-estimation-fields input, .paper-layer-table-wrap input, .paper-layer-table-wrap select { width: 100%; min-width: 74px; height: 22px; padding: 0 .4rem; border: 1px solid #c7d2e0; border-radius: 3px; background: #fff; color: #1e293b; font: inherit; font-size: .72rem; box-shadow: inset 0 1px 1px rgb(15 23 42 / 3%); }
 .paper-estimation-card input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
 .paper-estimation-card input[type='number']::-webkit-inner-spin-button,
@@ -165,6 +199,9 @@
 @keyframes paper-search-spin { to { transform: rotate(360deg); } }
 @media (max-width: 640px) {
   .paper-request-fields { grid-template-columns: 1fr; }
+  .paper-requirement-summary dl { grid-template-columns: 1fr; }
+  .paper-requirement-summary dl > div { border-right: 0; border-bottom: 1px solid #d2ead9; }
+  .paper-requirement-summary dl > div:last-child { border-bottom: 0; }
   .paper-request-section > header p { margin-left: 0; }
   .paper-search-control { min-height: 22px; }
   .paper-search-control input { height: 22px; font-size: .8rem; }

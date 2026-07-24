@@ -15,6 +15,7 @@ export interface SalesOrderLineItem {
 }
 
 export interface SalesOrderDetail extends SalesOrder {
+  total: number
   line_items: SalesOrderLineItem[]
 }
 
@@ -90,8 +91,10 @@ export async function getSalesOrderById(salesOrderId: string): Promise<SalesOrde
   }
 
   const lineItems = (payload as { line_items?: unknown }).line_items
+  const total = (payload as { total?: unknown }).total
   return {
     ...payload,
+    total: typeof total === 'number' && Number.isFinite(total) ? total : 0,
     line_items: Array.isArray(lineItems) ? lineItems.filter(isSalesOrderLineItem) : [],
   }
 }

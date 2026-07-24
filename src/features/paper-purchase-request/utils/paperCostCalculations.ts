@@ -98,6 +98,7 @@ export function calculatePaperCost(
   const totalPaperCost = layers.reduce((total, layer) => total + layer.totalPaperCost, 0)
 
   return {
+    calculationQuantity: quantity,
     areaSqM,
     sizeCm,
     deckleCm,
