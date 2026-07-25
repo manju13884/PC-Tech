@@ -38,7 +38,10 @@ export interface PaperCostInputs {
 export interface PaperLayerResult {
   key: string
   label: string
+  paperType: string
   gsm: number
+  bf: number
+  drawRatio: number
   paperPricePerKg: number
   baseWeightKg: number
   wastageWeightKg: number
@@ -47,7 +50,13 @@ export interface PaperLayerResult {
 }
 
 export interface PaperCostResult {
+  productType: PaperProductType
+  boxPly: number
   calculationQuantity: number
+  lengthMm: number
+  breadthMm: number
+  heightMm?: number
+  wastagePercent: number
   areaSqM: number
   sizeCm?: number
   deckleCm?: number

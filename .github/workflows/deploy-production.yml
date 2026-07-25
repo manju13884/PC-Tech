@@ -29,6 +29,13 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Apply production D1 migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply pc-tech-db --remote
+
       - name: Remove invalid generated worker file
         run: rm -f dist/_worker.js dist/_worker.js.map
 

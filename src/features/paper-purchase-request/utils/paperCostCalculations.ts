@@ -77,7 +77,10 @@ export function calculatePaperCost(
     return {
       key: layer.key,
       label: layer.label,
+      paperType: layer.paperType === 'Others' ? layer.otherPaperType.trim() : layer.paperType,
       gsm,
+      bf: Number(layer.bf),
+      drawRatio,
       paperPricePerKg,
       baseWeightKg,
       wastageWeightKg,
@@ -98,7 +101,13 @@ export function calculatePaperCost(
   const totalPaperCost = layers.reduce((total, layer) => total + layer.totalPaperCost, 0)
 
   return {
+    productType,
+    boxPly: inputs.layers.length,
     calculationQuantity: quantity,
+    lengthMm: length,
+    breadthMm: breadth,
+    heightMm: productType === 'BOX' ? height : undefined,
+    wastagePercent,
     areaSqM,
     sizeCm,
     deckleCm,

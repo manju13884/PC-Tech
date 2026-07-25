@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "node --use-system-ca ./node_modules/vite/bin/vite.js",
     "build": "tsc && vite build",
+    "db:migrate:dev": "wrangler d1 migrations apply pc-tech-db --local",
+    "db:migrations:list:production": "wrangler d1 migrations list pc-tech-db --remote",
+    "db:migrate:production": "wrangler d1 migrations apply pc-tech-db --remote",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."

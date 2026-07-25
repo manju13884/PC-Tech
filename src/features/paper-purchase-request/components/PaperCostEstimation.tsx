@@ -11,6 +11,8 @@ interface Props {
   item: SalesOrderLineItem
   configuration: EligiblePaperItem
   onResultChange: (lineItemId: string, result: PaperCostResult | null) => void
+  readOnly?: boolean
+  savedResult?: PaperCostResult | null
 }
 
 const formatNumber = (value: number, digits = 3) => (
@@ -22,9 +24,38 @@ const formatNumber = (value: number, digits = 3) => (
 const isPositive = (value: string) => Number.isFinite(Number(value)) && Number(value) > 0
 const isNonNegative = (value: string) => Number.isFinite(Number(value)) && Number(value) >= 0
 
-export default function PaperCostEstimation({ item, configuration, onResultChange }: Props) {
+const inputsFromResult = (result: PaperCostResult): PaperCostInputs => ({
+  calculationQuantity: String(result.calculationQuantity),
+  lengthMm: String(result.lengthMm),
+  breadthMm: String(result.breadthMm),
+  heightMm: result.heightMm == null ? '' : String(result.heightMm),
+  wastagePercent: String(result.wastagePercent),
+  layers: result.layers.map((layer) => {
+    const isStandardPaperType = ['GYT', 'Natural', 'White'].includes(layer.paperType)
+    return {
+      key: layer.key,
+      label: layer.label,
+      paperType: isStandardPaperType ? layer.paperType : 'Others',
+      otherPaperType: isStandardPaperType ? '' : layer.paperType,
+      gsm: String(layer.gsm),
+      bf: String(layer.bf),
+      paperPricePerKg: String(layer.paperPricePerKg),
+      drawRatio: String(layer.drawRatio),
+    }
+  }),
+})
+
+export default function PaperCostEstimation({
+  item,
+  configuration,
+  onResultChange,
+  readOnly = false,
+  savedResult = null,
+}: Props) {
   const [inputs, setInputs] = useState<PaperCostInputs>(
-    () => createInitialPaperCostInputs(configuration.defaultPly, item.quantity),
+    () => savedResult
+      ? inputsFromResult(savedResult)
+      : createInitialPaperCostInputs(configuration.defaultPly, item.quantity),
   )
   const errors = useMemo(
     () => validatePaperCostInputs(configuration.productType, inputs),
@@ -37,8 +68,12 @@ export default function PaperCostEstimation({ item, configuration, onResultChang
   const isBox = configuration.productType === 'BOX'
 
   useEffect(() => {
-    onResultChange(item.line_item_id, result)
-  }, [item.line_item_id, onResultChange, result])
+    onResultChange(item.line_item_id, readOnly && savedResult ? savedResult : result)
+  }, [item.line_item_id, onResultChange, readOnly, result, savedResult])
+
+  useEffect(() => {
+    if (savedResult) setInputs(inputsFromResult(savedResult))
+  }, [savedResult])
 
   const setField = (field: keyof Omit<PaperCostInputs, 'layers'>, value: string) => {
     setInputs((current) => ({ ...current, [field]: value }))
@@ -59,6 +94,7 @@ export default function PaperCostEstimation({ item, configuration, onResultChang
 
   return (
     <section className={`paper-estimation-card ${isBox ? 'is-box-product' : 'is-flat-product'}`}>
+      <fieldset className="paper-estimation-fieldset" disabled={readOnly}>
       <div className="paper-calculator-top-row">
         <div className="paper-calculator-section paper-dimensions-section">
           <h5>1. {isBox ? 'Box Dimensions' : 'Board/Sheet Dimensions'}</h5>
@@ -171,6 +207,7 @@ export default function PaperCostEstimation({ item, configuration, onResultChang
         )}
       </div>
 
+      </fieldset>
     </section>
   )
 }

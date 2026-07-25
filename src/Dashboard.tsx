@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Ban, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { Ban, BarChart3, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
 import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
@@ -17,6 +17,8 @@ import CardBoxCalculator from './features/corrugated-box-price-calculator/CardBo
 import './features/corrugated-box-price-calculator-compat.css'
 import CorrugatedBoardPriceCalculator from './features/corrugated-board-price-calculator/CorrugatedBoardPriceCalculator'
 import PaperPurchaseRequest from './features/paper-purchase-request/PaperPurchaseRequest'
+import PaperPurchaseRequestApprovals from './features/paper-purchase-request-approvals/PaperPurchaseRequestApprovals'
+import PaperPoCalculation from './features/paper-po-calculation/PaperPoCalculation'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
 import { loadCocTemplate } from './lib/templateLoader'
 import { loadPackingSlipLogo, loadPackingSlipTemplate } from './lib/packingSlipTemplateLoader'
@@ -77,6 +79,26 @@ const menuGroups: MenuGroup[] = [
         description: 'Create and manage paper purchase requests.',
         icon: ShoppingCart,
       },
+      {
+        key: 'paper-purchase-request-approvals',
+        title: 'Paper Purchase Request Approvals',
+        menuTitle: 'Approvals',
+        description: 'Review, approve or reject submitted Paper Purchase Requests.',
+        icon: ShieldCheck,
+      },
+      {
+        key: 'paper-po-calculation',
+        title: 'Paper PO Calculation',
+        description: 'Consolidate approved Paper Purchase Requests by procurement specification.',
+        icon: ClipboardList,
+      },
+      {
+        key: 'purchase-reports',
+        title: 'Purchase Reports',
+        menuTitle: 'Reports',
+        description: 'View reporting and analysis for Purchase workflows.',
+        icon: BarChart3,
+      },
     ],
   },
   {
@@ -121,6 +143,13 @@ const menuGroups: MenuGroup[] = [
 
 const menuItems = menuGroups.flatMap((group) => group.items)
 export const defaultMenuKey = 'corrugated-box-price'
+const PANEL_HEADING_MENU_KEYS = new Set([
+  'corrugated-box-price',
+  ADVANCED_BOX_CALCULATOR_ROUTE_KEY,
+  'corrugated-board-price',
+  'paper-purchase-request',
+  'purchase-reports',
+])
 const MOBILE_NO_PATTERN = /^\d{10}$/
 const coaAnalysisHeadings = ['Board GSM', 'GSM', 'Bursting Strength', 'Moisture', 'Ply'] as const
 type CoaAnalysisHeading = (typeof coaAnalysisHeadings)[number]
@@ -552,6 +581,7 @@ export default function Dashboard({
     description: 'No application modules are assigned to your role.',
     icon: Settings,
   }
+  const SelectedItemIcon = selectedItem.icon
   const sortedAdminUsers = sortByCreatedDateAsc(adminUsers)
   const sortedAdminRoles = sortByCreatedDateAsc(adminRoles)
   const activeAdminRoles = sortedAdminRoles.filter((role) => role.status === 'ACTIVE')
@@ -1659,9 +1689,16 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
             <header className="dashboard-page-heading">
-              <h2>{selectedItem.title}</h2>
+              <h2>
+                {PANEL_HEADING_MENU_KEYS.has(selectedItem.key) && (
+                  <span className="dashboard-page-heading-icon" aria-hidden="true">
+                    <SelectedItemIcon size={16} />
+                  </span>
+                )}
+                <span>{selectedItem.title}</span>
+              </h2>
               <p>{selectedItem.description}</p>
             </header>
             <div className="dashboard-details">
@@ -1678,6 +1715,21 @@ export default function Dashboard({
               )}
               {selectedItem.key === 'paper-purchase-request' && (
                 <PaperPurchaseRequest />
+              )}
+              {selectedItem.key === 'paper-purchase-request-approvals' && (
+                <PaperPurchaseRequestApprovals />
+              )}
+              {selectedItem.key === 'paper-po-calculation' && (
+                <PaperPoCalculation />
+              )}
+              {selectedItem.key === 'purchase-reports' && (
+                <section className="paper-request-section pc-purchase-reports">
+                  <header>
+                    <h3><BarChart3 size={16} /> Purchase Reports</h3>
+                    <p>Purchase workflow reports and analysis will be available here.</p>
+                  </header>
+                  <p className="paper-request-empty">No Purchase Reports are available yet.</p>
+                </section>
               )}
               {selectedItem.key === 'coc' && (
                 <div className="coc-form">
