@@ -2,6 +2,15 @@
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+/* Keep calculator section cards flush with the outer calculator frame. */
+.pc-advanced-corrugated-calculator > .p-4 {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
 .pc-advanced-corrugated-calculator *,
 .pc-advanced-corrugated-calculator *::before,
 .pc-advanced-corrugated-calculator *::after {
@@ -37,7 +46,7 @@
   background-color: #2563eb;
   box-shadow: 0 2px 5px rgb(37 99 235 / 22%);
   color: #ffffff;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.25rem;
   transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
@@ -238,12 +247,12 @@
 }
 
 .pc-advanced-corrugated-calculator .text-xs {
-  font-size: 0.75rem;
+  font-size: 0.6375rem;
   line-height: 1rem;
 }
 
 .pc-advanced-corrugated-calculator .text-lg {
-  font-size: 1.125rem;
+  font-size: 0.95625rem;
   line-height: 1.75rem;
 }
 
@@ -395,17 +404,17 @@
   }
 
   .pc-advanced-corrugated-calculator .sm\:text-sm {
-    font-size: 0.875rem;
+    font-size: 0.74375rem;
     line-height: 1.25rem;
   }
 
   .pc-advanced-corrugated-calculator .sm\:text-lg {
-    font-size: 1.125rem;
+    font-size: 0.95625rem;
     line-height: 1.75rem;
   }
 
   .pc-advanced-corrugated-calculator .sm\:text-2xl {
-    font-size: 1.5rem;
+    font-size: 1.275rem;
     line-height: 2rem;
   }
 }
@@ -419,7 +428,7 @@
 .dashboard-card:has(.pc-advanced-corrugated-calculator) .dashboard-page-heading h2 {
   margin: 0;
   color: #1e293b;
-  font-size: 1.22rem;
+  font-size: 1.037rem;
   font-weight: 650;
   line-height: 1.3;
 }
@@ -427,7 +436,7 @@
 .dashboard-card:has(.pc-advanced-corrugated-calculator) .dashboard-page-heading p {
   margin: 0.26rem 0 0;
   color: #64748b;
-  font-size: 0.86rem;
+  font-size: 0.731rem;
   line-height: 1.45;
 }
 
@@ -460,7 +469,7 @@
 
 .pc-advanced-corrugated-calculator label.text-xs {
   color: #334155;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -472,7 +481,7 @@
   border-radius: 7px;
   background-color: #eff6ff;
   color: #1e293b;
-  font-size: 0.84rem;
+  font-size: 0.714rem;
   line-height: 1.3;
   box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
   transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
@@ -514,6 +523,7 @@
 }
 
 .pc-advanced-corrugated-calculator form > section {
+  overflow: hidden;
   padding: 0.7rem;
   border: 1px solid #dbe3ee;
   border-radius: 6px;
@@ -531,7 +541,7 @@
   border-radius: 5px 5px 0 0;
   background-color: #f8fafc;
   color: #172033;
-  font-size: 0.9rem;
+  font-size: 0.765rem;
   font-weight: 650;
   line-height: 1.3;
 }
@@ -550,12 +560,12 @@
 .pc-advanced-corrugated-calculator .advanced-calculator-section-subtitle {
   margin: -0.2rem 0 0.6rem;
   color: #64748b;
-  font-size: 0.76rem;
+  font-size: 0.646rem;
   line-height: 1.4;
 }
 
 .pc-advanced-corrugated-calculator .advanced-paper-layers-header {
-  margin: -0.7rem -0.7rem 0.65rem;
+  margin: -0.7rem -0.7rem 0.65rem !important;
   padding: 0.65rem 0.7rem;
   border-bottom: 1px solid #dbe3ee;
   background-color: #f8fafc;
@@ -592,13 +602,13 @@
 }
 
 .pc-advanced-corrugated-calculator .calculated-result p.text-xs {
-  font-size: 0.75rem;
+  font-size: 0.6375rem;
   line-height: 1.2;
 }
 
 .pc-advanced-corrugated-calculator .calculated-result p.text-lg {
   margin-top: 0.15rem;
-  font-size: 1rem;
+  font-size: 0.85rem;
   line-height: 1.35;
 }
 
@@ -611,7 +621,7 @@
 }
 
 .pc-advanced-corrugated-calculator .advanced-box-specifications-header {
-  margin: -0.7rem -0.7rem 0.75rem;
+  margin: -0.7rem -0.7rem 0.75rem !important;
   padding: 0.65rem 0.7rem;
   border-bottom: 1px solid #dbe3ee;
   background-color: #f8fafc;
@@ -628,7 +638,7 @@
 .pc-advanced-corrugated-calculator .advanced-box-specifications-header p {
   margin: 0 0 0 2rem;
   color: #64748b;
-  font-size: 0.78rem;
+  font-size: 0.663rem;
   line-height: 1.4;
 }
 
@@ -667,7 +677,7 @@
   min-height: 34px;
   color: #334155;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.663rem;
 }
 
 .pc-advanced-corrugated-calculator .advanced-box-specifications-results {
@@ -693,7 +703,7 @@
   gap: 0.3rem;
   margin: 0;
   color: #64748b;
-  font-size: 0.76rem;
+  font-size: 0.646rem;
   font-weight: 600;
   line-height: 1.3;
 }
@@ -706,7 +716,7 @@
   display: block;
   margin-top: 0.18rem;
   color: #1e293b;
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 700;
   line-height: 1.3;
   text-align: right;
@@ -752,7 +762,7 @@
 
 .pc-advanced-corrugated-calculator .advanced-box-result-card.advanced-selling-price strong {
   color: #166534;
-  font-size: 1.18rem;
+  font-size: 1.003rem;
 }
 
 @media (min-width: 480px) {
@@ -852,11 +862,11 @@
   }
 
   .dashboard-card:has(.pc-advanced-corrugated-calculator) .dashboard-page-heading h2 {
-    font-size: 1.05rem;
+    font-size: 0.8925rem;
   }
 
   .dashboard-card:has(.pc-advanced-corrugated-calculator) .dashboard-page-heading p {
-    font-size: 0.78rem;
+    font-size: 0.663rem;
   }
 
   .dashboard-details:has(> .pc-advanced-corrugated-calculator) {
@@ -874,26 +884,29 @@
 
   .pc-advanced-corrugated-calculator .advanced-box-specifications-header,
   .pc-advanced-corrugated-calculator .advanced-paper-layers-header {
-    margin-right: -0.6rem;
-    margin-left: -0.6rem;
+    margin: -0.6rem -0.6rem 0.65rem !important;
     padding-right: 0.6rem;
     padding-left: 0.6rem;
+  }
+
+  .pc-advanced-corrugated-calculator .advanced-box-specifications-header {
+    margin-bottom: 0.75rem !important;
   }
 
   .pc-advanced-corrugated-calculator .advanced-box-specifications-header p,
   .pc-advanced-corrugated-calculator .advanced-paper-layers-header .advanced-calculator-section-subtitle {
     margin-left: 0;
     overflow-wrap: anywhere;
-    font-size: 0.74rem;
+    font-size: 0.629rem;
   }
 
   .pc-advanced-corrugated-calculator form h2.text-xs {
-    font-size: 0.86rem;
+    font-size: 0.731rem;
   }
 
   .pc-advanced-corrugated-calculator input.text-xs {
     min-height: 42px;
-    font-size: 1rem;
+    font-size: 0.85rem;
   }
 
   .pc-advanced-corrugated-calculator .advanced-calculator-refresh-button {
@@ -929,13 +942,13 @@
 
 /* Shared calculator-suite ERP typography refinement. */
 .dashboard-card:has(.pc-advanced-corrugated-calculator) .dashboard-page-heading h2 {
-  font-size: 1.3rem;
+  font-size: 1.105rem;
   font-weight: 600;
   line-height: 1.25;
 }
 
 .dashboard-card:has(.pc-advanced-corrugated-calculator) .dashboard-page-heading p {
-  font-size: 0.8125rem;
+  font-size: 0.690625rem;
   font-weight: 400;
   line-height: 1.4;
 }
@@ -944,7 +957,7 @@
 .pc-advanced-corrugated-calculator .advanced-box-specifications-header h2.advanced-calculator-section-heading,
 .pc-advanced-corrugated-calculator .advanced-paper-layers-header h2.advanced-calculator-section-heading {
   color: #1e293b;
-  font-size: 1.06rem;
+  font-size: 0.901rem;
   font-weight: 600;
   line-height: 1.25;
 }
@@ -952,14 +965,14 @@
 .pc-advanced-corrugated-calculator .advanced-box-specifications-header p,
 .pc-advanced-corrugated-calculator .advanced-calculator-section-subtitle {
   color: #64748b;
-  font-size: 0.8125rem;
+  font-size: 0.690625rem;
   font-weight: 400;
   line-height: 1.35;
 }
 
 .pc-advanced-corrugated-calculator label.text-xs {
   color: #475569;
-  font-size: 0.78rem;
+  font-size: 0.663rem;
   font-weight: 500;
   line-height: 1.2;
 }
@@ -972,7 +985,7 @@
   border-radius: 8px;
   background-color: #f8fbff;
   color: #1e293b;
-  font-size: 0.95rem;
+  font-size: 0.8075rem;
   font-weight: 500;
   line-height: 1.25;
 }
@@ -985,12 +998,12 @@
 }
 
 .pc-advanced-corrugated-calculator .advanced-box-result-card p {
-  font-size: 0.78rem;
+  font-size: 0.663rem;
   font-weight: 500;
 }
 
 .pc-advanced-corrugated-calculator .advanced-box-result-card strong {
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -999,7 +1012,7 @@
   .pc-advanced-corrugated-calculator input.text-xs,
   .pc-advanced-corrugated-calculator .advanced-box-ply-select-field select {
     min-height: 42px;
-    font-size: 1rem;
+    font-size: 0.85rem;
   }
 }
 .pc-advanced-corrugated-calculator input[type='number']::-webkit-inner-spin-button,

@@ -434,7 +434,7 @@ main.app-shell::after {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 195px minmax(0, 1fr);
   gap: 0;
   height: calc(100vh - 70px);
   min-height: 0;
@@ -443,7 +443,7 @@ main.app-shell::after {
 .dashboard-menu {
   display: grid;
   align-content: start;
-  gap: 1rem;
+  gap: 0.75rem;
   min-width: 0;
   height: 100%;
   overflow-y: auto;
@@ -451,13 +451,13 @@ main.app-shell::after {
   border: 0;
   border-right: 1px solid #d7dee9;
   border-radius: 0;
-  padding: 1rem 0.65rem;
+  padding: 0.75rem 0.4875rem;
 }
 
 .menu-group h3 {
-  margin: 0 0 0.38rem;
-  padding: 0 0.65rem;
-  font-size: 0.68rem;
+  margin: 0 0 0.285rem;
+  padding: 0 0.4875rem;
+  font-size: 0.51rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #687086;
@@ -468,7 +468,7 @@ main.app-shell::after {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.18rem;
+  gap: 0.135rem;
 }
 
 .menu-item {
@@ -476,15 +476,15 @@ main.app-shell::after {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.58rem;
+  gap: 0.435rem;
   width: 100%;
-  min-height: 40px;
-  padding: 0.38rem 0.48rem;
+  min-height: 30px;
+  padding: 0.285rem 0.36rem;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: #20263d;
-  font-size: 0.82rem;
+  font-size: 0.615rem;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -495,10 +495,10 @@ main.app-shell::after {
 
 .menu-item::before {
   position: absolute;
-  top: 8px;
-  bottom: 8px;
+  top: 6px;
+  bottom: 6px;
   left: 0;
-  width: 3px;
+  width: 2.25px;
   border-radius: 0 2px 2px 0;
   background: transparent;
   content: '';
@@ -508,24 +508,31 @@ main.app-shell::after {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.525rem;
   text-align: left;
 }
 
 .menu-item-icon {
   display: grid;
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
+  flex: 0 0 21px;
+  width: 21px;
+  height: 21px;
   place-items: center;
   border: 1px solid #e1e5ee;
-  border-radius: 7px;
+  border-radius: 5.25px;
   background: #ffffff;
   color: #687086;
 }
 
+.menu-item-icon svg {
+  width: 13.5px;
+  height: 13.5px;
+}
+
 .menu-item-chevron {
   flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
   color: #98a2b3;
   transition: transform 0.15s ease, color 0.15s ease;
 }
@@ -593,6 +600,38 @@ main.app-shell::after {
   line-height: 1.75;
 }
 
+.dashboard-card.dashboard-panel-heading-page.dashboard-panel-heading-page > .dashboard-page-heading {
+  max-width: none;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #d6e4f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.04);
+}
+
+.dashboard-panel-heading-page > .dashboard-page-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.dashboard-page-heading-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.dashboard-panel-heading-page > .dashboard-page-heading p {
+  margin-left: 0;
+}
+
 .document-form-page .dashboard-page-heading {
   max-width: none;
   padding: 0 0 0.95rem;
@@ -602,7 +641,7 @@ main.app-shell::after {
 .document-form-page .dashboard-page-heading h2 {
   margin: 0;
   color: #1e293b;
-  font-size: 1.22rem;
+  font-size: 1.037rem;
   font-weight: 650;
   line-height: 1.3;
 }
@@ -610,7 +649,7 @@ main.app-shell::after {
 .document-form-page .dashboard-page-heading p {
   margin: 0.26rem 0 0;
   color: #64748b;
-  font-size: 0.86rem;
+  font-size: 0.731rem;
   line-height: 1.45;
 }
 
@@ -658,7 +697,7 @@ main.app-shell::after {
   background: transparent;
   color: #475569;
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.714rem;
   font-weight: 650;
   display: inline-flex;
   align-items: center;
@@ -694,7 +733,7 @@ main.app-shell::after {
   margin: 0;
   padding: 1rem;
   color: #b42318;
-  font-size: 0.875rem;
+  font-size: 0.74375rem;
   line-height: 1.45;
 }
 
@@ -715,7 +754,7 @@ main.app-shell::after {
   background: #ffffff;
   color: #334155;
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
-  font-size: 0.86rem;
+  font-size: 0.731rem;
   font-weight: 650;
   line-height: 1.35;
 }
@@ -962,6 +1001,7 @@ main.app-shell::after {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   background: #ffffff;
+  font-size: 0.612rem;
 }
 
 .admin-roles-table td:nth-child(3) {
@@ -998,7 +1038,7 @@ main.app-shell::after {
 .admin-access-table th {
   background: #f8fafc;
   color: #53657d;
-  font-size: 0.68rem;
+  font-size: 0.578rem;
 }
 
 .admin-access-table tbody tr {
@@ -1025,7 +1065,7 @@ main.app-shell::after {
   border-radius: 999px;
   background: #e2e8f0;
   color: #64748b;
-  font-size: 0.58rem;
+  font-size: 0.493rem;
   font-weight: 700;
   vertical-align: middle;
 }
@@ -1034,7 +1074,7 @@ main.app-shell::after {
   display: block;
   margin-bottom: 0.12rem;
   color: #6b7c93;
-  font-size: 0.62rem;
+  font-size: 0.527rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -1042,7 +1082,7 @@ main.app-shell::after {
 
 .admin-access-table td strong {
   color: #1e293b;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 650;
 }
 
@@ -1286,7 +1326,7 @@ main.app-shell::after {
   display: block;
   margin-bottom: 0.32rem;
   color: #334155;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -1301,7 +1341,7 @@ main.app-shell::after {
   background-color: #fbfdff;
   color: #1e293b;
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.714rem;
   line-height: 1.3;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
@@ -1339,7 +1379,7 @@ main.app-shell::after {
   border-radius: 7px;
   background: #f8fafc;
   color: #1e293b;
-  font-size: 0.84rem;
+  font-size: 0.714rem;
 }
 
 .coa-invoice-details p,
@@ -1397,7 +1437,7 @@ main.app-shell::after {
 .coa-analysis-table th {
   background: #eef3f8;
   color: #1e293b;
-  font-size: 0.78rem;
+  font-size: 0.663rem;
   font-weight: 700;
   line-height: 1.3;
 }
@@ -1463,7 +1503,7 @@ main.app-shell::after {
   background: #ffffff;
   color: #1e293b;
   font: inherit;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   line-height: 1.35;
 }
 
@@ -1531,6 +1571,7 @@ main.app-shell::after {
   border-radius: 7px;
   background: #ffffff;
   color: #1d4ed8;
+  font-size: 0.85rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -2178,7 +2219,11 @@ main.app-shell::after {
   }
 
   .dashboard-grid {
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 165px minmax(0, 1fr);
+  }
+
+  .dashboard-menu {
+    padding: 1.125rem;
   }
 }
 
