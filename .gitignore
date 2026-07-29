@@ -14,3 +14,5 @@ dist
 *.log
 
 .wrangler-auth-local/
+
+.wrangler-auth-local/
