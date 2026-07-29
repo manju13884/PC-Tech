@@ -331,6 +331,7 @@ main.app-shell::after {
   position: sticky;
   top: 0;
   z-index: 20;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -340,10 +341,48 @@ main.app-shell::after {
   padding: 0.5rem 1.15rem;
   box-sizing: border-box;
   background:
-    linear-gradient(135deg, #142b70 0%, #1e3a8a 48%, #172554 100%);
+    linear-gradient(110deg, #152b68 0%, #1b357a 52%, #172858 100%);
+  overflow: hidden;
   border: 0;
   border-radius: 0;
-  box-shadow: 0 1px 0 rgba(191, 219, 254, 0.14), 0 10px 28px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 1px 0 rgba(191, 219, 254, 0.1), 0 6px 18px rgba(15, 23, 42, 0.13);
+}
+
+.dashboard-header::before,
+.dashboard-header::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.dashboard-header::before {
+  inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='196' height='70' viewBox='0 0 196 70'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%2360a5fa' stop-opacity='.10'/%3E%3Cstop offset='1' stop-color='%231e40af' stop-opacity='.04'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpolygon points='50,6 91,35 54,64 13,35' fill='url(%23a)' stroke='%2393c5fd' stroke-opacity='.08'/%3E%3C/svg%3E");
+  background-position: 54px 0;
+  background-repeat: repeat-x;
+  background-size: 196px 70px;
+  opacity: 0.76;
+  filter: blur(0.05px);
+  mask-image: linear-gradient(90deg, transparent 8%, #000 28%, #000 76%, transparent 96%);
+}
+
+.dashboard-header::after {
+  inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='196' height='70' viewBox='0 0 196 70'%3E%3Cpolygon points='111,13 142,35 114,58 82,36' fill='%233b82f6' fill-opacity='.055' stroke='%2393c5fd' stroke-opacity='.06'/%3E%3C/svg%3E");
+  background-position: 54px 0;
+  background-repeat: repeat-x;
+  background-size: 196px 70px;
+  opacity: 0.7;
+  filter: blur(0.05px);
+  mask-image: linear-gradient(90deg, transparent 8%, #000 28%, #000 76%, transparent 96%);
+}
+
+.dashboard-header > * {
+  position: relative;
+  z-index: 1;
 }
 
 .dashboard-brand {
