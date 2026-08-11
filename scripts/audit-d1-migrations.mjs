@@ -17,12 +17,13 @@ for (const [index, fileName] of migrationFiles.entries()) {
   }
 
   const sql = readFileSync(resolve(migrationDirectory, fileName), 'utf8')
+  const normalizedSql = sql.replace(/\r\n?/g, '\n')
   if (/\b(?:DROP\s+(?:TABLE|DATABASE|INDEX)|TRUNCATE|DELETE\s+FROM)\b/i.test(sql)) {
     errors.push(`${fileName}: destructive SQL is prohibited`)
   }
 
   const expectedHash = expectedChecksums[fileName]
-  const actualHash = createHash('sha256').update(sql).digest('hex')
+  const actualHash = createHash('sha256').update(normalizedSql).digest('hex')
   if (!expectedHash) {
     errors.push(`${fileName}: checksum is not registered`)
   } else if (actualHash !== expectedHash) {
