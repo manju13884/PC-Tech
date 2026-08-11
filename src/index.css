@@ -1570,6 +1570,99 @@ main.app-shell::after {
   cursor: default;
 }
 
+.coa-analysis-table input:read-only {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  cursor: default;
+}
+
+.coa-status-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+  padding: 0.48rem 0.65rem;
+  border: 1px solid #bbdfc7;
+  border-radius: 6px;
+  background: #f3fbf6;
+}
+
+.coa-status-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding-right: 1rem;
+  border-right: 1px solid #cce8d5;
+  color: #067647;
+  font-size: 0.74rem;
+}
+
+.coa-status-panel dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 1 1 auto;
+  gap: 0.35rem 1rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.coa-status-panel dl div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.coa-status-panel dt,
+.coa-status-panel dd {
+  margin: 0;
+}
+
+.coa-status-panel dt {
+  flex: 0 0 auto;
+  color: #667085;
+  font-size: 0.6rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.coa-status-panel dd {
+  min-width: 0;
+  overflow: hidden;
+  color: #1e293b;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coa-persistence-message {
+  margin: 0.65rem 0 0;
+  color: #b42318;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .coa-status-panel {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .coa-status-heading {
+    padding: 0 0 0.45rem;
+    border-right: 0;
+    border-bottom: 1px solid #cce8d5;
+  }
+
+  .coa-status-panel dl {
+    grid-template-columns: 1fr;
+  }
+}
+
 .coa-analysis-table td:nth-child(2) textarea {
   height: auto;
   field-sizing: content;

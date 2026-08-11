@@ -6,9 +6,13 @@
   "scripts": {
     "dev": "node --use-system-ca ./node_modules/vite/bin/vite.js",
     "build": "tsc && vite build",
-    "db:migrate:dev": "wrangler d1 migrations apply pc-tech-db --local",
-    "db:migrations:list:production": "wrangler d1 migrations list pc-tech-db --remote",
-    "db:migrate:production": "wrangler d1 migrations apply pc-tech-db --remote",
+    "db:migrations:audit": "node scripts/audit-d1-migrations.mjs",
+    "db:migrations:list:dev": "npm run db:migrations:audit && wrangler d1 migrations list pc-tech-db --local",
+    "db:migrate:dev": "npm run db:migrations:audit && wrangler d1 migrations apply pc-tech-db --local",
+    "db:migrations:list:nonproduction": "npm run db:migrations:audit && wrangler d1 migrations list pc-tech-db --remote --env nonproduction",
+    "db:migrate:nonproduction": "npm run db:migrations:audit && wrangler d1 migrations apply pc-tech-db --remote --env nonproduction",
+    "db:migrations:list:production": "npm run db:migrations:audit && wrangler d1 migrations list pc-tech-production-db --remote --env production",
+    "db:migrate:production": "npm run db:migrations:audit && wrangler d1 migrations apply pc-tech-production-db --remote --env production",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write ."

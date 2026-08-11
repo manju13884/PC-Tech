@@ -5,3 +5,19 @@ binding = "DB"
 database_name = "pc-tech-db"
 database_id = "0d749a66-9654-4767-b56a-afd4f8bcd9a1"
 migrations_dir = "migrations"
+
+[env.nonproduction]
+
+[[env.nonproduction.d1_databases]]
+binding = "DB"
+database_name = "pc-tech-db"
+database_id = "0d749a66-9654-4767-b56a-afd4f8bcd9a1"
+migrations_dir = "migrations"
+
+[env.production]
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "pc-tech-production-db"
+database_id = "e863e5c3-b60f-48a5-8fdd-862f1ac52eaf"
+migrations_dir = "migrations"
