@@ -3,11 +3,11 @@
   "0002_create_role_menu_permissions.sql": "ab36adc32b4d0d7aa01a664cd2cd1da88e43c9c6da65e083cd29f8660e751de7",
   "0003_create_password_setup_tokens.sql": "c669e4b35b79c40ac9cea4f8768bf199ea63885221369c34493b6cbe4b978908",
   "0004_add_must_change_password.sql": "37c8976ac1e553e56945c8508a57235cfc375182c3af16f9620493369a4db41a",
-  "0005_add_mobile_no.sql": "beb1c4e946dc1de0f64e4039be9ea8e9caff56aab9e3987cc88f4e82f064201b",
-  "0006_enforce_superadmin_menu_access.sql": "bca5876898b803df53b1792fc0b79b3afed9774de7087a6bfa312aab9db6c045",
-  "0007_create_paper_purchase_requests.sql": "473904d95b90b59d7a4f5f6d0f22986c563c3af299fc2f6e2a9f6ccac0214c50",
-  "0008_add_paper_request_approval_workflow.sql": "6566ca0c90aa5d757326bbf45e3267794fe8f6aa81c823feb4dbe7965ec2afdb",
-  "0009_add_paper_po_calculation_permission.sql": "c98b09cfa727540513b38fc2c9b4fc8093f71d3429da3646a34fe3c2c75a323f",
-  "0010_add_purchase_reports_permission.sql": "f72859ca6700238c1436f2aabf41b9fb65a482ff4738cc1a31419ad8c2958fc3",
+  "0005_add_mobile_no.sql": "1a39223651e793ae3e691c52054ee5014809ed08696c0929ba8304af7a4000d0",
+  "0006_enforce_superadmin_menu_access.sql": "861f09d5d5ad769d0f7b6c6c4bf96a2c33dd80e366241fd481b17d7ef5d85c41",
+  "0007_create_paper_purchase_requests.sql": "9f04f9d862d1a301fc4c07a47cf7cc36adf275a7848d6f8f071e497860659fbf",
+  "0008_add_paper_request_approval_workflow.sql": "9b50ce7c3a84340a13dac75f8ad892740a537408534b41be353317ef6a926fbb",
+  "0009_add_paper_po_calculation_permission.sql": "c74855435401433eee61381d24ed85462b7c3ca37b496d279335811477930fcc",
+  "0010_add_purchase_reports_permission.sql": "be83ef420e0c51361f6cb77b440c3c9a49d1fad9cce5145cf3d6eeb562a25e6a",
   "0011_create_coa_records.sql": "63a70861cc3b79004e9afdcc926f56144aaac6fe580b0a545d761c8ce8be3d2b"
 }
