@@ -16,6 +16,27 @@ Development uses an isolated local D1 database:
 npm run db:migrate:dev
 ```
 
+Every migration command first runs the immutable/additive migration audit. Existing
+migration checksums must not be changed; add a new sequential migration instead.
+
+Dev, Test and Stage share the named `nonproduction` Wrangler environment and the
+`pc-tech` Pages project. The current Cloudflare setup points that environment at
+the same physical D1 UUID as Production. Treat every non-production remote
+migration as a Production database migration: audit, list, back up and review it
+before applying. Local development remains isolated through `--local`.
+
+Inspect pending shared Non-Production/Stage migrations:
+
+```bash
+npm run db:migrations:list:nonproduction
+```
+
+Apply them only after explicit approval and a verified D1 backup:
+
+```bash
+npm run db:migrate:nonproduction
+```
+
 Before a production deployment, inspect the pending remote migrations:
 
 ```bash
@@ -27,6 +48,14 @@ Apply production migrations before deploying the Pages application:
 ```bash
 npm run db:migrate:production
 ```
+
+Production commands explicitly select `--env production`; they must never be used
+for Local, Dev, Test, or Stage validation.
+
+Environment database mapping:
+
+- `nonproduction`: `pc-tech-db` (`0d749a66-9654-4767-b56a-afd4f8bcd9a1`)
+- `production`: `pc-tech-production-db` (`e863e5c3-b60f-48a5-8fdd-862f1ac52eaf`)
 
 The production GitHub Actions workflow performs this migration step automatically
 before deploying the application. Never use `--remote` for development validation.

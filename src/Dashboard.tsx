@@ -5,6 +5,7 @@ import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAc
 import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
+import { getSavedCoa, regenerateCoa, saveCoa, type CoaRecord } from './coaService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
 import AdvancedCorrugatedBoxCalculatorPage from './features/advanced-corrugated-box-calculator/AdvancedCorrugatedBoxCalculatorPage'
 import {
@@ -20,6 +21,7 @@ import PaperPurchaseRequest from './features/paper-purchase-request/PaperPurchas
 import PaperPurchaseRequestApprovals from './features/paper-purchase-request-approvals/PaperPurchaseRequestApprovals'
 import PaperPoCalculation from './features/paper-po-calculation/PaperPoCalculation'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
+import type { CoaAnalysisItem, CoaInvoiceValues } from './lib/coaGenerator'
 import { loadCocTemplate } from './lib/templateLoader'
 import { loadPackingSlipLogo, loadPackingSlipTemplate } from './lib/packingSlipTemplateLoader'
 
@@ -154,6 +156,22 @@ const MOBILE_NO_PATTERN = /^\d{10}$/
 const coaAnalysisHeadings = ['Board GSM', 'GSM', 'Bursting Strength', 'Moisture', 'Ply'] as const
 type CoaAnalysisHeading = (typeof coaAnalysisHeadings)[number]
 type CoaAnalysisDefaults = Record<CoaAnalysisHeading, string>
+
+const coaAnalysisFieldByHeading: Record<CoaAnalysisHeading, keyof Pick<
+  CoaAnalysisItem,
+  'boardGsm' | 'gsm' | 'burstingStrength' | 'moisture' | 'ply'
+>> = {
+  'Board GSM': 'boardGsm',
+  GSM: 'gsm',
+  'Bursting Strength': 'burstingStrength',
+  Moisture: 'moisture',
+  Ply: 'ply',
+}
+
+function formatCoaAuditDate(value: string): string {
+  const date = new Date(value.endsWith('Z') || value.includes('+') ? value : `${value.replace(' ', 'T')}Z`)
+  return Number.isFinite(date.getTime()) ? date.toLocaleString() : value
+}
 
 const coaAnalysisDefaults: Record<string, Record<string, CoaAnalysisDefaults>> = {
   NILKAMAL: {
@@ -487,10 +505,12 @@ function sortAccessRoles(roles: AdminRole[]): AdminRole[] {
 
 export default function Dashboard({
   username,
+  userRole,
   menuAccess,
   onLogout,
 }: {
   username: string
+  userRole: string
   menuAccess: string[]
   onLogout: () => void
 }) {
@@ -520,6 +540,12 @@ export default function Dashboard({
   const [coaInvoiceDetail, setCoaInvoiceDetail] = useState<InvoiceDetail | null>(null)
   const [coaInvoiceDetailLoading, setCoaInvoiceDetailLoading] = useState(false)
   const [coaInvoiceDetailError, setCoaInvoiceDetailError] = useState('')
+  const [coaAnalysisItems, setCoaAnalysisItems] = useState<CoaAnalysisItem[]>([])
+  const [savedCoa, setSavedCoa] = useState<CoaRecord | null>(null)
+  const [coaPersistenceLoading, setCoaPersistenceLoading] = useState(false)
+  const [coaPersistenceError, setCoaPersistenceError] = useState('')
+  const [coaSaving, setCoaSaving] = useState(false)
+  const [coaRegenerateConfirmationOpen, setCoaRegenerateConfirmationOpen] = useState(false)
   const [coaPreviewTemplate, setCoaPreviewTemplate] = useState<ArrayBuffer | null>(null)
   const [coaPreviewLoading, setCoaPreviewLoading] = useState(false)
   const [coaPreviewError, setCoaPreviewError] = useState('')
@@ -994,8 +1020,13 @@ export default function Dashboard({
 
   useEffect(() => {
     setCoaInvoiceDetail(null)
+    setCoaAnalysisItems([])
+    setSavedCoa(null)
     setCoaInvoiceDetailError('')
+    setCoaPersistenceError('')
     setCoaInvoiceDetailLoading(false)
+    setCoaPersistenceLoading(false)
+    setCoaRegenerateConfirmationOpen(false)
 
     if (selectedKey !== 'coa' || !coaInvoiceId) {
       return
@@ -1005,22 +1036,48 @@ export default function Dashboard({
 
     async function loadCoaInvoiceDetail() {
       setCoaInvoiceDetailLoading(true)
+      setCoaPersistenceLoading(true)
 
       try {
-        const invoice = await getInvoiceById(coaInvoiceId)
+        const [invoice, storedCoa] = await Promise.all([
+          getInvoiceById(coaInvoiceId),
+          getSavedCoa(coaCustomerId, coaInvoiceId),
+        ])
 
         if (isCurrent) {
           setCoaInvoiceDetail(invoice)
+          setSavedCoa(storedCoa)
+          setCoaAnalysisItems(storedCoa?.data.items ?? invoice.line_items.map((item) => {
+            const defaults = getCoaAnalysisDefaults(invoice.customer_name, item.description)
+            return {
+              name: item.name,
+              description: item.description,
+              boardGsm: defaults?.['Board GSM'] ?? '',
+              gsm: defaults?.GSM ?? '',
+              burstingStrength: defaults?.['Bursting Strength'] ?? '',
+              moisture: defaults?.Moisture ?? '',
+              ply: defaults?.Ply ?? '',
+            }
+          }))
+
+          if (storedCoa) {
+            const template = await loadCoaTemplate()
+            const { generateCoaTemplate } = await import('./lib/coaGenerator')
+            if (isCurrent) setCoaPreviewTemplate(generateCoaTemplate(template, storedCoa.data))
+          }
         }
       } catch (caughtError) {
         if (isCurrent) {
-          setCoaInvoiceDetailError(
-            caughtError instanceof Error ? caughtError.message : 'Unable to load invoice details',
+          const message = caughtError instanceof Error ? caughtError.message : 'Unable to load COA details'
+          setCoaInvoiceDetailError(message)
+          setCoaPersistenceError(
+            message.includes('COA') ? message : 'Unable to load previously generated COA.',
           )
         }
       } finally {
         if (isCurrent) {
           setCoaInvoiceDetailLoading(false)
+          setCoaPersistenceLoading(false)
         }
       }
     }
@@ -1030,7 +1087,7 @@ export default function Dashboard({
     return () => {
       isCurrent = false
     }
-  }, [coaInvoiceId, selectedKey])
+  }, [coaCustomerId, coaInvoiceId, selectedKey])
 
   useEffect(() => {
     if (selectedKey !== 'coc') {
@@ -1083,45 +1140,69 @@ export default function Dashboard({
     }
   }
 
-  async function generateCoa() {
-    if (!coaInvoiceDetail || !coaAnalysisTableRef.current) {
+  function updateCoaAnalysisItem(index: number, field: keyof CoaAnalysisItem, value: string) {
+    setCoaAnalysisItems((currentItems) => currentItems.map((item, itemIndex) => (
+      itemIndex === index ? { ...item, [field]: value } : item
+    )))
+  }
+
+  function buildCoaPayload(): CoaInvoiceValues | null {
+    if (!coaInvoiceDetail) return null
+    return {
+      invoiceDate: coaInvoiceDetail.date,
+      customer: coaInvoiceDetail.customer_name,
+      poNumber: coaInvoiceDetail.po_number,
+      invoiceNumber: coaInvoiceDetail.invoice_number,
+      refNumber: coaInvoiceDetail.sales_order_number || '-',
+      items: coaAnalysisItems,
+    }
+  }
+
+  async function persistAndGenerateCoa(isRegeneration: boolean) {
+    const payload = buildCoaPayload()
+    if (!payload || !coaInvoiceDetail) {
       return
     }
 
     setCoaPreviewError('')
+    setCoaPersistenceError('')
+    setCoaSaving(true)
 
     try {
-      const tableRows = Array.from(coaAnalysisTableRef.current.tBodies[0]?.rows ?? [])
-      const analysisItems = coaInvoiceDetail.line_items.map((item, index) => {
-        const row = tableRows[index]
-        const getFieldValue = (cellIndex: number) => (
-          row?.cells[cellIndex]?.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea')?.value ?? ''
-        )
-
-        return {
-          name: item.name,
-          description: item.description,
-          boardGsm: getFieldValue(2),
-          gsm: getFieldValue(3),
-          burstingStrength: getFieldValue(4),
-          moisture: getFieldValue(5),
-          ply: getFieldValue(6),
-        }
-      })
       const template = await loadCoaTemplate()
       const { generateCoaTemplate } = await import('./lib/coaGenerator')
-
-      setCoaPreviewTemplate(generateCoaTemplate(template, {
-        invoiceDate: coaInvoiceDetail.date,
-        customer: coaInvoiceDetail.customer_name,
-        poNumber: coaInvoiceDetail.po_number,
+      const generatedTemplate = generateCoaTemplate(template, payload)
+      const recordInput = {
+        customerId: coaCustomerId,
+        customerName: coaInvoiceDetail.customer_name,
+        invoiceId: coaInvoiceId,
         invoiceNumber: coaInvoiceDetail.invoice_number,
-        refNumber: coaInvoiceDetail.sales_order_number || '-',
-        items: analysisItems,
-      }))
-    } catch {
-      setCoaPreviewError('Unable to generate COA preview')
+        data: payload,
+      }
+      const record = isRegeneration && savedCoa
+        ? await regenerateCoa(savedCoa.id, recordInput)
+        : await saveCoa(recordInput)
+
+      setSavedCoa(record)
+      setCoaAnalysisItems(record.data.items)
+      setCoaPreviewTemplate(generatedTemplate)
+      setCoaRegenerateConfirmationOpen(false)
+    } catch (caughtError) {
+      setCoaPersistenceError(
+        caughtError instanceof Error ? caughtError.message : 'Unable to save COA. Please try again.',
+      )
+    } finally {
+      setCoaSaving(false)
     }
+  }
+
+  async function generateCoa() {
+    if (savedCoa) {
+      if (userRole !== 'SUPERADMIN') return
+      setCoaRegenerateConfirmationOpen(true)
+      return
+    }
+    await persistAndGenerateCoa(false)
   }
 
   async function generatePackingSlip() {
@@ -1909,10 +1990,39 @@ export default function Dashboard({
                   )}
                   {coaInvoiceId && (
                     <div className="coa-invoice-details" aria-live="polite">
-                      {coaInvoiceDetailLoading && <p>Loading invoice details...</p>}
+                      {(coaInvoiceDetailLoading || coaPersistenceLoading) && <p>Loading COA details...</p>}
                       {coaInvoiceDetailError && <p className="coa-invoice-details-error">{coaInvoiceDetailError}</p>}
-                      {coaInvoiceDetail && (
+                      {coaPersistenceError && !coaInvoiceDetailError && (
+                        <p className="coa-invoice-details-error">{coaPersistenceError}</p>
+                      )}
+                      {coaInvoiceDetail && !coaInvoiceDetailLoading && !coaPersistenceLoading && (
                         <>
+                          {savedCoa && (
+                            <section className="coa-status-panel" aria-label="Saved COA status">
+                              <div className="coa-status-heading">
+                                <CircleCheck size={16} aria-hidden="true" />
+                                <strong>{savedCoa.updatedAt ? 'COA Re-generated' : 'COA Generated'}</strong>
+                              </div>
+                              <dl>
+                                <div>
+                                  <dt>{savedCoa.updatedAt ? 'Originally Generated By' : 'Generated By'}</dt>
+                                  <dd>{savedCoa.generatedBy.name}</dd>
+                                </div>
+                                <div><dt>Generated Email</dt><dd>{savedCoa.generatedBy.email}</dd></div>
+                                <div>
+                                  <dt>{savedCoa.updatedAt ? 'Originally Generated On' : 'Generated On'}</dt>
+                                  <dd>{formatCoaAuditDate(savedCoa.generatedAt)}</dd>
+                                </div>
+                                {savedCoa.updatedBy && savedCoa.updatedAt && (
+                                  <>
+                                    <div><dt>Last Updated By</dt><dd>{savedCoa.updatedBy.name}</dd></div>
+                                    <div><dt>Updated Email</dt><dd>{savedCoa.updatedBy.email}</dd></div>
+                                    <div><dt>Last Updated On</dt><dd>{formatCoaAuditDate(savedCoa.updatedAt)}</dd></div>
+                                  </>
+                                )}
+                              </dl>
+                            </section>
+                          )}
                           <dl>
                             <div><dt>DATE:</dt><dd>{coaInvoiceDetail.date ? formatCoaInvoiceDate(coaInvoiceDetail.date) : '-'}</dd></div>
                             <div><dt>CUSTOMER:</dt><dd>{coaInvoiceDetail.customer_name || '-'}</dd></div>
@@ -1934,12 +2044,8 @@ export default function Dashboard({
                                 </tr>
                               </thead>
                               <tbody>
-                                {coaInvoiceDetail.line_items.map((item, index) => {
-                                  const defaults = getCoaAnalysisDefaults(
-                                    coaInvoiceDetail.customer_name,
-                                    item.description,
-                                  )
-
+                                {coaAnalysisItems.map((item, index) => {
+                                  const existingReadOnly = Boolean(savedCoa) && userRole !== 'SUPERADMIN'
                                   return (
                                     <tr key={`${coaInvoiceDetail.invoice_id}-${item.name}-${item.description}-${index}`}>
                                       <td>{index + 1}</td>
@@ -1957,13 +2063,25 @@ export default function Dashboard({
                                             <textarea
                                               aria-label={`${heading} ${index + 1}`}
                                               rows={2}
-                                              defaultValue={defaults?.[heading] ?? ''}
+                                              value={item[coaAnalysisFieldByHeading[heading]]}
+                                              readOnly={existingReadOnly}
+                                              onChange={(event) => updateCoaAnalysisItem(
+                                                index,
+                                                coaAnalysisFieldByHeading[heading],
+                                                event.target.value,
+                                              )}
                                             />
                                           ) : (
                                             <input
                                               type="text"
                                               aria-label={`${heading} ${index + 1}`}
-                                              defaultValue={defaults?.[heading] ?? ''}
+                                              value={item[coaAnalysisFieldByHeading[heading]]}
+                                              readOnly={existingReadOnly}
+                                              onChange={(event) => updateCoaAnalysisItem(
+                                                index,
+                                                coaAnalysisFieldByHeading[heading],
+                                                event.target.value,
+                                              )}
                                             />
                                           )}
                                         </td>
@@ -1979,15 +2097,17 @@ export default function Dashboard({
                     </div>
                   )}
                   <div className="coc-action-row packing-slip-actions">
-                    <button
-                      type="button"
-                      className="packing-action-button packing-action-primary"
-                      onClick={generateCoa}
-                      disabled={!coaInvoiceDetail || coaInvoiceDetailLoading}
-                    >
-                      <FlaskConical aria-hidden="true" />
-                      <span>Generate COA</span>
-                    </button>
+                    {(!savedCoa || userRole === 'SUPERADMIN') && (
+                      <button
+                        type="button"
+                        className="packing-action-button packing-action-primary"
+                        onClick={generateCoa}
+                        disabled={!coaInvoiceDetail || coaInvoiceDetailLoading || coaPersistenceLoading || coaSaving}
+                      >
+                        <FlaskConical aria-hidden="true" />
+                        <span>{coaSaving ? 'Saving COA...' : savedCoa ? 'Re-generate COA' : 'Generate COA'}</span>
+                      </button>
+                    )}
                     {coaPreviewTemplate && !coaPreviewLoading && !coaPreviewError && (
                       <>
                         <button
@@ -2009,6 +2129,9 @@ export default function Dashboard({
                       </>
                     )}
                   </div>
+                  {coaPersistenceError && !coaInvoiceDetailError && (
+                    <p className="coa-persistence-message" role="alert">{coaPersistenceError}</p>
+                  )}
                   {(coaPreviewTemplate || coaPreviewError) && (
                     <div className="coc-preview">
                       {coaPreviewLoading && (
@@ -2018,6 +2141,44 @@ export default function Dashboard({
                         <p style={{ margin: 0, padding: '1rem', color: '#b42318', background: '#fff' }}>{coaPreviewError}</p>
                       )}
                       <div ref={coaPreviewRef} className="coc-preview-document coa-preview-document" />
+                    </div>
+                  )}
+                  {coaRegenerateConfirmationOpen && savedCoa && (
+                    <div className="admin-dialog-backdrop" role="presentation">
+                      <div
+                        className="admin-dialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="coa-regenerate-title"
+                      >
+                        <div className="admin-dialog-icon">
+                          <FlaskConical size={18} aria-hidden="true" />
+                        </div>
+                        <div className="admin-dialog-copy">
+                          <h3 id="coa-regenerate-title">Re-generate COA?</h3>
+                          <p>
+                            COA has already been generated for this invoice. Re-generating will overwrite the previously saved COA values. Do you want to continue?
+                          </p>
+                        </div>
+                        <div className="admin-dialog-actions">
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() => setCoaRegenerateConfirmationOpen(false)}
+                            disabled={coaSaving}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="primary"
+                            onClick={() => persistAndGenerateCoa(true)}
+                            disabled={coaSaving}
+                          >
+                            {coaSaving ? 'Re-generating...' : 'Re-generate COA'}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

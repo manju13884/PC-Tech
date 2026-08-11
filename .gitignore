@@ -4,15 +4,14 @@
 .env.local
 
 # Dependencies
-node_modules
+node_modules/
 
 # Build output
-dist
+dist/
 .wrangler/
 
 # Logs
 *.log
 
-.wrangler-auth-local/
-
+# Local Wrangler authentication state
 .wrangler-auth-local/

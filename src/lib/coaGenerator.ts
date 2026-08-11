@@ -11,7 +11,7 @@ export interface CoaAnalysisItem {
   ply: string
 }
 
-interface CoaInvoiceValues {
+export interface CoaInvoiceValues {
   invoiceDate: string
   customer: string
   poNumber: string

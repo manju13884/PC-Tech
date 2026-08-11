@@ -2,6 +2,7 @@ import { getSessionTokenFromRequest, hashSessionToken } from './session'
 
 export interface AuthenticatedUser {
   id: number
+  email: string
   fullName: string
   roleId: number
   roleName: string
@@ -9,6 +10,7 @@ export interface AuthenticatedUser {
 
 interface AuthenticatedUserRow {
   user_id: number
+  user_email: string
   user_full_name: string
   user_status: string
   user_session_version: number
@@ -31,6 +33,7 @@ export async function getAuthenticatedUser(
   const row = await db.prepare(
     `SELECT
       u.id AS user_id,
+      u.email AS user_email,
       u.full_name AS user_full_name,
       u.status AS user_status,
       u.session_version AS user_session_version,
@@ -61,6 +64,7 @@ export async function getAuthenticatedUser(
 
   return {
     id: row.user_id,
+    email: row.user_email,
     fullName: row.user_full_name,
     roleId: row.role_id,
     roleName: row.role_name,

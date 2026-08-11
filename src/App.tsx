@@ -268,7 +268,12 @@ function App() {
   }
 
   if (user) {
-    return <Dashboard username={user.fullName || user.email} menuAccess={user.menuAccess} onLogout={handleLogout} />
+    return <Dashboard
+      username={user.fullName || user.email}
+      userRole={user.role}
+      menuAccess={user.menuAccess}
+      onLogout={handleLogout}
+    />
   }
 
   if (checkingSession) {
