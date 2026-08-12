@@ -260,6 +260,10 @@ export function getDefaultPermittedMenuKey(menuAccess: string[]): string | undef
     : menuItems.find((item) => allowedKeys.has(item.key))?.key
 }
 
+function getMenuGroupTitleForKey(key: string): string | undefined {
+  return menuGroups.find((group) => group.items.some((item) => item.key === key))?.title
+}
+
 function getInitialMenuKey(menuAccess: string[]): string {
   const hashKey = window.location.hash.replace(/^#/, '')
 
@@ -515,6 +519,10 @@ export default function Dashboard({
   onLogout: () => void
 }) {
   const [selectedKey, setSelectedKey] = useState(() => getInitialMenuKey(menuAccess))
+  const [expandedMenuGroups, setExpandedMenuGroups] = useState<Set<string>>(() => {
+    const activeGroupTitle = getMenuGroupTitleForKey(getInitialMenuKey(menuAccess))
+    return new Set(activeGroupTitle ? [activeGroupTitle] : [])
+  })
   const [customerId, setCustomerId] = useState('')
   const [invoiceId, setInvoiceId] = useState('')
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -1340,6 +1348,22 @@ export default function Dashboard({
 
     window.history.replaceState(null, '', `#${key}`)
     setSelectedKey(key)
+    const groupTitle = getMenuGroupTitleForKey(key)
+    if (groupTitle) {
+      setExpandedMenuGroups((current) => new Set(current).add(groupTitle))
+    }
+  }
+
+  function toggleMenuGroup(groupTitle: string) {
+    setExpandedMenuGroups((current) => {
+      const next = new Set(current)
+      if (next.has(groupTitle)) {
+        next.delete(groupTitle)
+      } else {
+        next.add(groupTitle)
+      }
+      return next
+    })
   }
 
   function goToDashboardHome() {
@@ -1741,10 +1765,23 @@ export default function Dashboard({
 
       <div className="dashboard-grid">
         <aside className="dashboard-menu">
-          {visibleMenuGroups.map((group) => (
-            <div key={group.title} className="menu-group">
-              <h3>{group.title}</h3>
-              <ul className="menu-list">
+          {visibleMenuGroups.map((group) => {
+            const isExpanded = expandedMenuGroups.has(group.title)
+            const groupId = `menu-group-${group.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+
+            return (
+            <div key={group.title} className={`menu-group${isExpanded ? ' expanded' : ''}`}>
+              <button
+                type="button"
+                className="menu-group-toggle"
+                onClick={() => toggleMenuGroup(group.title)}
+                aria-expanded={isExpanded}
+                aria-controls={groupId}
+              >
+                <ChevronRight className="menu-group-chevron" size={14} aria-hidden="true" />
+                <span>{group.title}</span>
+              </button>
+              <ul id={groupId} className="menu-list" hidden={!isExpanded}>
                 {group.items.map((item) => (
                   <li key={item.key}>
                     <button
@@ -1766,7 +1803,8 @@ export default function Dashboard({
                 ))}
               </ul>
             </div>
-          ))}
+            )
+          })}
         </aside>
 
         <section className="dashboard-content">

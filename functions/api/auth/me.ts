@@ -91,15 +91,15 @@ function getSafeCurrentUserError(caughtError: unknown): string {
   const message = caughtError instanceof Error ? caughtError.message : ''
 
   if (message.includes('DB binding') || message.includes('undefined')) {
-    return 'Authentication database binding is missing in production.'
+    return 'Sign-in setup is temporarily unavailable. Please contact your administrator.'
   }
 
   if (message.includes('must_change_password') || message.includes('no such column')) {
-    return 'Database migration missing. Apply D1 migrations to production.'
+    return 'Sign-in setup is temporarily unavailable. Please contact your administrator.'
   }
 
   if (message.includes('no such table') || message.includes('users') || message.includes('sessions')) {
-    return 'Authentication database is not ready. Check production D1 binding and migrations.'
+    return 'Sign-in setup is temporarily unavailable. Please contact your administrator.'
   }
 
   return 'Unable to validate session'

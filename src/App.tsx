@@ -25,6 +25,13 @@ interface BasicResponse {
 
 const currentYear = new Date().getFullYear()
 
+function getAuthenticationConnectionMessage(): string {
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  return isLocal
+    ? 'Local sign-in service is not running. Start the local backend and try again.'
+    : 'Sign-in service is temporarily unavailable. Please try again shortly.'
+}
+
 function navigateToDefaultAuthenticatedPage(menuAccess: string[]) {
   const defaultKey = getDefaultPermittedMenuKey(menuAccess)
 
@@ -125,8 +132,8 @@ function App() {
       }
 
       setMessage(data.error || 'Unable to authenticate.')
-    } catch (error) {
-      setMessage('Unable to connect to authentication service.')
+    } catch {
+      setMessage(getAuthenticationConnectionMessage())
     }
   }
 
@@ -179,7 +186,7 @@ function App() {
       setChangeConfirmPassword('')
       setMessage('')
     } catch {
-      setMessage('Unable to connect to authentication service.')
+      setMessage(getAuthenticationConnectionMessage())
     }
   }
 
@@ -212,7 +219,7 @@ function App() {
       setSetupConfirmPassword('')
       setMessage('Password set. Please login.')
     } catch {
-      setMessage('Unable to connect to authentication service.')
+      setMessage(getAuthenticationConnectionMessage())
     }
   }
 
