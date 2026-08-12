@@ -493,13 +493,46 @@ main.app-shell::after {
   padding: 0.75rem 0.4875rem;
 }
 
-.menu-group h3 {
-  margin: 0 0 0.285rem;
-  padding: 0 0.4875rem;
-  font-size: 0.51rem;
+.menu-group-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 28px;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0.35rem 0.42rem;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #4f5d75;
+  font: inherit;
+  font-size: 0.56rem;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-align: left;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #687086;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.menu-group-toggle:hover {
+  background: #e8edf6;
+  color: #1f3f78;
+}
+
+.menu-group-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.menu-group-chevron {
+  flex: 0 0 auto;
+  color: #8190a8;
+  transition: transform 0.18s ease;
+}
+
+.menu-group.expanded .menu-group-chevron {
+  transform: rotate(90deg);
 }
 
 .menu-list {
@@ -508,6 +541,11 @@ main.app-shell::after {
   padding: 0;
   display: grid;
   gap: 0.135rem;
+  padding-top: 0.18rem;
+}
+
+.menu-list[hidden] {
+  display: none;
 }
 
 .menu-item {
