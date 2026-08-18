@@ -1,4 +1,4 @@
-name: Refresh Non-Production Dashboard
+name: Refresh Daily Dashboards
 
 on:
   schedule:
@@ -13,5 +13,8 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - name: Refresh daily dashboard snapshot
+      - name: Refresh non-production dashboard snapshot
         run: curl --fail --silent --show-error --max-time 300 https://pc-tech.pages.dev/api/home-sales-orders
+
+      - name: Refresh production dashboard snapshot
+        run: curl --fail --silent --show-error --max-time 300 https://www.polarcanvas.in/api/home-sales-orders
