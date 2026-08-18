@@ -5,6 +5,7 @@ interface PackingSlipValues {
   customerName: string
   invoiceNumber: string
   invoiceDate: string
+  documentType?: 'invoice' | 'delivery-challan'
   items: PackingSlipItem[]
 }
 
@@ -200,12 +201,23 @@ function setPackingSlipCellPadding(zip: PizZip) {
   )
 }
 
+function setPackingSlipDocumentLabels(zip: PizZip, documentType: PackingSlipValues['documentType']) {
+  if (documentType !== 'delivery-challan') return
+  const documentFile = zip.file('word/document.xml')
+  const documentXml = documentFile?.asText()
+  if (!documentXml) throw new Error('Packing Slip document content was not found')
+  zip.file('word/document.xml', documentXml
+    .replace('<w:t>Invoice Number</w:t>', '<w:t>Delivery Challan Number</w:t>')
+    .replace('<w:t>Invoice Date</w:t>', '<w:t>Delivery Challan Date</w:t>'))
+}
+
 export function generatePackingSlipPages(template: ArrayBuffer, logo: ArrayBuffer, values: PackingSlipValues): ArrayBuffer {
   if (values.items.length === 0) {
-    throw new Error('The selected invoice has no line items')
+    throw new Error('The selected document has no line items')
   }
 
   const zip = new PizZip(template)
+  setPackingSlipDocumentLabels(zip, values.documentType)
   embedPackingSlipLogo(zip, logo)
   preparePackingSlipTemplate(zip, values.items.length)
   setPackingSlipCellPadding(zip)

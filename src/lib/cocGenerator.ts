@@ -19,6 +19,7 @@ interface CocInvoiceValues {
   customer: string
   poNumber: string
   invoiceNumber: string
+  documentType?: 'invoice' | 'delivery-challan'
   items: CocLineItem[]
 }
 
@@ -272,6 +273,11 @@ function setCocPageLayout(zip: PizZip) {
 
 export function generateCocTemplate(template: ArrayBuffer, values: CocInvoiceValues): ArrayBuffer {
   const zip = new PizZip(template)
+  if (values.documentType === 'delivery-challan') {
+    const documentFile = zip.file('word/document.xml')
+    const documentXml = documentFile?.asText()
+    if (documentXml) zip.file('word/document.xml', documentXml.replace(/Invoice\(s\):/g, 'Delivery Challan(s):'))
+  }
   setCocTextBlack(zip)
   alignLetterheadRegistration(zip)
   addItemRowLoop(zip)

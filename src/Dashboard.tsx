@@ -6,6 +6,7 @@ import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getSavedCoa, regenerateCoa, saveCoa, type CoaRecord } from './coaService'
+import { getDeliveryChallanById, getDeliveryChallansByCustomer, type DeliveryChallan, type DeliveryChallanDetail } from './deliveryChallanService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
 import DashboardPage from './dashboard/DashboardPage'
 import AdvancedCorrugatedBoxCalculatorPage from './features/advanced-corrugated-box-calculator/AdvancedCorrugatedBoxCalculatorPage'
@@ -528,27 +529,42 @@ export default function Dashboard({
   })
   const [customerId, setCustomerId] = useState('')
   const [invoiceId, setInvoiceId] = useState('')
+  const [cocDocumentType, setCocDocumentType] = useState<'' | 'invoice' | 'delivery-challan'>('')
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customersLoading, setCustomersLoading] = useState(false)
   const [customersError, setCustomersError] = useState<string | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [invoicesLoading, setInvoicesLoading] = useState(false)
   const [invoicesError, setInvoicesError] = useState<string | null>(null)
+  const [deliveryChallanId, setDeliveryChallanId] = useState('')
+  const [deliveryChallans, setDeliveryChallans] = useState<DeliveryChallan[]>([])
+  const [deliveryChallansLoading, setDeliveryChallansLoading] = useState(false)
+  const [deliveryChallansError, setDeliveryChallansError] = useState<string | null>(null)
   const [packingCustomerId, setPackingCustomerId] = useState('')
+  const [packingDocumentType, setPackingDocumentType] = useState<'' | 'invoice' | 'delivery-challan'>('')
   const [packingInvoiceId, setPackingInvoiceId] = useState('')
   const [packingInvoices, setPackingInvoices] = useState<Invoice[]>([])
   const [packingInvoicesLoading, setPackingInvoicesLoading] = useState(false)
   const [packingInvoicesError, setPackingInvoicesError] = useState<string | null>(null)
+  const [packingDeliveryChallanId, setPackingDeliveryChallanId] = useState('')
+  const [packingDeliveryChallans, setPackingDeliveryChallans] = useState<DeliveryChallan[]>([])
+  const [packingDeliveryChallansLoading, setPackingDeliveryChallansLoading] = useState(false)
+  const [packingDeliveryChallansError, setPackingDeliveryChallansError] = useState<string | null>(null)
   const [packingPreviewTemplate, setPackingPreviewTemplate] = useState<ArrayBuffer | null>(null)
   const [packingPreviewLoading, setPackingPreviewLoading] = useState(false)
   const [packingPreviewError, setPackingPreviewError] = useState('')
   const packingPreviewRef = useRef<HTMLDivElement>(null)
   const [coaCustomerId, setCoaCustomerId] = useState('')
+  const [coaDocumentType, setCoaDocumentType] = useState<'' | 'invoice' | 'delivery-challan'>('')
   const [coaInvoiceId, setCoaInvoiceId] = useState('')
   const [coaInvoices, setCoaInvoices] = useState<Invoice[]>([])
   const [coaInvoicesLoading, setCoaInvoicesLoading] = useState(false)
   const [coaInvoicesError, setCoaInvoicesError] = useState<string | null>(null)
-  const [coaInvoiceDetail, setCoaInvoiceDetail] = useState<InvoiceDetail | null>(null)
+  const [coaDeliveryChallanId, setCoaDeliveryChallanId] = useState('')
+  const [coaDeliveryChallans, setCoaDeliveryChallans] = useState<DeliveryChallan[]>([])
+  const [coaDeliveryChallansLoading, setCoaDeliveryChallansLoading] = useState(false)
+  const [coaDeliveryChallansError, setCoaDeliveryChallansError] = useState<string | null>(null)
+  const [coaInvoiceDetail, setCoaInvoiceDetail] = useState<InvoiceDetail | DeliveryChallanDetail | null>(null)
   const [coaInvoiceDetailLoading, setCoaInvoiceDetailLoading] = useState(false)
   const [coaInvoiceDetailError, setCoaInvoiceDetailError] = useState('')
   const [coaAnalysisItems, setCoaAnalysisItems] = useState<CoaAnalysisItem[]>([])
@@ -922,7 +938,7 @@ export default function Dashboard({
     setInvoicesError(null)
     setInvoicesLoading(false)
 
-    if (selectedKey !== 'coc' || !customerId) {
+    if (selectedKey !== 'coc' || !customerId || cocDocumentType !== 'invoice') {
       return
     }
 
@@ -948,7 +964,30 @@ export default function Dashboard({
     return () => {
       isCurrent = false
     }
-  }, [customerId, selectedKey])
+  }, [cocDocumentType, customerId, selectedKey])
+
+  useEffect(() => {
+    setDeliveryChallanId('')
+    setDeliveryChallans([])
+    setDeliveryChallansError(null)
+    setDeliveryChallansLoading(false)
+
+    if (selectedKey !== 'coc' || !customerId || cocDocumentType !== 'delivery-challan') return
+    let isCurrent = true
+    async function loadDeliveryChallans() {
+      setDeliveryChallansLoading(true)
+      try {
+        const rows = await getDeliveryChallansByCustomer(customerId)
+        if (isCurrent) setDeliveryChallans(rows)
+      } catch (error) {
+        if (isCurrent) setDeliveryChallansError(error instanceof Error ? error.message : 'Unable to load Delivery Challans')
+      } finally {
+        if (isCurrent) setDeliveryChallansLoading(false)
+      }
+    }
+    void loadDeliveryChallans()
+    return () => { isCurrent = false }
+  }, [cocDocumentType, customerId, selectedKey])
 
   useEffect(() => {
     setPackingInvoiceId('')
@@ -956,7 +995,7 @@ export default function Dashboard({
     setPackingInvoicesError(null)
     setPackingInvoicesLoading(false)
 
-    if (selectedKey !== 'packing-slip' || !packingCustomerId) {
+    if (selectedKey !== 'packing-slip' || !packingCustomerId || packingDocumentType !== 'invoice') {
       return
     }
 
@@ -982,7 +1021,29 @@ export default function Dashboard({
     return () => {
       isCurrent = false
     }
-  }, [packingCustomerId, selectedKey])
+  }, [packingCustomerId, packingDocumentType, selectedKey])
+
+  useEffect(() => {
+    setPackingDeliveryChallanId('')
+    setPackingDeliveryChallans([])
+    setPackingDeliveryChallansError(null)
+    setPackingDeliveryChallansLoading(false)
+    if (selectedKey !== 'packing-slip' || !packingCustomerId || packingDocumentType !== 'delivery-challan') return
+    let isCurrent = true
+    async function loadPackingDeliveryChallans() {
+      setPackingDeliveryChallansLoading(true)
+      try {
+        const rows = await getDeliveryChallansByCustomer(packingCustomerId)
+        if (isCurrent) setPackingDeliveryChallans(rows)
+      } catch (error) {
+        if (isCurrent) setPackingDeliveryChallansError(error instanceof Error ? error.message : 'Unable to load Delivery Challans')
+      } finally {
+        if (isCurrent) setPackingDeliveryChallansLoading(false)
+      }
+    }
+    void loadPackingDeliveryChallans()
+    return () => { isCurrent = false }
+  }, [packingCustomerId, packingDocumentType, selectedKey])
 
   useEffect(() => {
     setCoaInvoiceId('')
@@ -990,7 +1051,7 @@ export default function Dashboard({
     setCoaInvoicesError(null)
     setCoaInvoicesLoading(false)
 
-    if (selectedKey !== 'coa' || !coaCustomerId) {
+    if (selectedKey !== 'coa' || !coaCustomerId || coaDocumentType !== 'invoice') {
       return
     }
 
@@ -1016,7 +1077,29 @@ export default function Dashboard({
     return () => {
       isCurrent = false
     }
-  }, [coaCustomerId, selectedKey])
+  }, [coaCustomerId, coaDocumentType, selectedKey])
+
+  useEffect(() => {
+    setCoaDeliveryChallanId('')
+    setCoaDeliveryChallans([])
+    setCoaDeliveryChallansError(null)
+    setCoaDeliveryChallansLoading(false)
+    if (selectedKey !== 'coa' || !coaCustomerId || coaDocumentType !== 'delivery-challan') return
+    let isCurrent = true
+    async function loadCoaDeliveryChallans() {
+      setCoaDeliveryChallansLoading(true)
+      try {
+        const rows = await getDeliveryChallansByCustomer(coaCustomerId)
+        if (isCurrent) setCoaDeliveryChallans(rows)
+      } catch (error) {
+        if (isCurrent) setCoaDeliveryChallansError(error instanceof Error ? error.message : 'Unable to load Delivery Challans')
+      } finally {
+        if (isCurrent) setCoaDeliveryChallansLoading(false)
+      }
+    }
+    void loadCoaDeliveryChallans()
+    return () => { isCurrent = false }
+  }, [coaCustomerId, coaDocumentType, selectedKey])
 
   useEffect(() => {
     if (selectedKey !== 'coa') {
@@ -1024,7 +1107,9 @@ export default function Dashboard({
     }
 
     setCoaCustomerId('')
+    setCoaDocumentType('')
     setCoaInvoiceId('')
+    setCoaDeliveryChallanId('')
     setCoaInvoiceDetail(null)
     setCoaPreviewTemplate(null)
     setCoaPreviewError('')
@@ -1040,7 +1125,8 @@ export default function Dashboard({
     setCoaPersistenceLoading(false)
     setCoaRegenerateConfirmationOpen(false)
 
-    if (selectedKey !== 'coa' || !coaInvoiceId) {
+    const documentId = coaDocumentType === 'invoice' ? coaInvoiceId : coaDeliveryChallanId
+    if (selectedKey !== 'coa' || !coaDocumentType || !documentId) {
       return
     }
 
@@ -1051,16 +1137,16 @@ export default function Dashboard({
       setCoaPersistenceLoading(true)
 
       try {
-        const [invoice, storedCoa] = await Promise.all([
-          getInvoiceById(coaInvoiceId),
-          getSavedCoa(coaCustomerId, coaInvoiceId),
+        const [document, storedCoa] = await Promise.all([
+          coaDocumentType === 'invoice' ? getInvoiceById(documentId) : getDeliveryChallanById(documentId),
+          getSavedCoa(coaCustomerId, documentId),
         ])
 
         if (isCurrent) {
-          setCoaInvoiceDetail(invoice)
+          setCoaInvoiceDetail(document)
           setSavedCoa(storedCoa)
-          setCoaAnalysisItems(storedCoa?.data.items ?? invoice.line_items.map((item) => {
-            const defaults = getCoaAnalysisDefaults(invoice.customer_name, item.description)
+          setCoaAnalysisItems(storedCoa?.data.items ?? document.line_items.map((item) => {
+            const defaults = getCoaAnalysisDefaults(document.customer_name, item.description)
             return {
               name: item.name,
               description: item.description,
@@ -1099,7 +1185,7 @@ export default function Dashboard({
     return () => {
       isCurrent = false
     }
-  }, [coaCustomerId, coaInvoiceId, selectedKey])
+  }, [coaCustomerId, coaDeliveryChallanId, coaDocumentType, coaInvoiceId, selectedKey])
 
   useEffect(() => {
     if (selectedKey !== 'coc') {
@@ -1130,22 +1216,22 @@ export default function Dashboard({
   }, [selectedKey])
 
   async function generateCoc() {
-    const selectedInvoice = invoices.find((invoice) => invoice.invoice_id === invoiceId)
-
-    if (!selectedInvoice) {
-      return
-    }
+    const documentId = cocDocumentType === 'invoice' ? invoiceId : deliveryChallanId
+    if (!cocDocumentType || !documentId) return
 
     try {
-      const invoice = await getInvoiceById(selectedInvoice.invoice_id)
+      const document = cocDocumentType === 'invoice'
+        ? await getInvoiceById(documentId)
+        : await getDeliveryChallanById(documentId)
       const template = await loadCocTemplate()
       const { generateCocTemplate } = await import('./lib/cocGenerator')
       setPreviewTemplate(generateCocTemplate(template, {
-        invoiceDate: invoice.date,
-        customer: invoice.customer_name,
-        poNumber: invoice.po_number,
-        invoiceNumber: invoice.invoice_number,
-        items: invoice.line_items,
+        invoiceDate: document.date,
+        customer: document.customer_name,
+        poNumber: document.po_number,
+        invoiceNumber: 'invoice_number' in document ? document.invoice_number : document.delivery_challan_number,
+        documentType: cocDocumentType,
+        items: document.line_items,
       }))
     } catch {
       setPreviewError('Unable to generate COC preview')
@@ -1158,20 +1244,22 @@ export default function Dashboard({
     )))
   }
 
-  function buildCoaPayload(invoice = coaInvoiceDetail): CoaInvoiceValues | null {
-    if (!invoice) return null
+  function buildCoaPayload(document = coaInvoiceDetail): CoaInvoiceValues | null {
+    if (!document || !coaDocumentType) return null
     return {
-      invoiceDate: invoice.date,
-      customer: invoice.customer_name,
-      poNumber: invoice.po_number,
-      invoiceNumber: invoice.invoice_number,
-      refNumber: invoice.sales_order_number || '-',
+      invoiceDate: document.date,
+      customer: document.customer_name,
+      poNumber: document.po_number,
+      invoiceNumber: 'invoice_number' in document ? document.invoice_number : document.delivery_challan_number,
+      refNumber: document.sales_order_number || '-',
+      documentType: coaDocumentType,
       items: coaAnalysisItems,
     }
   }
 
   async function persistAndGenerateCoa(isRegeneration: boolean) {
-    if (!coaInvoiceId) return
+    const documentId = coaDocumentType === 'invoice' ? coaInvoiceId : coaDeliveryChallanId
+    if (!coaDocumentType || !documentId) return
 
     setCoaPreviewError('')
     setCoaPersistenceError('')
@@ -1181,18 +1269,20 @@ export default function Dashboard({
       // COA document data must remain live. Always retrieve the selected
       // invoice again when Generate/Re-generate is clicked; the daily cache is
       // exclusively for dashboard aggregates.
-      const currentInvoice = await getInvoiceById(coaInvoiceId)
-      const payload = buildCoaPayload(currentInvoice)
-      if (!payload) throw new Error('Unable to load current invoice details from Zoho.')
-      setCoaInvoiceDetail(currentInvoice)
+      const currentDocument = coaDocumentType === 'invoice'
+        ? await getInvoiceById(documentId)
+        : await getDeliveryChallanById(documentId)
+      const payload = buildCoaPayload(currentDocument)
+      if (!payload) throw new Error('Unable to load current document details from Zoho.')
+      setCoaInvoiceDetail(currentDocument)
       const template = await loadCoaTemplate()
       const { generateCoaTemplate } = await import('./lib/coaGenerator')
       const generatedTemplate = generateCoaTemplate(template, payload)
       const recordInput = {
         customerId: coaCustomerId,
-        customerName: currentInvoice.customer_name,
-        invoiceId: coaInvoiceId,
-        invoiceNumber: currentInvoice.invoice_number,
+        customerName: currentDocument.customer_name,
+        invoiceId: documentId,
+        invoiceNumber: 'invoice_number' in currentDocument ? currentDocument.invoice_number : currentDocument.delivery_challan_number,
         data: payload,
       }
       const record = isRegeneration && savedCoa
@@ -1222,24 +1312,24 @@ export default function Dashboard({
   }
 
   async function generatePackingSlip() {
-    if (!packingInvoiceId) {
-      return
-    }
+    const documentId = packingDocumentType === 'invoice' ? packingInvoiceId : packingDeliveryChallanId
+    if (!packingDocumentType || !documentId) return
 
     setPackingPreviewError('')
 
     try {
-      const [invoice, template, logo, { generatePackingSlipPages }] = await Promise.all([
-        getInvoiceById(packingInvoiceId),
+      const [document, template, logo, { generatePackingSlipPages }] = await Promise.all([
+        packingDocumentType === 'invoice' ? getInvoiceById(documentId) : getDeliveryChallanById(documentId),
         loadPackingSlipTemplate(),
         loadPackingSlipLogo(),
         import('./lib/packingSlipGenerator'),
       ])
       setPackingPreviewTemplate(generatePackingSlipPages(template, logo, {
-        customerName: invoice.customer_name,
-        invoiceNumber: invoice.invoice_number,
-        invoiceDate: invoice.date,
-        items: invoice.line_items,
+        customerName: document.customer_name,
+        invoiceNumber: 'invoice_number' in document ? document.invoice_number : document.delivery_challan_number,
+        invoiceDate: document.date,
+        documentType: packingDocumentType,
+        items: document.line_items,
       }))
     } catch (error) {
       setPackingPreviewError(error instanceof Error ? error.message : 'Unable to generate Packing Slip preview')
@@ -1894,6 +1984,9 @@ export default function Dashboard({
                       value={customerId}
                       onChange={(event) => {
                         setCustomerId(event.target.value)
+                        setCocDocumentType('')
+                        setInvoiceId('')
+                        setDeliveryChallanId('')
                         setPreviewTemplate(null)
                         setPreviewError('')
                       }}
@@ -1919,38 +2012,60 @@ export default function Dashboard({
                     </p>
                   )}
                   <div className="coc-form-field">
-                    <label htmlFor="invoice-number">Invoice Number</label>
+                    <label htmlFor="coc-document-type">Document Type</label>
                     <select
-                      id="invoice-number"
-                      value={invoiceId}
+                      id="coc-document-type"
+                      value={cocDocumentType}
                       onChange={(event) => {
-                        setInvoiceId(event.target.value)
+                        setCocDocumentType(event.target.value as '' | 'invoice' | 'delivery-challan')
+                        setInvoiceId('')
+                        setDeliveryChallanId('')
                         setPreviewTemplate(null)
                         setPreviewError('')
                       }}
-                      disabled={!customerId || invoicesLoading || Boolean(invoicesError)}
+                      disabled={!customerId}
+                    >
+                      <option value="">Select document type</option>
+                      <option value="invoice">Invoice</option>
+                      <option value="delivery-challan">Delivery Challan</option>
+                    </select>
+                  </div>
+                  <div className="coc-form-field">
+                    <label htmlFor="coc-document-number">{cocDocumentType === 'invoice' ? 'Invoice Number' : cocDocumentType === 'delivery-challan' ? 'Delivery Challan Number' : 'Document Number'}</label>
+                    <select
+                      id="coc-document-number"
+                      value={cocDocumentType === 'invoice' ? invoiceId : deliveryChallanId}
+                      onChange={(event) => {
+                        if (cocDocumentType === 'invoice') setInvoiceId(event.target.value)
+                        else setDeliveryChallanId(event.target.value)
+                        setPreviewTemplate(null)
+                        setPreviewError('')
+                      }}
+                      disabled={!customerId || (cocDocumentType === 'invoice'
+                        ? invoicesLoading || Boolean(invoicesError)
+                        : cocDocumentType === 'delivery-challan'
+                          ? deliveryChallansLoading || Boolean(deliveryChallansError)
+                          : true)}
                     >
                       <option value="">
                         {!customerId
                           ? 'Select customer first'
-                          : invoicesLoading
-                            ? 'Loading invoices...'
-                            : invoicesError
-                              ? 'Unable to load invoices'
-                              : invoices.length === 0
-                                ? 'No invoices found'
-                                : 'Select invoice'}
+                          : !cocDocumentType
+                            ? 'Select document type first'
+                          : cocDocumentType === 'invoice'
+                            ? invoicesLoading ? 'Loading invoices...' : invoicesError ? 'Unable to load invoices' : invoices.length === 0 ? 'No invoices found' : 'Select invoice'
+                            : deliveryChallansLoading ? 'Loading Delivery Challans...' : deliveryChallansError ? 'Unable to load Delivery Challans' : deliveryChallans.length === 0 ? 'No Delivery Challans found' : 'Select Delivery Challan'}
                       </option>
-                      {invoices.map((invoice) => (
-                        <option key={invoice.invoice_id} value={invoice.invoice_id}>
-                          {invoice.invoice_number}
+                      {(cocDocumentType === 'invoice' ? invoices : deliveryChallans).map((document) => (
+                        <option key={'invoice_id' in document ? document.invoice_id : document.delivery_challan_id} value={'invoice_id' in document ? document.invoice_id : document.delivery_challan_id}>
+                          {'invoice_number' in document ? document.invoice_number : document.delivery_challan_number}
                         </option>
                       ))}
                     </select>
                   </div>
-                  {invoicesError && (
+                  {(cocDocumentType === 'invoice' ? invoicesError : deliveryChallansError) && (
                     <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
-                      {invoicesError}
+                      {cocDocumentType === 'invoice' ? invoicesError : deliveryChallansError}
                     </p>
                   )}
                   <div className="coc-action-row packing-slip-actions">
@@ -1958,7 +2073,7 @@ export default function Dashboard({
                       type="button"
                       className="packing-action-button packing-action-primary"
                       onClick={generateCoc}
-                      disabled={!invoiceId || !templateReady}
+                      disabled={!(cocDocumentType === 'invoice' ? invoiceId : deliveryChallanId) || !templateReady}
                     >
                       <FileCheck2 aria-hidden="true" />
                       <span>Generate COC</span>
@@ -1968,7 +2083,7 @@ export default function Dashboard({
                       <button
                         type="button"
                         className="packing-action-button packing-action-pdf"
-                        onClick={() => openDocumentPrintDialog(previewRef.current, invoices, invoiceId, 'COC')}
+                        onClick={() => openDocumentPrintDialog(previewRef.current, cocDocumentType === 'invoice' ? invoices : deliveryChallans.map((row) => ({ invoice_id: row.delivery_challan_id, invoice_number: row.delivery_challan_number })), cocDocumentType === 'invoice' ? invoiceId : deliveryChallanId, 'COC')}
                       >
                         <FileDown aria-hidden="true" />
                         <span>Save As PDF</span>
@@ -1976,7 +2091,7 @@ export default function Dashboard({
                       <button
                         type="button"
                         className="packing-action-button packing-action-print"
-                        onClick={() => openDocumentPrintDialog(previewRef.current, invoices, invoiceId, 'COC')}
+                        onClick={() => openDocumentPrintDialog(previewRef.current, cocDocumentType === 'invoice' ? invoices : deliveryChallans.map((row) => ({ invoice_id: row.delivery_challan_id, invoice_number: row.delivery_challan_number })), cocDocumentType === 'invoice' ? invoiceId : deliveryChallanId, 'COC')}
                       >
                         <Printer aria-hidden="true" />
                         <span>Print COC</span>
@@ -2004,7 +2119,14 @@ export default function Dashboard({
                     <select
                       id="coa-customer-name"
                       value={coaCustomerId}
-                      onChange={(event) => setCoaCustomerId(event.target.value)}
+                      onChange={(event) => {
+                        setCoaCustomerId(event.target.value)
+                        setCoaDocumentType('')
+                        setCoaInvoiceId('')
+                        setCoaDeliveryChallanId('')
+                        setCoaPreviewTemplate(null)
+                        setCoaPreviewError('')
+                      }}
                       disabled={customersLoading || Boolean(customersError)}
                     >
                       <option value="">
@@ -2027,41 +2149,63 @@ export default function Dashboard({
                     </p>
                   )}
                   <div className="coc-form-field">
-                    <label htmlFor="coa-invoice-number">Invoice Number</label>
+                    <label htmlFor="coa-document-type">Document Type</label>
                     <select
-                      id="coa-invoice-number"
-                      value={coaInvoiceId}
+                      id="coa-document-type"
+                      value={coaDocumentType}
                       onChange={(event) => {
-                        setCoaInvoiceId(event.target.value)
+                        setCoaDocumentType(event.target.value as '' | 'invoice' | 'delivery-challan')
+                        setCoaInvoiceId('')
+                        setCoaDeliveryChallanId('')
                         setCoaPreviewTemplate(null)
                         setCoaPreviewError('')
                       }}
-                      disabled={!coaCustomerId || coaInvoicesLoading || Boolean(coaInvoicesError)}
+                      disabled={!coaCustomerId}
+                    >
+                      <option value="">Select document type</option>
+                      <option value="invoice">Invoice</option>
+                      <option value="delivery-challan">Delivery Challan</option>
+                    </select>
+                  </div>
+                  <div className="coc-form-field">
+                    <label htmlFor="coa-document-number">{coaDocumentType === 'invoice' ? 'Invoice Number' : coaDocumentType === 'delivery-challan' ? 'Delivery Challan Number' : 'Document Number'}</label>
+                    <select
+                      id="coa-document-number"
+                      value={coaDocumentType === 'invoice' ? coaInvoiceId : coaDeliveryChallanId}
+                      onChange={(event) => {
+                        if (coaDocumentType === 'invoice') setCoaInvoiceId(event.target.value)
+                        else setCoaDeliveryChallanId(event.target.value)
+                        setCoaPreviewTemplate(null)
+                        setCoaPreviewError('')
+                      }}
+                      disabled={!coaCustomerId || (coaDocumentType === 'invoice'
+                        ? coaInvoicesLoading || Boolean(coaInvoicesError)
+                        : coaDocumentType === 'delivery-challan'
+                          ? coaDeliveryChallansLoading || Boolean(coaDeliveryChallansError)
+                          : true)}
                     >
                       <option value="">
                         {!coaCustomerId
                           ? 'Select customer first'
-                          : coaInvoicesLoading
-                            ? 'Loading invoices...'
-                            : coaInvoicesError
-                              ? 'Unable to load invoices'
-                              : coaInvoices.length === 0
-                                ? 'No invoices found'
-                                : 'Select invoice'}
+                          : !coaDocumentType
+                            ? 'Select document type first'
+                            : coaDocumentType === 'invoice'
+                              ? coaInvoicesLoading ? 'Loading invoices...' : coaInvoicesError ? 'Unable to load invoices' : coaInvoices.length === 0 ? 'No invoices found' : 'Select invoice'
+                              : coaDeliveryChallansLoading ? 'Loading Delivery Challans...' : coaDeliveryChallansError ? 'Unable to load Delivery Challans' : coaDeliveryChallans.length === 0 ? 'No Delivery Challans found' : 'Select Delivery Challan'}
                       </option>
-                      {coaInvoices.map((invoice) => (
-                        <option key={invoice.invoice_id} value={invoice.invoice_id}>
-                          {invoice.invoice_number}
+                      {(coaDocumentType === 'invoice' ? coaInvoices : coaDeliveryChallans).map((document) => (
+                        <option key={'invoice_id' in document ? document.invoice_id : document.delivery_challan_id} value={'invoice_id' in document ? document.invoice_id : document.delivery_challan_id}>
+                          {'invoice_number' in document ? document.invoice_number : document.delivery_challan_number}
                         </option>
                       ))}
                     </select>
                   </div>
-                  {coaInvoicesError && (
+                  {(coaDocumentType === 'invoice' ? coaInvoicesError : coaDeliveryChallansError) && (
                     <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
-                      {coaInvoicesError}
+                      {coaDocumentType === 'invoice' ? coaInvoicesError : coaDeliveryChallansError}
                     </p>
                   )}
-                  {coaInvoiceId && (
+                  {(coaDocumentType === 'invoice' ? coaInvoiceId : coaDeliveryChallanId) && (
                     <div className="coa-invoice-details" aria-live="polite">
                       {(coaInvoiceDetailLoading || coaPersistenceLoading) && <p>Loading COA details...</p>}
                       {coaInvoiceDetailError && <p className="coa-invoice-details-error">{coaInvoiceDetailError}</p>}
@@ -2097,10 +2241,10 @@ export default function Dashboard({
                             </section>
                           )}
                           <dl>
-                            <div><dt>DATE:</dt><dd>{coaInvoiceDetail.date ? formatCoaInvoiceDate(coaInvoiceDetail.date) : '-'}</dd></div>
+                            <div><dt>{coaDocumentType === 'delivery-challan' ? 'DELIVERY CHALLAN DATE:' : 'DATE:'}</dt><dd>{coaInvoiceDetail.date ? formatCoaInvoiceDate(coaInvoiceDetail.date) : '-'}</dd></div>
                             <div><dt>CUSTOMER:</dt><dd>{coaInvoiceDetail.customer_name || '-'}</dd></div>
                             <div><dt>PO#:</dt><dd>{coaInvoiceDetail.po_number || '-'}</dd></div>
-                            <div><dt>Invoice#:</dt><dd>{coaInvoiceDetail.invoice_number || '-'}</dd></div>
+                            <div><dt>{coaDocumentType === 'invoice' ? 'Invoice#:' : 'Delivery Challan#:'}</dt><dd>{'invoice_number' in coaInvoiceDetail ? coaInvoiceDetail.invoice_number || '-' : coaInvoiceDetail.delivery_challan_number || '-'}</dd></div>
                             <div><dt>Ref#:</dt><dd>{coaInvoiceDetail.sales_order_number || '-'}</dd></div>
                           </dl>
                           <div className="coa-analysis-table-wrap">
@@ -2120,7 +2264,7 @@ export default function Dashboard({
                                 {coaAnalysisItems.map((item, index) => {
                                   const existingReadOnly = Boolean(savedCoa) && userRole !== 'SUPERADMIN'
                                   return (
-                                    <tr key={`${coaInvoiceDetail.invoice_id}-${item.name}-${item.description}-${index}`}>
+                                    <tr key={`${'invoice_id' in coaInvoiceDetail ? coaInvoiceDetail.invoice_id : coaInvoiceDetail.delivery_challan_id}-${item.name}-${item.description}-${index}`}>
                                       <td>{index + 1}</td>
                                       <td>
                                         <textarea
@@ -2186,7 +2330,7 @@ export default function Dashboard({
                         <button
                           type="button"
                           className="packing-action-button packing-action-pdf"
-                          onClick={() => openDocumentPrintDialog(coaPreviewRef.current, coaInvoices, coaInvoiceId, 'COA')}
+                          onClick={() => openDocumentPrintDialog(coaPreviewRef.current, coaDocumentType === 'invoice' ? coaInvoices : coaDeliveryChallans.map((row) => ({ invoice_id: row.delivery_challan_id, invoice_number: row.delivery_challan_number })), coaDocumentType === 'invoice' ? coaInvoiceId : coaDeliveryChallanId, 'COA')}
                         >
                           <FileDown aria-hidden="true" />
                           <span>Save As PDF</span>
@@ -2194,7 +2338,7 @@ export default function Dashboard({
                         <button
                           type="button"
                           className="packing-action-button packing-action-print"
-                          onClick={() => openDocumentPrintDialog(coaPreviewRef.current, coaInvoices, coaInvoiceId, 'COA')}
+                          onClick={() => openDocumentPrintDialog(coaPreviewRef.current, coaDocumentType === 'invoice' ? coaInvoices : coaDeliveryChallans.map((row) => ({ invoice_id: row.delivery_challan_id, invoice_number: row.delivery_challan_number })), coaDocumentType === 'invoice' ? coaInvoiceId : coaDeliveryChallanId, 'COA')}
                         >
                           <Printer aria-hidden="true" />
                           <span>Print COA</span>
@@ -2995,6 +3139,9 @@ export default function Dashboard({
                       value={packingCustomerId}
                       onChange={(event) => {
                         setPackingCustomerId(event.target.value)
+                        setPackingDocumentType('')
+                        setPackingInvoiceId('')
+                        setPackingDeliveryChallanId('')
                         setPackingPreviewTemplate(null)
                         setPackingPreviewError('')
                       }}
@@ -3020,38 +3167,60 @@ export default function Dashboard({
                     </p>
                   )}
                   <div className="coc-form-field">
-                    <label htmlFor="packing-invoice-number">Invoice Number</label>
+                    <label htmlFor="packing-document-type">Document Type</label>
                     <select
-                      id="packing-invoice-number"
-                      value={packingInvoiceId}
+                      id="packing-document-type"
+                      value={packingDocumentType}
                       onChange={(event) => {
-                        setPackingInvoiceId(event.target.value)
+                        setPackingDocumentType(event.target.value as '' | 'invoice' | 'delivery-challan')
+                        setPackingInvoiceId('')
+                        setPackingDeliveryChallanId('')
                         setPackingPreviewTemplate(null)
                         setPackingPreviewError('')
                       }}
-                      disabled={!packingCustomerId || packingInvoicesLoading || Boolean(packingInvoicesError)}
+                      disabled={!packingCustomerId}
+                    >
+                      <option value="">Select document type</option>
+                      <option value="invoice">Invoice</option>
+                      <option value="delivery-challan">Delivery Challan</option>
+                    </select>
+                  </div>
+                  <div className="coc-form-field">
+                    <label htmlFor="packing-document-number">{packingDocumentType === 'invoice' ? 'Invoice Number' : packingDocumentType === 'delivery-challan' ? 'Delivery Challan Number' : 'Document Number'}</label>
+                    <select
+                      id="packing-document-number"
+                      value={packingDocumentType === 'invoice' ? packingInvoiceId : packingDeliveryChallanId}
+                      onChange={(event) => {
+                        if (packingDocumentType === 'invoice') setPackingInvoiceId(event.target.value)
+                        else setPackingDeliveryChallanId(event.target.value)
+                        setPackingPreviewTemplate(null)
+                        setPackingPreviewError('')
+                      }}
+                      disabled={!packingCustomerId || (packingDocumentType === 'invoice'
+                        ? packingInvoicesLoading || Boolean(packingInvoicesError)
+                        : packingDocumentType === 'delivery-challan'
+                          ? packingDeliveryChallansLoading || Boolean(packingDeliveryChallansError)
+                          : true)}
                     >
                       <option value="">
                         {!packingCustomerId
                           ? 'Select customer first'
-                          : packingInvoicesLoading
-                            ? 'Loading invoices...'
-                            : packingInvoicesError
-                              ? 'Unable to load invoices'
-                              : packingInvoices.length === 0
-                                ? 'No invoices found'
-                                : 'Select invoice'}
+                          : !packingDocumentType
+                            ? 'Select document type first'
+                            : packingDocumentType === 'invoice'
+                              ? packingInvoicesLoading ? 'Loading invoices...' : packingInvoicesError ? 'Unable to load invoices' : packingInvoices.length === 0 ? 'No invoices found' : 'Select invoice'
+                              : packingDeliveryChallansLoading ? 'Loading Delivery Challans...' : packingDeliveryChallansError ? 'Unable to load Delivery Challans' : packingDeliveryChallans.length === 0 ? 'No Delivery Challans found' : 'Select Delivery Challan'}
                       </option>
-                      {packingInvoices.map((invoice) => (
-                        <option key={invoice.invoice_id} value={invoice.invoice_id}>
-                          {invoice.invoice_number}
+                      {(packingDocumentType === 'invoice' ? packingInvoices : packingDeliveryChallans).map((document) => (
+                        <option key={'invoice_id' in document ? document.invoice_id : document.delivery_challan_id} value={'invoice_id' in document ? document.invoice_id : document.delivery_challan_id}>
+                          {'invoice_number' in document ? document.invoice_number : document.delivery_challan_number}
                         </option>
                       ))}
                     </select>
                   </div>
-                  {packingInvoicesError && (
+                  {(packingDocumentType === 'invoice' ? packingInvoicesError : packingDeliveryChallansError) && (
                     <p style={{ margin: '0.5rem 0 0', color: '#b42318', fontSize: '0.9rem' }}>
-                      {packingInvoicesError}
+                      {packingDocumentType === 'invoice' ? packingInvoicesError : packingDeliveryChallansError}
                     </p>
                   )}
                   <div className="coc-action-row packing-slip-actions">
@@ -3059,7 +3228,7 @@ export default function Dashboard({
                       type="button"
                       className="packing-action-button packing-action-primary"
                       onClick={generatePackingSlip}
-                      disabled={!packingInvoiceId}
+                      disabled={!(packingDocumentType === 'invoice' ? packingInvoiceId : packingDeliveryChallanId)}
                     >
                       <PackageCheck aria-hidden="true" />
                       <span>Generate Packing Slip</span>
@@ -3069,7 +3238,7 @@ export default function Dashboard({
                         <button
                           type="button"
                           className="packing-action-button packing-action-pdf"
-                          onClick={() => openDocumentPrintDialog(packingPreviewRef.current, packingInvoices, packingInvoiceId, 'PackingSlip')}
+                          onClick={() => openDocumentPrintDialog(packingPreviewRef.current, packingDocumentType === 'invoice' ? packingInvoices : packingDeliveryChallans.map((row) => ({ invoice_id: row.delivery_challan_id, invoice_number: row.delivery_challan_number })), packingDocumentType === 'invoice' ? packingInvoiceId : packingDeliveryChallanId, 'PackingSlip')}
                         >
                           <FileDown aria-hidden="true" />
                           <span>Save As PDF</span>
@@ -3077,7 +3246,7 @@ export default function Dashboard({
                         <button
                           type="button"
                           className="packing-action-button packing-action-print"
-                          onClick={() => openDocumentPrintDialog(packingPreviewRef.current, packingInvoices, packingInvoiceId, 'PackingSlip')}
+                          onClick={() => openDocumentPrintDialog(packingPreviewRef.current, packingDocumentType === 'invoice' ? packingInvoices : packingDeliveryChallans.map((row) => ({ invoice_id: row.delivery_challan_id, invoice_number: row.delivery_challan_number })), packingDocumentType === 'invoice' ? packingInvoiceId : packingDeliveryChallanId, 'PackingSlip')}
                         >
                           <Printer aria-hidden="true" />
                           <span>Print Packing Slip</span>

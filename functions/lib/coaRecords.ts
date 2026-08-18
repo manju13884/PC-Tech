@@ -31,6 +31,7 @@ export interface CoaPayload {
   poNumber: string
   invoiceNumber: string
   refNumber: string
+  documentType?: 'invoice' | 'delivery-challan'
   items: CoaItemPayload[]
 }
 
@@ -48,6 +49,8 @@ export function parseCoaPayload(value: unknown): CoaPayload | null {
     || !Array.isArray(payload.items)
     || payload.items.length === 0
   ) return null
+
+  if (payload.documentType !== undefined && !['invoice', 'delivery-challan'].includes(payload.documentType)) return null
 
   const items = payload.items.map((item) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) return null

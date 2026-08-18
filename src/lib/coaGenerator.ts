@@ -17,6 +17,7 @@ export interface CoaInvoiceValues {
   poNumber: string
   invoiceNumber: string
   refNumber: string
+  documentType?: 'invoice' | 'delivery-challan'
   items: CoaAnalysisItem[]
 }
 
@@ -194,7 +195,7 @@ export function generateCoaTemplate(template: ArrayBuffer, values: CoaInvoiceVal
       }
 
       if (/^DATE:/.test(plainText)) {
-        return createDetailParagraph('DATE:', formatInvoiceDate(values.invoiceDate))
+        return createDetailParagraph(values.documentType === 'delivery-challan' ? 'DELIVERY CHALLAN DATE:' : 'DATE:', formatInvoiceDate(values.invoiceDate))
       }
 
       if (/^CUSTOMER:/.test(plainText)) {
@@ -206,7 +207,7 @@ export function generateCoaTemplate(template: ArrayBuffer, values: CoaInvoiceVal
       }
 
       if (/^Invoice\(s\):/.test(plainText)) {
-        return createDetailParagraph('Invoice#:', values.invoiceNumber) +
+        return createDetailParagraph(values.documentType === 'delivery-challan' ? 'Delivery Challan#:' : 'Invoice#:', values.invoiceNumber) +
           createDetailParagraph('Ref#:', values.refNumber, true)
       }
 
