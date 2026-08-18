@@ -552,6 +552,10 @@ main.app-shell::after {
   margin-bottom: 0.15rem;
 }
 
+.menu-home-item .menu-item-main > span:last-child {
+  font-weight: 700;
+}
+
 .menu-item {
   position: relative;
   display: flex;
@@ -579,7 +583,7 @@ main.app-shell::after {
   top: 6px;
   bottom: 6px;
   left: 0;
-  width: 2.25px;
+  width: 3px;
   border-radius: 0 2px 2px 0;
   background: transparent;
   content: '';
@@ -625,24 +629,34 @@ main.app-shell::after {
 }
 
 .menu-item.active {
-  border-color: #c8d8fb;
-  background: #dce8ff;
-  color: #1e5bd7;
+  border-color: #3b82f6;
+  background: linear-gradient(90deg, #2f72ed 0%, #4f91fb 100%);
+  box-shadow: 0 2px 5px rgb(37 99 235 / 18%);
+  color: #ffffff;
 }
 
-.menu-item:hover .menu-item-icon,
-.menu-item.active .menu-item-icon {
+.menu-item:hover .menu-item-icon {
   border-color: #b9c9f7;
   color: #1e5bd7;
 }
 
-.menu-item.active::before {
-  background: #2563eb;
+.menu-item.active .menu-item-icon {
+  border-color: rgb(255 255 255 / 38%);
+  background: rgb(255 255 255 / 14%);
+  color: #ffffff;
 }
 
-.menu-item:hover .menu-item-chevron,
-.menu-item.active .menu-item-chevron {
+.menu-item.active::before {
+  background: #f59e0b;
+}
+
+.menu-item:hover .menu-item-chevron {
   color: #2563eb;
+  transform: translateX(2px);
+}
+
+.menu-item.active .menu-item-chevron {
+  color: #ffffff;
   transform: translateX(2px);
 }
 
