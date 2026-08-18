@@ -1,0 +1,85 @@
+name: Deploy PC-Tech Non-Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: nonproduction
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Audit immutable additive D1 migrations
+        run: npm run db:migrations:audit
+
+      - name: Prepare non-production backup directory
+        run: mkdir -p .wrangler/backups
+
+      - name: Export non-production D1 backup
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 export pc-tech-db --remote --env nonproduction --output=.wrangler/backups/pc-tech-db-pre-deploy.sql
+
+      - name: Retain encrypted non-production backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc-tech-db-pre-deploy
+          path: .wrangler/backups/pc-tech-db-pre-deploy.sql
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: List pending non-production D1 migrations
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations list pc-tech-db --remote --env nonproduction
+
+      - name: Apply non-production D1 migrations
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply pc-tech-db --remote --env nonproduction
+
+      - name: Verify non-production D1 migrations
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations list pc-tech-db --remote --env nonproduction
+
+      - name: Remove invalid generated worker file
+        run: rm -f dist/_worker.js dist/_worker.js.map
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=pc-tech --branch=main --commit-dirty=true
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
