@@ -1,0 +1,17 @@
+name: Refresh Non-Production Dashboard
+
+on:
+  schedule:
+    # GitHub Actions uses UTC. 01:30 UTC is 07:00 IST.
+    - cron: '30 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh daily dashboard snapshot
+        run: curl --fail --silent --show-error --max-time 300 https://pc-tech.pages.dev/api/home-sales-orders

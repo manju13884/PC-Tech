@@ -1,12 +1,13 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Ban, BarChart3, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { Ban, BarChart3, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, Home, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
 import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, type Customer } from './customerService'
 import { getSavedCoa, regenerateCoa, saveCoa, type CoaRecord } from './coaService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
+import DashboardPage from './dashboard/DashboardPage'
 import AdvancedCorrugatedBoxCalculatorPage from './features/advanced-corrugated-box-calculator/AdvancedCorrugatedBoxCalculatorPage'
 import {
   ADVANCED_BOX_CALCULATOR_DESCRIPTION,
@@ -144,7 +145,13 @@ const menuGroups: MenuGroup[] = [
 ]
 
 const menuItems = menuGroups.flatMap((group) => group.items)
-export const defaultMenuKey = 'corrugated-box-price'
+const homeMenuItem: MenuItem = {
+  key: 'home',
+  title: 'Dashboard',
+  description: 'PC-Tech business dashboard.',
+  icon: Home,
+}
+export const defaultMenuKey = 'home'
 const PANEL_HEADING_MENU_KEYS = new Set([
   'corrugated-box-price',
   ADVANCED_BOX_CALCULATOR_ROUTE_KEY,
@@ -252,12 +259,8 @@ const accessMatrix: AccessMatrixItem[] = menuGroups.flatMap((group) => (
 ))
 const accessRoleOrder = ['SUPERADMIN', 'ADMIN', 'SALES', 'ACCOUNTS', 'OPS']
 
-export function getDefaultPermittedMenuKey(menuAccess: string[]): string | undefined {
-  const allowedKeys = new Set(menuAccess)
-
-  return allowedKeys.has(defaultMenuKey)
-    ? defaultMenuKey
-    : menuItems.find((item) => allowedKeys.has(item.key))?.key
+export function getDefaultPermittedMenuKey(_menuAccess: string[]): string | undefined {
+  return defaultMenuKey
 }
 
 function getMenuGroupTitleForKey(key: string): string | undefined {
@@ -267,7 +270,7 @@ function getMenuGroupTitleForKey(key: string): string | undefined {
 function getInitialMenuKey(menuAccess: string[]): string {
   const hashKey = window.location.hash.replace(/^#/, '')
 
-  return menuItems.some((item) => item.key === hashKey)
+  return hashKey === defaultMenuKey || menuItems.some((item) => item.key === hashKey)
     ? hashKey
     : getDefaultPermittedMenuKey(menuAccess) ?? defaultMenuKey
 }
@@ -606,7 +609,8 @@ export default function Dashboard({
   const [savingAccessKey, setSavingAccessKey] = useState('')
 
   const visibleMenuGroups = getVisibleMenuGroups(menuAccess)
-  const visibleMenuItems = visibleMenuGroups.flatMap((group) => group.items)
+  const moduleMenuItems = visibleMenuGroups.flatMap((group) => group.items)
+  const visibleMenuItems = [homeMenuItem, ...moduleMenuItems]
   const visibleMenuKeys = new Set(visibleMenuItems.map((item) => item.key))
   const visibleMenuKeyList = visibleMenuItems.map((item) => item.key).join('|')
   const selectedItem = visibleMenuItems.find((item) => item.key === selectedKey) ?? visibleMenuItems[0] ?? {
@@ -1154,37 +1158,41 @@ export default function Dashboard({
     )))
   }
 
-  function buildCoaPayload(): CoaInvoiceValues | null {
-    if (!coaInvoiceDetail) return null
+  function buildCoaPayload(invoice = coaInvoiceDetail): CoaInvoiceValues | null {
+    if (!invoice) return null
     return {
-      invoiceDate: coaInvoiceDetail.date,
-      customer: coaInvoiceDetail.customer_name,
-      poNumber: coaInvoiceDetail.po_number,
-      invoiceNumber: coaInvoiceDetail.invoice_number,
-      refNumber: coaInvoiceDetail.sales_order_number || '-',
+      invoiceDate: invoice.date,
+      customer: invoice.customer_name,
+      poNumber: invoice.po_number,
+      invoiceNumber: invoice.invoice_number,
+      refNumber: invoice.sales_order_number || '-',
       items: coaAnalysisItems,
     }
   }
 
   async function persistAndGenerateCoa(isRegeneration: boolean) {
-    const payload = buildCoaPayload()
-    if (!payload || !coaInvoiceDetail) {
-      return
-    }
+    if (!coaInvoiceId) return
 
     setCoaPreviewError('')
     setCoaPersistenceError('')
     setCoaSaving(true)
 
     try {
+      // COA document data must remain live. Always retrieve the selected
+      // invoice again when Generate/Re-generate is clicked; the daily cache is
+      // exclusively for dashboard aggregates.
+      const currentInvoice = await getInvoiceById(coaInvoiceId)
+      const payload = buildCoaPayload(currentInvoice)
+      if (!payload) throw new Error('Unable to load current invoice details from Zoho.')
+      setCoaInvoiceDetail(currentInvoice)
       const template = await loadCoaTemplate()
       const { generateCoaTemplate } = await import('./lib/coaGenerator')
       const generatedTemplate = generateCoaTemplate(template, payload)
       const recordInput = {
         customerId: coaCustomerId,
-        customerName: coaInvoiceDetail.customer_name,
+        customerName: currentInvoice.customer_name,
         invoiceId: coaInvoiceId,
-        invoiceNumber: coaInvoiceDetail.invoice_number,
+        invoiceNumber: currentInvoice.invoice_number,
         data: payload,
       }
       const record = isRegeneration && savedCoa
@@ -1765,6 +1773,19 @@ export default function Dashboard({
 
       <div className="dashboard-grid">
         <aside className="dashboard-menu">
+          <button
+            type="button"
+            className={`menu-item menu-home-item ${selectedKey === 'home' ? 'active' : ''}`}
+            onClick={() => selectMenuItem('home')}
+            aria-current={selectedKey === 'home' ? 'page' : undefined}
+          >
+            <span className="menu-item-main">
+              <span className="menu-item-icon" aria-hidden="true">
+                <Home size={18} strokeWidth={1.8} />
+              </span>
+              <span>Dashboard</span>
+            </span>
+          </button>
           {visibleMenuGroups.map((group) => {
             const isExpanded = expandedMenuGroups.has(group.title)
             const groupId = `menu-group-${group.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
@@ -1808,19 +1829,33 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
-            <header className="dashboard-page-heading">
-              <h2>
-                {PANEL_HEADING_MENU_KEYS.has(selectedItem.key) && (
-                  <span className="dashboard-page-heading-icon" aria-hidden="true">
-                    <SelectedItemIcon size={16} />
-                  </span>
-                )}
-                <span>{selectedItem.title}</span>
-              </h2>
-              <p>{selectedItem.description}</p>
-            </header>
+          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
+            {selectedItem.key !== 'home' && (
+              <header className="dashboard-page-heading">
+                <h2>
+                  {PANEL_HEADING_MENU_KEYS.has(selectedItem.key) && (
+                    <span className="dashboard-page-heading-icon" aria-hidden="true">
+                      <SelectedItemIcon size={16} />
+                    </span>
+                  )}
+                  <span>{selectedItem.title}</span>
+                </h2>
+                <p>{selectedItem.description}</p>
+              </header>
+            )}
             <div className="dashboard-details">
+              {selectedItem.key === 'home' && (
+                <DashboardPage
+                  menuAccess={menuAccess}
+                  actions={moduleMenuItems.slice(0, 8).map((item) => ({
+                    key: item.key,
+                    label: item.menuTitle ?? item.title,
+                    description: item.description,
+                    icon: item.icon,
+                  }))}
+                  onNavigate={selectMenuItem}
+                />
+              )}
               {selectedItem.key === 'corrugated-box-price' && (
                 <div className="pc-corrugated-calculator-compat">
                   <CardBoxCalculator />
