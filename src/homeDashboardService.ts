@@ -34,8 +34,11 @@ export interface HomeDashboardSummary {
   refreshedAt?: string
 }
 
-export async function getCustomerOpenSalesOrderSummary(): Promise<HomeDashboardSummary> {
-  const response = await fetch('/api/home-sales-orders', { credentials: 'include' })
+export async function getCustomerOpenSalesOrderSummary(refreshCache = false): Promise<HomeDashboardSummary> {
+  const response = await fetch('/api/home-sales-orders', {
+    method: refreshCache ? 'POST' : 'GET',
+    credentials: 'include',
+  })
   if (!response.ok) throw new Error('Unable to load sales order summary')
   const payload: unknown = await response.json()
   if (!payload || typeof payload !== 'object') throw new Error('Invalid sales order summary response')

@@ -17,9 +17,9 @@ export function useDashboardData(loadPurchases: boolean) {
   const [loading, setLoading] = useState(true)
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null)
 
-  const refresh = useCallback(async () => {
+  const load = useCallback(async (refreshCache = false) => {
     setLoading(true)
-    const overviewPromise = getCustomerOpenSalesOrderSummary()
+    const overviewPromise = getCustomerOpenSalesOrderSummary(refreshCache)
     const purchasePromise = loadPurchases
       ? fetch('/api/dashboard/purchases', { credentials: 'include' }).then(async (response) => {
         if (!response.ok) throw new Error('Unable to load purchase data.')
@@ -43,6 +43,7 @@ export function useDashboardData(loadPurchases: boolean) {
     setLoading(false)
   }, [loadPurchases])
 
-  useEffect(() => { void refresh() }, [refresh])
+  useEffect(() => { void load() }, [load])
+  const refresh = useCallback(() => load(true), [load])
   return { summary, purchases, purchaseError, loading, refreshedAt, refresh }
 }
