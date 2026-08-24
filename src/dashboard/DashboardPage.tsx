@@ -12,6 +12,7 @@ interface DashboardAction {
 
 interface DashboardPageProps {
   menuAccess: string[]
+  isSuperadmin: boolean
   actions: DashboardAction[]
   onNavigate: (key: string) => void
 }
@@ -30,7 +31,7 @@ function Panel({ title, icon: Icon, children, className = '' }: { title: string;
   return <section className={`erp-dashboard-panel ${className}`}><header><span className="erp-panel-icon" aria-hidden="true"><Icon size={15} /></span><h3>{title}</h3></header>{children}</section>
 }
 
-export default function DashboardPage({ menuAccess, actions, onNavigate }: DashboardPageProps) {
+export default function DashboardPage({ menuAccess, isSuperadmin, actions, onNavigate }: DashboardPageProps) {
   const canViewPurchases = ['paper-purchase-request', 'paper-purchase-request-approvals', 'paper-po-calculation'].some((key) => menuAccess.includes(key))
   const { summary, purchases, purchaseError, loading, refreshedAt, refresh } = useDashboardData(canViewPurchases)
   const sales = summary.salesOrders
@@ -45,7 +46,7 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
         <div><h2>Dashboard</h2><p>Operational overview across sales, finance and purchases.</p></div>
         <div className="erp-dashboard-header-actions">
           <span>As of {dateFormatter.format(new Date())}{refreshedAt ? ` · ${timeFormatter.format(refreshedAt)}` : ''}</span>
-          <button type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={13} className={loading ? 'is-spinning' : ''} /> Refresh</button>
+          {isSuperadmin && <button type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw size={13} className={loading ? 'is-spinning' : ''} /> Refresh</button>}
         </div>
       </header>
 

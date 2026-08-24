@@ -1937,6 +1937,7 @@ export default function Dashboard({
               {selectedItem.key === 'home' && (
                 <DashboardPage
                   menuAccess={menuAccess}
+                  isSuperadmin={userRole === 'SUPERADMIN'}
                   actions={moduleMenuItems.slice(0, 8).map((item) => ({
                     key: item.key,
                     label: item.menuTitle ?? item.title,
