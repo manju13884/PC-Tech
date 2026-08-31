@@ -1,13 +1,14 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Ban, BarChart3, Calculator, ChevronRight, CircleCheck, ClipboardList, FileCheck2, FileDown, FlaskConical, Home, KeyRound, PackageCheck, Pencil, Printer, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { Ban, BarChart3, Calculator, ChevronRight, CircleCheck, ClipboardList, Database, FileCheck2, FileDown, FlaskConical, Home, KeyRound, PackageCheck, Pencil, Printer, RefreshCw, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
 import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
-import { getCustomers, getCustomersError, type Customer } from './customerService'
+import { getCustomers, getCustomersError, refreshCustomers, type Customer } from './customerService'
 import { getSavedCoa, regenerateCoa, saveCoa, type CoaRecord } from './coaService'
 import { getDeliveryChallanById, getDeliveryChallansByCustomer, type DeliveryChallan, type DeliveryChallanDetail } from './deliveryChallanService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
+import { getCustomerOpenSalesOrderSummary } from './homeDashboardService'
 import DashboardPage from './dashboard/DashboardPage'
 import AdvancedCorrugatedBoxCalculatorPage from './features/advanced-corrugated-box-calculator/AdvancedCorrugatedBoxCalculatorPage'
 import {
@@ -140,6 +141,13 @@ const menuGroups: MenuGroup[] = [
         description:
           'Manage user accounts, role access, and administrative permissions for this portal.',
         icon: Settings,
+      },
+      {
+        key: 'data-management',
+        title: 'Data Management',
+        description:
+          'Manage controlled business data operations and environment-specific data utilities.',
+        icon: Database,
       },
     ],
   },
@@ -623,6 +631,12 @@ export default function Dashboard({
   const [adminAccessLoading, setAdminAccessLoading] = useState(false)
   const [adminAccessError, setAdminAccessError] = useState<string | null>(null)
   const [savingAccessKey, setSavingAccessKey] = useState('')
+  const [dashboardRefreshLoading, setDashboardRefreshLoading] = useState(false)
+  const [dashboardRefreshError, setDashboardRefreshError] = useState('')
+  const [dashboardRefreshedAt, setDashboardRefreshedAt] = useState<Date | null>(null)
+  const [customerRefreshLoading, setCustomerRefreshLoading] = useState(false)
+  const [customerRefreshError, setCustomerRefreshError] = useState('')
+  const [customersRefreshedAt, setCustomersRefreshedAt] = useState<Date | null>(null)
 
   const visibleMenuGroups = getVisibleMenuGroups(menuAccess)
   const moduleMenuItems = visibleMenuGroups.flatMap((group) => group.items)
@@ -1472,6 +1486,48 @@ export default function Dashboard({
     }
   }
 
+  async function refreshDashboardData() {
+    if (dashboardRefreshLoading || userRole !== 'SUPERADMIN') return
+
+    setDashboardRefreshLoading(true)
+    setDashboardRefreshError('')
+
+    try {
+      const result = await getCustomerOpenSalesOrderSummary(true)
+      const errors = [result.errors.sales, result.errors.finance].filter(Boolean)
+
+      if (errors.length > 0) {
+        setDashboardRefreshError(errors.join(' '))
+        return
+      }
+
+      const refreshedAt = result.refreshedAt ? new Date(result.refreshedAt) : new Date()
+      setDashboardRefreshedAt(refreshedAt)
+    } catch {
+      setDashboardRefreshError('Unable to refresh dashboard data. Please try again.')
+    } finally {
+      setDashboardRefreshLoading(false)
+    }
+  }
+
+  async function refreshCustomerDetails() {
+    if (customerRefreshLoading || userRole !== 'SUPERADMIN') return
+
+    setCustomerRefreshLoading(true)
+    setCustomerRefreshError('')
+
+    try {
+      const result = await refreshCustomers()
+      setCustomers(result.customers)
+      setCustomersError(null)
+      setCustomersRefreshedAt(result.refreshedAt)
+    } catch {
+      setCustomerRefreshError(getCustomersError() ?? 'Unable to refresh customer details. Please try again.')
+    } finally {
+      setCustomerRefreshLoading(false)
+    }
+  }
+
   function startEditRole(role: AdminRole) {
     setEditingRoleId(role.id)
     setEditRoleName(role.name)
@@ -1919,7 +1975,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
             {selectedItem.key !== 'home' && (
               <header className="dashboard-page-heading">
                 <h2>
@@ -1937,7 +1993,6 @@ export default function Dashboard({
               {selectedItem.key === 'home' && (
                 <DashboardPage
                   menuAccess={menuAccess}
-                  isSuperadmin={userRole === 'SUPERADMIN'}
                   actions={moduleMenuItems.slice(0, 8).map((item) => ({
                     key: item.key,
                     label: item.menuTitle ?? item.title,
@@ -1975,6 +2030,62 @@ export default function Dashboard({
                   </header>
                   <p className="paper-request-empty">No Purchase Reports are available yet.</p>
                 </section>
+              )}
+              {selectedItem.key === 'data-management' && (
+                <div className="coc-form data-management-form">
+                  <div className="data-management-utility">
+                    <div>
+                      <strong>Customer Details</strong>
+                      <p>Refresh the shared active-customer cache used across the application.</p>
+                    </div>
+                    {userRole === 'SUPERADMIN' ? (
+                      <div className="data-management-actions">
+                        {customersRefreshedAt && (
+                          <span className="data-management-refreshed-at">
+                            Refreshed on {customersRefreshedAt.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        <button type="button" onClick={() => void refreshCustomerDetails()} disabled={customerRefreshLoading}>
+                          <RefreshCw size={14} className={customerRefreshLoading ? 'is-spinning' : ''} />
+                          {customerRefreshLoading ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="data-management-restricted">SUPERADMIN only</span>
+                    )}
+                  </div>
+                  {customerRefreshError && (
+                    <p className="data-management-message is-error" role="alert">
+                      {customerRefreshError}
+                    </p>
+                  )}
+                  <div className="data-management-utility">
+                    <div>
+                      <strong>Refresh Dashboard Data</strong>
+                      <p>Refresh the cached sales and finance dashboard data from Zoho.</p>
+                    </div>
+                    {userRole === 'SUPERADMIN' ? (
+                      <div className="data-management-actions">
+                        {dashboardRefreshedAt && (
+                          <span className="data-management-refreshed-at">
+                            Refreshed on {dashboardRefreshedAt.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        <button type="button" onClick={() => void refreshDashboardData()} disabled={dashboardRefreshLoading}>
+                          <RefreshCw size={14} className={dashboardRefreshLoading ? 'is-spinning' : ''} />
+                          {dashboardRefreshLoading ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="data-management-restricted">SUPERADMIN only</span>
+                    )}
+                  </div>
+                  {dashboardRefreshError && (
+                    <p className="data-management-message is-error" role="alert">
+                      {dashboardRefreshError}
+                    </p>
+                  )}
+                </div>
               )}
               {selectedItem.key === 'coc' && (
                 <div className="coc-form">

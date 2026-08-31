@@ -36,6 +36,7 @@ const ALL_MENU_KEYS = [
   'coc',
   'packing-slip',
   'coa',
+  'data-management',
   'admin-configurations',
 ]
 const AUTHENTICATION_REQUIRED = 'Authentication required'

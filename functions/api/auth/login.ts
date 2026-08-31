@@ -45,6 +45,7 @@ const ALL_MENU_KEYS = [
   'coc',
   'packing-slip',
   'coa',
+  'data-management',
   'admin-configurations',
 ]
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

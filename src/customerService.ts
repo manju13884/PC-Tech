@@ -6,6 +6,9 @@ export interface Customer {
 
 let loading = false
 let error: string | null = null
+let cachedCustomers: Customer[] | null = null
+let customersRequest: Promise<Customer[]> | null = null
+let refreshedAt: Date | null = null
 
 async function getResponseError(response: Response, fallback: string): Promise<string> {
   try {
@@ -58,29 +61,77 @@ export function getCustomersError(): string | null {
   return error
 }
 
+export function getCustomersRefreshedAt(): Date | null {
+  return refreshedAt
+}
+
 export async function getCustomers(): Promise<Customer[]> {
+  if (cachedCustomers) return cachedCustomers
+  if (customersRequest) return customersRequest
+
+  loading = true
+  error = null
+
+  customersRequest = (async () => {
+    try {
+      const response = await fetch('/api/customers', { credentials: 'include' })
+
+      if (!response.ok) {
+        throw new Error(await getResponseError(response, `Unable to load customers (${response.status})`))
+      }
+
+      const data: unknown = await response.json()
+
+      if (!Array.isArray(data)) {
+        throw new Error('Customer response was not a list')
+      }
+
+      cachedCustomers = data
+        .map(mapCustomer)
+        .filter((customer): customer is Customer => customer !== null)
+      const cacheDate = response.headers.get('X-Customer-Refreshed-At')
+      refreshedAt = cacheDate ? new Date(cacheDate) : null
+      return cachedCustomers
+    } catch (caughtError) {
+      error = caughtError instanceof Error ? caughtError.message : 'Unable to load customers'
+      return []
+    } finally {
+      loading = false
+      customersRequest = null
+    }
+  })()
+
+  return customersRequest
+}
+
+export async function refreshCustomers(): Promise<{ customers: Customer[]; refreshedAt: Date }> {
   loading = true
   error = null
 
   try {
-    const response = await fetch('/api/customers')
-
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      credentials: 'include',
+    })
     if (!response.ok) {
-      throw new Error(await getResponseError(response, `Unable to load customers (${response.status})`))
+      throw new Error(await getResponseError(response, `Unable to refresh customers (${response.status})`))
     }
 
-    const data: unknown = await response.json()
-
-    if (!Array.isArray(data)) {
-      throw new Error('Customer response was not a list')
+    const payload: unknown = await response.json()
+    if (!payload || typeof payload !== 'object') throw new Error('Invalid customer refresh response')
+    const value = payload as { customers?: unknown; refreshedAt?: unknown }
+    if (!Array.isArray(value.customers) || typeof value.refreshedAt !== 'string') {
+      throw new Error('Invalid customer refresh response')
     }
 
-    return data
+    cachedCustomers = value.customers
       .map(mapCustomer)
       .filter((customer): customer is Customer => customer !== null)
+    refreshedAt = new Date(value.refreshedAt)
+    return { customers: cachedCustomers, refreshedAt }
   } catch (caughtError) {
-    error = caughtError instanceof Error ? caughtError.message : 'Unable to load customers'
-    return []
+    error = caughtError instanceof Error ? caughtError.message : 'Unable to refresh customers'
+    throw caughtError
   } finally {
     loading = false
   }
