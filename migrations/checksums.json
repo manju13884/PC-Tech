@@ -10,5 +10,7 @@
   "0009_add_paper_po_calculation_permission.sql": "c74855435401433eee61381d24ed85462b7c3ca37b496d279335811477930fcc",
   "0010_add_purchase_reports_permission.sql": "be83ef420e0c51361f6cb77b440c3c9a49d1fad9cce5145cf3d6eeb562a25e6a",
   "0011_create_coa_records.sql": "63a70861cc3b79004e9afdcc926f56144aaac6fe580b0a545d761c8ce8be3d2b",
-  "0012_create_dashboard_snapshots.sql": "0829a579174b5d5e9ec4f80a4d873e217292a78425bcf169de42e7a3ee8e1453"
+  "0012_create_dashboard_snapshots.sql": "0829a579174b5d5e9ec4f80a4d873e217292a78425bcf169de42e7a3ee8e1453",
+  "0013_add_data_management_permission.sql": "a67a07dde401c53f829509196bf6ee03aef7b1604a8a3948c89d4a076a6bccd5",
+  "0014_create_customer_cache.sql": "8790e038889eb24901e0439f7c3e05cf09581c94950bf362875f665f99a25e23"
 }

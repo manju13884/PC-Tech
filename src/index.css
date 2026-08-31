@@ -754,6 +754,103 @@ main.app-shell::after {
   border-top: 0;
 }
 
+.data-management-utility {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #dbe3ee;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.data-management-form > .data-management-utility:not(:first-child) {
+  margin-top: 0.75rem;
+}
+
+.data-management-utility strong {
+  color: #1e293b;
+  font-size: 0.72rem;
+}
+
+.data-management-utility p {
+  margin: 0.18rem 0 0;
+  color: #64748b;
+  font-size: 0.625rem;
+}
+
+.data-management-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.data-management-refreshed-at {
+  color: #64748b;
+  font-size: 0.6rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.data-management-utility button {
+  display: inline-flex;
+  min-height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #1d4ed8;
+  border-radius: 5px;
+  background: #2563eb;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.data-management-utility button:hover {
+  background: #1d4ed8;
+}
+
+.data-management-utility button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.data-management-restricted {
+  color: #64748b;
+  font-size: 0.625rem;
+  font-weight: 650;
+}
+
+.data-management-message {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 5px;
+  font-size: 0.625rem;
+}
+
+.data-management-message.is-error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+@media (max-width: 680px) {
+  .data-management-utility,
+  .data-management-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .data-management-refreshed-at {
+    white-space: normal;
+  }
+}
+
 .coc-form {
   width: min(100%, 880px);
   padding: 1rem;

@@ -1,4 +1,4 @@
-name: Refresh Daily Dashboards
+name: Refresh Daily Application Caches
 
 on:
   schedule:
@@ -16,5 +16,11 @@ jobs:
       - name: Refresh non-production dashboard snapshot
         run: curl --fail --silent --show-error --max-time 300 https://pc-tech.pages.dev/api/home-sales-orders
 
+      - name: Refresh non-production customer cache
+        run: curl --fail --silent --show-error --max-time 300 https://pc-tech.pages.dev/api/customers
+
       - name: Refresh production dashboard snapshot
         run: curl --fail --silent --show-error --max-time 300 https://www.polarcanvas.in/api/home-sales-orders
+
+      - name: Refresh production customer cache
+        run: curl --fail --silent --show-error --max-time 300 https://www.polarcanvas.in/api/customers
