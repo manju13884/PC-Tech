@@ -71,6 +71,11 @@ function customerErrorResponse(error: unknown, action: 'load' | 'refresh'): Resp
   return jsonResponse({ error: safeMessage, code, status }, 502)
 }
 
+function isMissingCustomerCache(error: unknown): boolean {
+  return error instanceof Error
+    && error.message.includes('no such table: customer_cache')
+}
+
 export async function onRequestGet(context: PagesFunctionContext): Promise<Response> {
   try {
     if (!context.env.DB) throw new Error('Customer cache database is unavailable')
@@ -90,6 +95,15 @@ export async function onRequestGet(context: PagesFunctionContext): Promise<Respo
       'X-Customer-Refreshed-At': refreshed.refreshedAt,
     })
   } catch (error) {
+    if (isMissingCustomerCache(error)) {
+      try {
+        return jsonResponse(await getZohoCustomers(context.env), 200, {
+          'X-Customer-Cache': 'BYPASS',
+        })
+      } catch (zohoError) {
+        return customerErrorResponse(zohoError, 'load')
+      }
+    }
     return customerErrorResponse(error, 'load')
   }
 }
