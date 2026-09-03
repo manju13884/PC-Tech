@@ -40,13 +40,34 @@ test('product specification persistence supports multiple variants and never del
 })
 
 test('product form supports item-aware dimensions, GSM, BF and print controls', async () => {
-  const component = await readFile('src/features/product-specifications/ProductSpecifications.tsx', 'utf8')
+  const [component, styles] = await Promise.all([
+    readFile('src/features/product-specifications/ProductSpecifications.tsx', 'utf8'),
+    readFile('src/features/product-specifications/product-specifications.css', 'utf8'),
+  ])
   for (const field of ['length_mm', 'width_mm', 'height_mm', 'gsm', 'bf', 'print_required']) {
     assert.match(component, new RegExp(field))
   }
   assert.match(component, /detectType/)
   for (const ply of [2, 3, 5, 7, 9]) assert.match(component, new RegExp(`'${ply}'`))
   assert.match(component, /Paper Composition/)
+  assert.match(component, /Deckle Size/)
+  assert.match(component, /width \+ height \+ 20/)
+  assert.match(component, /deckleMm \/ 10/)
+  for (const calculatedField of ['Rotary Size', 'Sheet Size', 'Box Weight', 'Board GSM', '>BS<', 'Moisture']) {
+    assert.match(component, new RegExp(calculatedField))
+  }
+  assert.match(component, /Lab test required/)
+  assert.match(component, /sheetAreaSqM \* boardGsm \* 1\.05/)
+  assert.match(component, /2 \* length.*2 \* width.*\+ 50 =/)
+  assert.match(component, /Production Stages/)
+  assert.match(component, /defaultProductionStages/)
+  for (const stage of ['Paper Cutting', 'Corrugation', 'Pasting', 'Board \/ Sheet Cutting', 'Printing', 'RS4', 'Creasing', 'Slotting', 'Die Cutting', 'Stitching \/ Gluing', 'Quality Inspection', 'Bundling \/ Packing']) {
+    assert.match(component, new RegExp(stage))
+  }
+  assert.match(component, /Product Specification Report/)
+  assert.match(component, /product-spec-report-a4/)
+  assert.match(styles, /width:210mm/)
+  assert.match(styles, /size:A4 portrait/)
   assert.match(component, /paper_layers/)
   assert.match(component, /Select joint/)
   assert.match(component, /Brass Pinning/)
@@ -71,4 +92,8 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /All items/)
   assert.match(component, /> Edit</)
   assert.doesNotMatch(component, /No Zoho item description available/)
+  assert.match(styles, /product-spec-technical \.product-spec-grid \{ grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/)
+  assert.match(styles, /input\[readonly\]/)
+  assert.match(styles, /background:#edf9f1/)
+  assert.match(styles, /spec-dimension-input::-webkit-inner-spin-button/)
 })

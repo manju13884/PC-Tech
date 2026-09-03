@@ -82,6 +82,13 @@ export async function onRequestPost(context: Context): Promise<Response> {
       flute: typeof layer.flute === 'string' && ['A', 'B', 'C', 'E', 'F'].includes(layer.flute) ? layer.flute : '',
     })) : []
   attributes.paper_layers = paperLayers
+  const allowedProductionStages = [
+    'Paper Cutting', 'Corrugation', 'Pasting', 'Board / Sheet Cutting', 'Printing', 'RS4',
+    'Creasing', 'Slotting', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing',
+  ]
+  attributes.production_stages = Array.isArray(body.production_stages)
+    ? body.production_stages.filter((stage): stage is string => typeof stage === 'string' && allowedProductionStages.includes(stage))
+    : []
 
   const commonValues = [
     customerId, customerName, itemId, itemName, text('item_sku'), text('specification_type') || 'GENERAL',
