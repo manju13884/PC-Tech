@@ -12,5 +12,11 @@
   "0011_create_coa_records.sql": "63a70861cc3b79004e9afdcc926f56144aaac6fe580b0a545d761c8ce8be3d2b",
   "0012_create_dashboard_snapshots.sql": "0829a579174b5d5e9ec4f80a4d873e217292a78425bcf169de42e7a3ee8e1453",
   "0013_add_data_management_permission.sql": "a67a07dde401c53f829509196bf6ee03aef7b1604a8a3948c89d4a076a6bccd5",
-  "0014_create_customer_cache.sql": "8790e038889eb24901e0439f7c3e05cf09581c94950bf362875f665f99a25e23"
+  "0014_create_customer_cache.sql": "8790e038889eb24901e0439f7c3e05cf09581c94950bf362875f665f99a25e23",
+  "0015_add_sales_production_menu_permissions.sql": "7a3cf1a51ac10b605a8382e43a126266f767135750cda0690ba2ade28dbef9ed",
+  "0016_create_item_cache_and_product_specifications.sql": "21b00f547b38101ace5cb924cfcf7ba3268a4d1f5f5644249d4ebc04e8115bc0",
+  "0017_add_product_specification_attributes.sql": "e18ecf0551fcd11223119558dfc726d1c839752bef87d41eda4e74b2ffc03d36",
+  "0018_create_product_specification_records.sql": "19d90b60c4f9d352c134a871fee107e1224617868b17e147af5a6481f0a0a42d",
+  "0019_add_polar_canvas_item_code.sql": "93da5604c575d38501564411e1b6ed4729dea19de6043358f8acf67c1ced42a0",
+  "0020_shorten_polar_canvas_item_code.sql": "c3f0397139d4128c41704bc5b01bc3094f7eb4c1c28ae3ecaaeca850e96e58ad"
 }

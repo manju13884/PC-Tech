@@ -5,6 +5,7 @@ import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAc
 import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, refreshCustomers, type Customer } from './customerService'
+import { getItemsError, refreshItems } from './itemService'
 import { getSavedCoa, regenerateCoa, saveCoa, type CoaRecord } from './coaService'
 import { getDeliveryChallanById, getDeliveryChallansByCustomer, type DeliveryChallan, type DeliveryChallanDetail } from './deliveryChallanService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
@@ -23,6 +24,7 @@ import CorrugatedBoardPriceCalculator from './features/corrugated-board-price-ca
 import PaperPurchaseRequest from './features/paper-purchase-request/PaperPurchaseRequest'
 import PaperPurchaseRequestApprovals from './features/paper-purchase-request-approvals/PaperPurchaseRequestApprovals'
 import PaperPoCalculation from './features/paper-po-calculation/PaperPoCalculation'
+import ProductSpecifications from './features/product-specifications/ProductSpecifications'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
 import type { CoaAnalysisItem, CoaInvoiceValues } from './lib/coaGenerator'
 import { loadCocTemplate } from './lib/templateLoader'
@@ -76,6 +78,35 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    title: 'Sales',
+    items: [
+      {
+        key: 'sales-orders',
+        title: 'Sales Orders',
+        description: 'View and manage customer sales orders.',
+        icon: ShoppingCart,
+      },
+      {
+        key: 'so-specification-mapping',
+        title: 'SO Specification Mapping',
+        description: 'Map sales-order lines to the required product and production specifications.',
+        icon: SlidersHorizontal,
+      },
+      {
+        key: 'product-specifications',
+        title: 'Product Specifications',
+        description: 'Maintain controlled product specification records.',
+        icon: PackageCheck,
+      },
+      {
+        key: 'production-specifications',
+        title: 'Production Specifications',
+        description: 'Maintain specifications used by production workflows.',
+        icon: FileCheck2,
+      },
+    ],
+  },
+  {
     title: 'Purchases',
     items: [
       {
@@ -103,6 +134,29 @@ const menuGroups: MenuGroup[] = [
         menuTitle: 'Reports',
         description: 'View reporting and analysis for Purchase workflows.',
         icon: BarChart3,
+      },
+    ],
+  },
+  {
+    title: 'Production',
+    items: [
+      {
+        key: 'job-cards',
+        title: 'Job Cards',
+        description: 'Create and track production job cards.',
+        icon: ClipboardList,
+      },
+      {
+        key: 'production-planning',
+        title: 'Production Planning',
+        description: 'Plan production work, capacity, and schedules.',
+        icon: BarChart3,
+      },
+      {
+        key: 'job-tracking',
+        title: 'Job Tracking',
+        description: 'Monitor job progress through production stages.',
+        icon: CircleCheck,
       },
     ],
   },
@@ -167,6 +221,20 @@ const PANEL_HEADING_MENU_KEYS = new Set([
   'corrugated-board-price',
   'paper-purchase-request',
   'purchase-reports',
+  'sales-orders',
+  'so-specification-mapping',
+  'production-specifications',
+  'job-cards',
+  'production-planning',
+  'job-tracking',
+])
+const NEW_MODULE_MENU_KEYS = new Set([
+  'sales-orders',
+  'so-specification-mapping',
+  'production-specifications',
+  'job-cards',
+  'production-planning',
+  'job-tracking',
 ])
 const MOBILE_NO_PATTERN = /^\d{10}$/
 const coaAnalysisHeadings = ['Board GSM', 'GSM', 'Bursting Strength', 'Moisture', 'Ply'] as const
@@ -637,6 +705,9 @@ export default function Dashboard({
   const [customerRefreshLoading, setCustomerRefreshLoading] = useState(false)
   const [customerRefreshError, setCustomerRefreshError] = useState('')
   const [customersRefreshedAt, setCustomersRefreshedAt] = useState<Date | null>(null)
+  const [itemRefreshLoading, setItemRefreshLoading] = useState(false)
+  const [itemRefreshError, setItemRefreshError] = useState('')
+  const [itemsRefreshedAt, setItemsRefreshedAt] = useState<Date | null>(null)
 
   const visibleMenuGroups = getVisibleMenuGroups(menuAccess)
   const moduleMenuItems = visibleMenuGroups.flatMap((group) => group.items)
@@ -1528,6 +1599,20 @@ export default function Dashboard({
     }
   }
 
+  async function refreshItemDetails() {
+    if (itemRefreshLoading || userRole !== 'SUPERADMIN') return
+    setItemRefreshLoading(true)
+    setItemRefreshError('')
+    try {
+      const result = await refreshItems()
+      setItemsRefreshedAt(result.refreshedAt)
+    } catch {
+      setItemRefreshError(getItemsError() ?? 'Unable to refresh item details. Please try again.')
+    } finally {
+      setItemRefreshLoading(false)
+    }
+  }
+
   function startEditRole(role: AdminRole) {
     setEditingRoleId(role.id)
     setEditRoleName(role.name)
@@ -1975,7 +2060,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
             {selectedItem.key !== 'home' && (
               <header className="dashboard-page-heading">
                 <h2>
@@ -2031,6 +2116,20 @@ export default function Dashboard({
                   <p className="paper-request-empty">No Purchase Reports are available yet.</p>
                 </section>
               )}
+              {selectedItem.key === 'product-specifications' && (
+                <ProductSpecifications />
+              )}
+              {NEW_MODULE_MENU_KEYS.has(selectedItem.key) && (
+                <section className="paper-request-section pc-module-placeholder">
+                  <header>
+                    <h3><SelectedItemIcon size={16} /> {selectedItem.title}</h3>
+                    <p>{selectedItem.description}</p>
+                  </header>
+                  <p className="paper-request-empty">
+                    This module is ready for its workflow configuration. No existing records were changed.
+                  </p>
+                </section>
+              )}
               {selectedItem.key === 'data-management' && (
                 <div className="coc-form data-management-form">
                   <div className="data-management-utility">
@@ -2057,6 +2156,32 @@ export default function Dashboard({
                   {customerRefreshError && (
                     <p className="data-management-message is-error" role="alert">
                       {customerRefreshError}
+                    </p>
+                  )}
+                  <div className="data-management-utility">
+                    <div>
+                      <strong>Item Details</strong>
+                      <p>Refresh the shared active-item cache from Zoho Books.</p>
+                    </div>
+                    {userRole === 'SUPERADMIN' ? (
+                      <div className="data-management-actions">
+                        {itemsRefreshedAt && (
+                          <span className="data-management-refreshed-at">
+                            Refreshed on {itemsRefreshedAt.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        <button type="button" onClick={() => void refreshItemDetails()} disabled={itemRefreshLoading}>
+                          <RefreshCw size={14} className={itemRefreshLoading ? 'is-spinning' : ''} />
+                          {itemRefreshLoading ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="data-management-restricted">SUPERADMIN only</span>
+                    )}
+                  </div>
+                  {itemRefreshError && (
+                    <p className="data-management-message is-error" role="alert">
+                      {itemRefreshError}
                     </p>
                   )}
                   <div className="data-management-utility">
