@@ -1,9 +1,9 @@
-import { ADVANCED_PAPER_WEIGHT_CONSTANTS } from '../constants/advancedPaperWeightConstants'
+import { ADVANCED_PAPER_WEIGHT_CONSTANTS } from '../constants/advancedPaperWeightConstants.ts'
 import type {
   AdvancedPaperWeightInput,
   AdvancedPaperWeightLayerResult,
   AdvancedPaperWeightResult,
-} from '../types/advancedPaperWeightTypes'
+} from '../types/advancedPaperWeightTypes.ts'
 
 export function calculateAdvancedPaperWeight(input: AdvancedPaperWeightInput): AdvancedPaperWeightResult {
   const { drawRatioB, drawRatioC, drawRatioA, wastageFactor } = ADVANCED_PAPER_WEIGHT_CONSTANTS

@@ -1016,6 +1016,34 @@ main.app-shell::after {
   line-height: 1.45;
 }
 
+.admin-dialog-field {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.75rem;
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.admin-dialog-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.admin-dialog-field input:focus {
+  outline: 0;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgb(96 165 250 / 18%);
+}
+
 .admin-dialog-actions {
   display: flex;
   justify-content: flex-end;

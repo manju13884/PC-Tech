@@ -10,6 +10,17 @@ const response = (payload: unknown, status = 200) => Response.json(payload, {
 
 async function hasPermission(db: D1Database, roleId: number, roleName: string, action: 'view' | 'save') {
   if (roleName === 'SUPERADMIN') return true
+  if (action === 'view') {
+    const row = await db.prepare(
+      `SELECT 1 AS allowed
+       FROM role_menu_permissions
+       WHERE role_id = ?
+         AND menu_key IN ('product-specifications', 'so-specification-mapping')
+         AND (can_full = 1 OR can_view = 1)
+       LIMIT 1`,
+    ).bind(roleId).first<{ allowed: number }>()
+    return Boolean(row)
+  }
   const row = await db.prepare(
     `SELECT can_full, can_view, can_create, can_edit
      FROM role_menu_permissions WHERE role_id = ? AND menu_key = 'product-specifications'`,
@@ -26,6 +37,16 @@ export async function onRequestGet(context: Context): Promise<Response> {
   const url = new URL(context.request.url)
   const customerId = url.searchParams.get('customer_id')?.trim()
   const itemId = url.searchParams.get('item_id')?.trim()
+  if (customerId && !itemId) {
+    const specifications = await context.env.DB.prepare(
+      `SELECT id, specification_name, polar_canvas_item_code, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
+        length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, updated_at
+       FROM product_specification_records
+       WHERE customer_id = ?
+       ORDER BY item_name ASC, polar_canvas_item_code ASC, updated_at DESC`,
+    ).bind(customerId).all()
+    return response({ specifications: specifications.results ?? [] })
+  }
   if (!customerId || !itemId) {
     const specifications = await context.env.DB.prepare(
       `SELECT id, specification_name, polar_canvas_item_code, customer_id, customer_name, item_id, item_name, item_sku, specification_type,

@@ -37,6 +37,8 @@ test('product specification persistence supports multiple variants and never del
   assert.match(codeMigration, /'PC-' \|\| printf\('%06d', id\)/)
   assert.match(codeMigration, /CREATE UNIQUE INDEX/)
   assert.doesNotMatch(`${migration}\n${variantMigration}\n${codeMigration}\n${api}`, /\b(?:DELETE|DROP|TRUNCATE|REPLACE)\b/i)
+  assert.match(api, /WHERE customer_id = \?/)
+  assert.match(api, /'so-specification-mapping'/)
 })
 
 test('product form supports item-aware dimensions, GSM, BF and print controls', async () => {
@@ -50,6 +52,8 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /detectType/)
   for (const ply of [2, 3, 5, 7, 9]) assert.match(component, new RegExp(`'${ply}'`))
   assert.match(component, /Paper Composition/)
+  assert.match(component, /attributes\.paper_layers\.length > 0 \? attributes\.paper_layers : buildPaperLayers\(savedPly, \[\]\)/)
+  assert.match(component, /Select Ply above to enter paper composition\./)
   assert.match(component, /Deckle Size/)
   assert.match(component, /width \+ height \+ 20/)
   assert.match(component, /deckleMm \/ 10/)
@@ -60,6 +64,7 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /sheetAreaSqM \* boardGsm \* 1\.05/)
   assert.match(component, /2 \* length.*2 \* width.*\+ 50 =/)
   assert.match(component, /Production Stages/)
+  assert.ok(component.indexOf('paper-composition') < component.indexOf('<strong>Production Stages<\/strong>'))
   assert.match(component, /defaultProductionStages/)
   for (const stage of ['Paper Cutting', 'Corrugation', 'Pasting', 'Board \/ Sheet Cutting', 'Printing', 'RS4', 'Creasing', 'Slotting', 'Die Cutting', 'Stitching \/ Gluing', 'Quality Inspection', 'Bundling \/ Packing']) {
     assert.match(component, new RegExp(stage))
@@ -96,4 +101,13 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(styles, /input\[readonly\]/)
   assert.match(styles, /background:#edf9f1/)
   assert.match(styles, /spec-dimension-input::-webkit-inner-spin-button/)
+})
+
+test('product dimensions are explicitly identified as Outer Dimensions', async () => {
+  const component = await readFile('src/features/product-specifications/ProductSpecifications.tsx', 'utf8')
+
+  assert.match(component, /Length - OD \(mm\)/)
+  assert.match(component, /Width - OD \(mm\)/)
+  assert.match(component, /Height - OD \(mm\)/)
+  assert.match(component, /Length \(OD\)/)
 })

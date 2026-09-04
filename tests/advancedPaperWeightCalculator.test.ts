@@ -2,13 +2,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import test from 'node:test'
-import { calculateAdvancedFinalPrice } from '../src/features/advanced-corrugated-box-calculator/calculations/advancedBoxCalculatorEngine'
-import { calculateAdvancedPaperWeight } from '../src/features/advanced-corrugated-box-calculator/calculations/advancedPaperWeightCalculator'
-import { ADVANCED_PAPER_WEIGHT_CONSTANTS } from '../src/features/advanced-corrugated-box-calculator/constants/advancedPaperWeightConstants'
+import { calculateAdvancedFinalPrice } from '../src/features/advanced-corrugated-box-calculator/calculations/advancedBoxCalculatorEngine.ts'
+import { calculateAdvancedPaperWeight } from '../src/features/advanced-corrugated-box-calculator/calculations/advancedPaperWeightCalculator.ts'
+import { ADVANCED_PAPER_WEIGHT_CONSTANTS } from '../src/features/advanced-corrugated-box-calculator/constants/advancedPaperWeightConstants.ts'
 import {
   validateAdvancedPaperWeightInput,
   validateAdvancedQuantity,
-} from '../src/features/advanced-corrugated-box-calculator/validation/advancedPaperWeightValidation'
+} from '../src/features/advanced-corrugated-box-calculator/validation/advancedPaperWeightValidation.ts'
 
 const closeTo = (actual: number, expected: number, tolerance = 1e-12) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} is not within ${tolerance} of ${expected}`)

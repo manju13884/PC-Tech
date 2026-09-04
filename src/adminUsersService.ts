@@ -148,14 +148,14 @@ export async function deactivateAdminUser(userId: number): Promise<AdminUser> {
   return readUserResponse(response)
 }
 
-export async function activateAdminUser(userId: number): Promise<AdminUser> {
+export async function activateAdminUser(userId: number, email: string): Promise<AdminUser> {
   const response = await fetch(`/api/auth/users/${userId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
     credentials: 'include',
-    body: JSON.stringify({ status: 'ACTIVE' }),
+    body: JSON.stringify({ status: 'ACTIVE', email }),
   })
 
   if (!response.ok) {

@@ -226,7 +226,8 @@ export default function ProductSpecifications() {
   const updatePly = (ply: string) => setForm((current) => ({ ...current, ply, paper_layers: buildPaperLayers(ply, current.paper_layers) }))
   const updatePaperLayer = (index: number, key: keyof Omit<PaperLayer, 'layer_name'>, value: string) => setForm((current) => ({
     ...current,
-    paper_layers: current.paper_layers.map((layer, layerIndex) => layerIndex === index ? { ...layer, [key]: value } : layer),
+    paper_layers: (current.paper_layers.length > 0 ? current.paper_layers : buildPaperLayers(current.ply, []))
+      .map((layer, layerIndex) => layerIndex === index ? { ...layer, [key]: value } : layer),
   }))
   const startAdd = () => {
     if (!listCustomerId || !listItemId) { setError('Select a customer and item before adding a specification.'); return }
@@ -239,16 +240,18 @@ export default function ProductSpecifications() {
     setEditingId(specification.id); setListCustomerId(specification.customer_id); setListItemId(specification.item_id); setCustomerId(specification.customer_id); setItemId(specification.item_id); setShowForm(true); setMessage(''); setError('')
     const attributes = readAttributes(specification.attributes_json)
     const printRequired = specification.print_required === true || specification.print_required === 1
+    const savedPly = specification.ply?.toString() ?? ''
     setForm({
       specification_name: specification.specification_name,
       polar_canvas_item_code: specification.polar_canvas_item_code,
       specification_type: specification.specification_type || 'GENERAL',
       length_mm: specification.length_mm?.toString() ?? '', width_mm: specification.width_mm?.toString() ?? '',
-      height_mm: specification.height_mm?.toString() ?? '', ply: specification.ply?.toString() ?? '',
+      height_mm: specification.height_mm?.toString() ?? '', ply: savedPly,
       gsm: specification.gsm?.toString() ?? '', bf: specification.bf?.toString() ?? '',
       print_required: printRequired,
       print_colors: specification.print_colors ?? '', notes: specification.notes ?? '',
       ...attributes,
+      paper_layers: attributes.paper_layers.length > 0 ? attributes.paper_layers : buildPaperLayers(savedPly, []),
       production_stages: attributes.production_stages.length > 0 ? attributes.production_stages : defaultProductionStages(specification.specification_type, printRequired),
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -299,13 +302,13 @@ export default function ProductSpecifications() {
       <div className="product-spec-editor-context"><span>Customer<strong>{customer?.customer_name}</strong></span><span>Item<strong>{item?.item_name}{item?.sku ? ` (${item.sku})` : ''}</strong></span><button type="button" onClick={() => setReportOpen(true)}><Printer size={14} /> Product Specification Report</button></div>
     </section>
     {customer && item && <section className="product-spec-panel product-spec-technical">
-      <header><div><h3>Technical Specification</h3><p>Fields are adapted to the selected item design.</p></div><span className="spec-type-badge">{form.specification_type}</span></header>
+      <header><div><h3>Technical Specification</h3><p>Length, Width and Height are captured as Outer Dimensions (OD).</p></div><span className="spec-type-badge">{form.specification_type}</span></header>
       <div className="product-spec-grid">
         <label>Polar Canvas Item Code<input value={form.polar_canvas_item_code} readOnly aria-readonly="true" /></label>
         <label>Design Type <select value={form.specification_type} onChange={(e) => updateDesignType(e.target.value)}><option>BOX</option><option>BOARD / SHEET</option><option>PAPER / ROLL</option><option>TAPE</option><option>FILM</option><option>GENERAL</option></select></label>
-        {showsDimensions && <label>Length (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.length_mm} onChange={(e) => update('length_mm', e.target.value)} /></label>}
-        {(showsDimensions || showsFlexibleFields || showsRollFields) && <label>{showsRollFields ? 'Deckle / Width (mm)' : 'Width (mm)'}<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.width_mm} onChange={(e) => update('width_mm', e.target.value)} /></label>}
-        {showsHeight && <label>Height (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.height_mm} onChange={(e) => update('height_mm', e.target.value)} /></label>}
+        {showsDimensions && <label>Length - OD (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.length_mm} onChange={(e) => update('length_mm', e.target.value)} /></label>}
+        {(showsDimensions || showsFlexibleFields || showsRollFields) && <label>{showsRollFields ? 'Deckle / Width (mm)' : 'Width - OD (mm)'}<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.width_mm} onChange={(e) => update('width_mm', e.target.value)} /></label>}
+        {showsHeight && <label>Height - OD (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.height_mm} onChange={(e) => update('height_mm', e.target.value)} /></label>}
         {showsBoardFields && <label>Ply<select value={form.ply} onChange={(e) => updatePly(e.target.value)}><option value="">Select ply</option><option value="2">2 Ply</option><option value="3">3 Ply</option><option value="5">5 Ply</option><option value="7">7 Ply</option><option value="9">9 Ply</option></select></label>}
         {showsRollFields && <label>GSM<input type="number" min="0" step="0.01" value={form.gsm} onChange={(e) => update('gsm', e.target.value)} /></label>}
         {showsRollFields && <label>BF/RCT<input type="number" min="0" step="0.01" value={form.bf} onChange={(e) => update('bf', e.target.value)} /></label>}
@@ -326,6 +329,15 @@ export default function ProductSpecifications() {
         {showsBoardFields && <label>Moisture<input value={calculatedValues.moisture} readOnly aria-readonly="true" /></label>}
         <label className="spec-notes">Specification Notes<textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Add material, flute, tolerance or finishing instructions" /></label>
       </div>
+      {showsBoardFields && <div className="paper-composition">
+        <div className="paper-composition-heading"><strong>Paper Composition{form.ply ? ` · ${form.ply} Ply` : ''}</strong><span>{form.paper_layers.length > 0 ? form.paper_layers.map((layer) => layer.layer_name).join(' + ') : 'Select Ply above to enter paper composition.'}</span></div>
+        {form.paper_layers.length > 0 && <div className="paper-composition-table"><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>
+          {form.paper_layers.map((layer, index) => {
+            const isFluting = layer.layer_name.toLowerCase().includes('fluting')
+            return <tr key={`${layer.layer_name}-${index}`}><td>{index + 1}</td><td><strong>{layer.layer_name}</strong></td><td><input type="number" min="0" step="0.01" value={layer.gsm} onChange={(e) => updatePaperLayer(index, 'gsm', e.target.value)} placeholder="GSM" /></td><td><input type="number" min="0" step="0.01" value={layer.bf_rct} onChange={(e) => updatePaperLayer(index, 'bf_rct', e.target.value)} placeholder="BF / RCT" /></td><td><output className="paper-deckle-value">{calculatedDeckle(form)}</output></td><td><select value={layer.shade} onChange={(e) => updatePaperLayer(index, 'shade', e.target.value)}><option value="">Select</option><option value="GYT">GYT</option><option value="Natural">Natural</option><option value="White">White</option></select></td><td><input value={layer.paper_grade} onChange={(e) => updatePaperLayer(index, 'paper_grade', e.target.value)} placeholder={isFluting ? 'Fluting medium' : 'Kraft liner'} /></td><td>{isFluting ? <select value={layer.flute} onChange={(e) => updatePaperLayer(index, 'flute', e.target.value)}><option value="">Select</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="E">E</option><option value="F">F</option></select> : <span className="not-applicable">—</span>}</td></tr>
+          })}
+        </tbody></table></div>}
+      </div>}
       <div className="production-stages">
         <div className="production-stages-heading"><strong>Production Stages</strong><span>Select the stages required for this client/item specification.</span></div>
         <div className="production-stage-grid">
@@ -335,15 +347,6 @@ export default function ProductSpecifications() {
           </label>)}
         </div>
       </div>
-      {showsBoardFields && form.paper_layers.length > 0 && <div className="paper-composition">
-        <div className="paper-composition-heading"><strong>Paper Composition · {form.ply} Ply</strong><span>{form.paper_layers.map((layer) => layer.layer_name).join(' + ')}</span></div>
-        <div className="paper-composition-table"><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>
-          {form.paper_layers.map((layer, index) => {
-            const isFluting = layer.layer_name.toLowerCase().includes('fluting')
-            return <tr key={`${layer.layer_name}-${index}`}><td>{index + 1}</td><td><strong>{layer.layer_name}</strong></td><td><input type="number" min="0" step="0.01" value={layer.gsm} onChange={(e) => updatePaperLayer(index, 'gsm', e.target.value)} placeholder="GSM" /></td><td><input type="number" min="0" step="0.01" value={layer.bf_rct} onChange={(e) => updatePaperLayer(index, 'bf_rct', e.target.value)} placeholder="BF / RCT" /></td><td><output className="paper-deckle-value">{calculatedDeckle(form)}</output></td><td><select value={layer.shade} onChange={(e) => updatePaperLayer(index, 'shade', e.target.value)}><option value="">Select</option><option value="GYT">GYT</option><option value="Natural">Natural</option><option value="White">White</option></select></td><td><input value={layer.paper_grade} onChange={(e) => updatePaperLayer(index, 'paper_grade', e.target.value)} placeholder={isFluting ? 'Fluting medium' : 'Kraft liner'} /></td><td>{isFluting ? <select value={layer.flute} onChange={(e) => updatePaperLayer(index, 'flute', e.target.value)}><option value="">Select</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="E">E</option><option value="F">F</option></select> : <span className="not-applicable">—</span>}</td></tr>
-          })}
-        </tbody></table></div>
-      </div>}
       <footer><div>{error && <span className="spec-error">{error}</span>}{message && <span className="spec-success"><CircleCheck size={14} />{message}</span>}</div><button type="submit" disabled={saving}><Save size={15} />{saving ? 'Saving…' : 'Save Specification'}</button></footer>
     </section>}
     {error && !item && <p className="spec-error">{error}</p>}
@@ -364,7 +367,7 @@ export default function ProductSpecifications() {
             <div className="spec-report-brand"><img src="/assets/Bird Logo-transparent.png" alt="Polar Canvas" /><div><h1>POLAR CANVAS</h1><p>PRODUCT SPECIFICATION REPORT</p></div><strong>{form.polar_canvas_item_code}</strong></div>
             <dl className="spec-report-master"><div><dt>Customer</dt><dd>{customer.customer_name}</dd></div><div><dt>Item</dt><dd>{item.item_name}</dd></div><div><dt>Item SKU</dt><dd>{item.sku || '—'}</dd></div><div><dt>Design Type</dt><dd>{form.specification_type}</dd></div></dl>
             <section><h2>Technical Specification</h2><dl className="spec-report-details">
-              <div><dt>Length</dt><dd>{form.length_mm ? `${form.length_mm} mm` : '—'}</dd></div><div><dt>Width</dt><dd>{form.width_mm ? `${form.width_mm} mm` : '—'}</dd></div><div><dt>Height</dt><dd>{form.height_mm ? `${form.height_mm} mm` : '—'}</dd></div><div><dt>Ply</dt><dd>{form.ply ? `${form.ply} Ply` : '—'}</dd></div>
+              <div><dt>Length (OD)</dt><dd>{form.length_mm ? `${form.length_mm} mm` : '—'}</dd></div><div><dt>Width (OD)</dt><dd>{form.width_mm ? `${form.width_mm} mm` : '—'}</dd></div><div><dt>Height (OD)</dt><dd>{form.height_mm ? `${form.height_mm} mm` : '—'}</dd></div><div><dt>Ply</dt><dd>{form.ply ? `${form.ply} Ply` : '—'}</dd></div>
               <div><dt>Material</dt><dd>{form.material || '—'}</dd></div><div><dt>Joint Type</dt><dd>{form.joint_type || '—'}</dd></div><div><dt>Finish</dt><dd>{form.finish || '—'}</dd></div><div><dt>Print</dt><dd>{form.print_required ? `Yes${form.print_colors ? ` · ${form.print_colors}` : ''}` : 'No'}</dd></div>
               <div><dt>Rotary Size</dt><dd>{calculatedValues.rotarySize}</dd></div><div><dt>Sheet Size</dt><dd>{calculatedValues.sheetSize}</dd></div><div><dt>Box Weight</dt><dd>{calculatedValues.boxWeight}</dd></div><div><dt>Board GSM</dt><dd>{calculatedValues.boardGsm}</dd></div><div><dt>BS</dt><dd>{calculatedValues.burstingStrength}</dd></div><div><dt>Moisture</dt><dd>{calculatedValues.moisture}</dd></div>
             </dl></section>
