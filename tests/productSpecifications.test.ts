@@ -52,6 +52,8 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /detectType/)
   for (const ply of [2, 3, 5, 7, 9]) assert.match(component, new RegExp(`'${ply}'`))
   assert.match(component, /Paper Composition/)
+  assert.match(component, /attributes\.paper_layers\.length > 0 \? attributes\.paper_layers : buildPaperLayers\(savedPly, \[\]\)/)
+  assert.match(component, /Select Ply above to enter paper composition\./)
   assert.match(component, /Deckle Size/)
   assert.match(component, /width \+ height \+ 20/)
   assert.match(component, /deckleMm \/ 10/)
@@ -62,6 +64,7 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /sheetAreaSqM \* boardGsm \* 1\.05/)
   assert.match(component, /2 \* length.*2 \* width.*\+ 50 =/)
   assert.match(component, /Production Stages/)
+  assert.ok(component.indexOf('paper-composition') < component.indexOf('<strong>Production Stages<\/strong>'))
   assert.match(component, /defaultProductionStages/)
   for (const stage of ['Paper Cutting', 'Corrugation', 'Pasting', 'Board \/ Sheet Cutting', 'Printing', 'RS4', 'Creasing', 'Slotting', 'Die Cutting', 'Stitching \/ Gluing', 'Quality Inspection', 'Bundling \/ Packing']) {
     assert.match(component, new RegExp(stage))

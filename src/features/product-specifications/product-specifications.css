@@ -41,6 +41,8 @@
 .paper-composition td { min-width:0; padding:.3rem .4rem; border-top:1px solid #e8edf4; vertical-align:middle; }
 .paper-composition tbody tr:hover { background:#f8fafc; }
 .paper-composition input,.paper-composition select { box-sizing:border-box; width:100%; min-width:0; height:32px; min-height:32px; border:1px solid #cbd5e1; border-radius:5px; padding:.3rem .42rem; background:#fff; color:#1e293b; font:inherit; font-size:.65rem; line-height:1.2; box-shadow:0 1px 2px rgba(15,23,42,.03); }
+.paper-composition input[type="number"] { appearance:textfield; -moz-appearance:textfield; }
+.paper-composition input[type="number"]::-webkit-inner-spin-button,.paper-composition input[type="number"]::-webkit-outer-spin-button { margin:0; -webkit-appearance:none; }
 .paper-composition select { padding-right:1.6rem; }
 .paper-composition input:focus,.paper-composition select:focus { outline:0; border-color:#60a5fa; box-shadow:0 0 0 3px rgba(96,165,250,.18); }
 .paper-composition th:nth-child(1),.paper-composition td:nth-child(1) { width:34px; text-align:center; }
@@ -67,7 +69,7 @@
 .spec-dimension-input { appearance:textfield; -moz-appearance:textfield; }
 .spec-dimension-input::-webkit-inner-spin-button,.spec-dimension-input::-webkit-outer-spin-button { margin:0; -webkit-appearance:none; }
 .product-spec-form .product-spec-technical .product-spec-grid select { padding-right:1.6rem; }
-.product-spec-technical .spec-notes { grid-column:1/-1; }
+.product-spec-technical .spec-notes { grid-column:span 2; }
 .product-spec-form .product-spec-technical .spec-notes textarea { min-height:42px; height:42px; padding:.32rem .45rem; }
 .product-spec-technical .paper-composition { grid-column:1/-1; margin-top:.42rem; }
 .production-stages { margin-top:.5rem; overflow:hidden; border:1px solid #dbe3ee; border-radius:6px; background:#fff; }
