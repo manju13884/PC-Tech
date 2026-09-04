@@ -1,4 +1,4 @@
-import type { AdvancedPaperWeightInput, AdvancedPaperWeightPly } from '../types/advancedPaperWeightTypes'
+import type { AdvancedPaperWeightInput, AdvancedPaperWeightPly } from '../types/advancedPaperWeightTypes.ts'
 
 export interface AdvancedPaperWeightSourceValues {
   ply: AdvancedPaperWeightPly

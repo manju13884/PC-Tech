@@ -18,5 +18,8 @@
   "0017_add_product_specification_attributes.sql": "e18ecf0551fcd11223119558dfc726d1c839752bef87d41eda4e74b2ffc03d36",
   "0018_create_product_specification_records.sql": "19d90b60c4f9d352c134a871fee107e1224617868b17e147af5a6481f0a0a42d",
   "0019_add_polar_canvas_item_code.sql": "93da5604c575d38501564411e1b6ed4729dea19de6043358f8acf67c1ced42a0",
-  "0020_shorten_polar_canvas_item_code.sql": "c3f0397139d4128c41704bc5b01bc3094f7eb4c1c28ae3ecaaeca850e96e58ad"
+  "0020_shorten_polar_canvas_item_code.sql": "c3f0397139d4128c41704bc5b01bc3094f7eb4c1c28ae3ecaaeca850e96e58ad",
+  "0021_create_so_specification_mappings.sql": "7db85780b3d90365043df02f5db3bf4c770e4ce2862cbc024e22ba9e79f0f091",
+  "0022_archive_inactive_user_emails.sql": "97805d1082d96bdd06efd5a673935cdc1fe6755b1d113601e209ed0ca354812a",
+  "0023_normalize_inactive_user_emails.sql": "b0157b5e39c6301ca162bdeef0abe56a68f8455e26afbdbf9dcb95131ca0881d"
 }

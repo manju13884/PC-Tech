@@ -37,6 +37,8 @@ test('product specification persistence supports multiple variants and never del
   assert.match(codeMigration, /'PC-' \|\| printf\('%06d', id\)/)
   assert.match(codeMigration, /CREATE UNIQUE INDEX/)
   assert.doesNotMatch(`${migration}\n${variantMigration}\n${codeMigration}\n${api}`, /\b(?:DELETE|DROP|TRUNCATE|REPLACE)\b/i)
+  assert.match(api, /WHERE customer_id = \?/)
+  assert.match(api, /'so-specification-mapping'/)
 })
 
 test('product form supports item-aware dimensions, GSM, BF and print controls', async () => {
@@ -96,4 +98,13 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(styles, /input\[readonly\]/)
   assert.match(styles, /background:#edf9f1/)
   assert.match(styles, /spec-dimension-input::-webkit-inner-spin-button/)
+})
+
+test('product dimensions are explicitly identified as Outer Dimensions', async () => {
+  const component = await readFile('src/features/product-specifications/ProductSpecifications.tsx', 'utf8')
+
+  assert.match(component, /Length - OD \(mm\)/)
+  assert.match(component, /Width - OD \(mm\)/)
+  assert.match(component, /Height - OD \(mm\)/)
+  assert.match(component, /Length \(OD\)/)
 })

@@ -54,6 +54,7 @@ interface RoleRow {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const INACTIVE_EMAIL_PATTERN = /^inactive\d+@polarcanvas\.com$/i
 const MOBILE_NO_PATTERN = /^\d{10}$/
 
 function json(payload: unknown, status: number, headers?: HeadersInit): Response {
@@ -64,6 +65,15 @@ function getDefaultPassword(fullName: string): string {
   return `${fullName.replace(/\s+/g, '')}@123$`
 }
 
+async function getNextInactiveEmail(db: D1Database): Promise<string> {
+  const row = await db.prepare(
+    `SELECT COALESCE(MAX(CAST(SUBSTR(email, 9, INSTR(email, '@') - 9) AS INTEGER)), 0) + 1 AS next_number
+     FROM users
+     WHERE email GLOB 'inactive[0-9]*@polarcanvas.com'`,
+  ).first<{ next_number: number }>()
+  return `inactive${Number(row?.next_number) || 1}@polarcanvas.com`
+}
+
 function authenticationRequired(): Response {
   return json({ success: false, error: 'Authentication required' }, 401)
 }
@@ -71,7 +81,7 @@ function authenticationRequired(): Response {
 function mapUser(user: UserRow) {
   return {
     id: user.id,
-    email: user.email,
+    email: user.status === 'INACTIVE' ? '' : user.email,
     mobileNo: user.mobile_no,
     fullName: user.full_name,
     role: user.role_name,
@@ -204,6 +214,9 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
     if (!EMAIL_PATTERN.test(nextEmail)) {
       return json({ success: false, error: 'Email must be a valid email address' }, 400)
     }
+    if (nextStatus === 'ACTIVE' && INACTIVE_EMAIL_PATTERN.test(nextEmail)) {
+      return json({ success: false, error: 'This email pattern is reserved for inactive users' }, 400)
+    }
 
     if (!nextFullName) {
       return json({ success: false, error: 'Full name is required' }, 400)
@@ -219,6 +232,10 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
 
     if (nextStatus !== 'ACTIVE' && nextStatus !== 'INACTIVE') {
       return json({ success: false, error: 'Status must be ACTIVE or INACTIVE' }, 400)
+    }
+
+    if (existingUser.status === 'INACTIVE' && nextStatus === 'ACTIVE' && (typeof body.email !== 'string' || !body.email.trim())) {
+      return json({ success: false, error: 'Email is required to activate the user' }, 400)
     }
 
     const nextRole = await context.env.DB.prepare(
@@ -247,6 +264,27 @@ export async function onRequest(context: FunctionContext): Promise<Response> {
 
     if (duplicateEmail) {
       return json({ success: false, error: 'A user with this email already exists' }, 409)
+    }
+
+    if (existingUser.status === 'ACTIVE' && nextStatus === 'INACTIVE') {
+      const inactiveLoginEmail = await getNextInactiveEmail(context.env.DB)
+      const updatedUser = await context.env.DB.prepare(
+        `UPDATE users
+         SET archived_email = email,
+           email = ?,
+           mobile_no = ?,
+           full_name = ?,
+           role_id = ?,
+           status = 'INACTIVE',
+           session_version = session_version + 1,
+           updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?
+         RETURNING
+           id, email, mobile_no, full_name, role_id, ? AS role_name, status,
+           session_version, must_change_password, created_at, updated_at`,
+      ).bind(inactiveLoginEmail, nextMobileNo, nextFullName, nextRole.id, userId, nextRole.name).first<UserRow>()
+      if (!updatedUser) throw new Error('User deactivation did not return a record')
+      return json({ success: true, user: mapUser(updatedUser) }, 200)
     }
 
     if (body.resetPassword === true) {

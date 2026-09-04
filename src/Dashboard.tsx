@@ -25,6 +25,7 @@ import PaperPurchaseRequest from './features/paper-purchase-request/PaperPurchas
 import PaperPurchaseRequestApprovals from './features/paper-purchase-request-approvals/PaperPurchaseRequestApprovals'
 import PaperPoCalculation from './features/paper-po-calculation/PaperPoCalculation'
 import ProductSpecifications from './features/product-specifications/ProductSpecifications'
+import SoSpecificationMapping from './features/so-specification-mapping/SoSpecificationMapping'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
 import type { CoaAnalysisItem, CoaInvoiceValues } from './lib/coaGenerator'
 import { loadCocTemplate } from './lib/templateLoader'
@@ -81,28 +82,16 @@ const menuGroups: MenuGroup[] = [
     title: 'Sales',
     items: [
       {
-        key: 'sales-orders',
-        title: 'Sales Orders',
-        description: 'View and manage customer sales orders.',
-        icon: ShoppingCart,
-      },
-      {
-        key: 'so-specification-mapping',
-        title: 'SO Specification Mapping',
-        description: 'Map sales-order lines to the required product and production specifications.',
-        icon: SlidersHorizontal,
-      },
-      {
         key: 'product-specifications',
         title: 'Product Specifications',
         description: 'Maintain controlled product specification records.',
         icon: PackageCheck,
       },
       {
-        key: 'production-specifications',
-        title: 'Production Specifications',
-        description: 'Maintain specifications used by production workflows.',
-        icon: FileCheck2,
+        key: 'so-specification-mapping',
+        title: 'SO Specification Mapping',
+        description: 'Map sales-order lines to the required product and production specifications.',
+        icon: SlidersHorizontal,
       },
     ],
   },
@@ -221,16 +210,12 @@ const PANEL_HEADING_MENU_KEYS = new Set([
   'corrugated-board-price',
   'paper-purchase-request',
   'purchase-reports',
-  'sales-orders',
-  'so-specification-mapping',
   'production-specifications',
   'job-cards',
   'production-planning',
   'job-tracking',
 ])
 const NEW_MODULE_MENU_KEYS = new Set([
-  'sales-orders',
-  'so-specification-mapping',
   'production-specifications',
   'job-cards',
   'production-planning',
@@ -670,6 +655,7 @@ export default function Dashboard({
   const [editUserRole, setEditUserRole] = useState('')
   const [savingUserId, setSavingUserId] = useState<number | null>(null)
   const [userPendingActivate, setUserPendingActivate] = useState<AdminUser | null>(null)
+  const [activateUserEmail, setActivateUserEmail] = useState('')
   const [userPendingDeactivate, setUserPendingDeactivate] = useState<AdminUser | null>(null)
   const [userPendingPasswordReset, setUserPendingPasswordReset] = useState<AdminUser | null>(null)
   const [createUserOpen, setCreateUserOpen] = useState(false)
@@ -1751,6 +1737,7 @@ export default function Dashboard({
 
   function requestActivateUser(user: AdminUser) {
     setUserPendingActivate(user)
+    setActivateUserEmail('')
   }
 
   async function activateUser() {
@@ -1762,12 +1749,19 @@ export default function Dashboard({
     setRoleActionMessage('')
 
     try {
-      const updatedUser = await activateAdminUser(userPendingActivate.id)
+      const email = activateUserEmail.trim().toLowerCase()
+      if (!email) {
+        setRoleActionMessageType('error')
+        setRoleActionMessage('Email is required to activate the user.')
+        return
+      }
+      const updatedUser = await activateAdminUser(userPendingActivate.id, email)
 
       setAdminUsers((users) => users.map((user) => (
         user.id === updatedUser.id ? updatedUser : user
       )))
       setUserPendingActivate(null)
+      setActivateUserEmail('')
       setRoleActionMessageType('success')
       setRoleActionMessage('User activated. Password reset and change required on next login.')
     } catch (caughtError) {
@@ -2060,7 +2054,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
             {selectedItem.key !== 'home' && (
               <header className="dashboard-page-heading">
                 <h2>
@@ -2118,6 +2112,9 @@ export default function Dashboard({
               )}
               {selectedItem.key === 'product-specifications' && (
                 <ProductSpecifications />
+              )}
+              {selectedItem.key === 'so-specification-mapping' && (
+                <SoSpecificationMapping />
               )}
               {NEW_MODULE_MENU_KEYS.has(selectedItem.key) && (
                 <section className="paper-request-section pc-module-placeholder">
@@ -3112,14 +3109,18 @@ export default function Dashboard({
                     <div className="admin-dialog-copy">
                       <h3 id="admin-user-activate-title">Activate user?</h3>
                       <p>
-                        {userPendingActivate.fullName} will be able to sign in again with the default password rule and must change it on next login.
+                        Enter the email {userPendingActivate.fullName} will use to sign in. It must not belong to another active user.
                       </p>
+                      <label className="admin-dialog-field">
+                        Email
+                        <input type="email" value={activateUserEmail} onChange={(event) => setActivateUserEmail(event.target.value)} placeholder="user@company.com" required />
+                      </label>
                     </div>
                     <div className="admin-dialog-actions">
                       <button
                         type="button"
                         className="secondary"
-                        onClick={() => setUserPendingActivate(null)}
+                        onClick={() => { setUserPendingActivate(null); setActivateUserEmail('') }}
                         disabled={savingUserId === userPendingActivate.id}
                       >
                         Cancel
@@ -3128,7 +3129,7 @@ export default function Dashboard({
                         type="button"
                         className="primary"
                         onClick={activateUser}
-                        disabled={savingUserId === userPendingActivate.id}
+                        disabled={savingUserId === userPendingActivate.id || !activateUserEmail.trim()}
                       >
                         Activate
                       </button>
@@ -3150,7 +3151,7 @@ export default function Dashboard({
                     <div className="admin-dialog-copy">
                       <h3 id="admin-user-deactivate-title">Deactivate user?</h3>
                       <p>
-                        {userPendingDeactivate.fullName} will not be able to sign in until the account is active again.
+                        {userPendingDeactivate.fullName} will remain in the inactive-user list. Their login email will be cleared and must be entered again if the account is activated.
                       </p>
                     </div>
                     <div className="admin-dialog-actions">
