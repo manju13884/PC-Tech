@@ -1,6 +1,7 @@
 import { AlertCircle, BadgeIndianRupee, FileText } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getCustomers, getCustomersError, type Customer } from '../../customerService'
+import { formatIstDateTime } from '../../utils/dateTimeFormatting'
 import {
   getSalesOrderById,
   getSalesOrdersByCustomer,
@@ -378,7 +379,7 @@ export default function PaperPurchaseRequest() {
             {savedRequest?.status === 'REJECTED' && (
               <div className="paper-rejection-summary" role="alert">
                 <strong>Rejected: {savedRequest.rejectionReason || 'No reason was recorded.'}</strong>
-                <span>Rejected by {savedRequest.rejectedByName || 'Unknown'} on {savedRequest.rejectedAt ? new Date(savedRequest.rejectedAt).toLocaleString('en-IN') : '—'}</span>
+                <span>Rejected by {savedRequest.rejectedByName || 'Unknown'} on {formatIstDateTime(savedRequest.rejectedAt)}</span>
                 <button type="button" onClick={() => setSalesOrderId('')}>Back to Sale Order Selection</button>
               </div>
             )}

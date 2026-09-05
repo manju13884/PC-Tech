@@ -1,6 +1,7 @@
 import { Calculator, Eye, FilterX, RefreshCw, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SavedPaperRequest } from '../paper-purchase-request/paperPurchaseRequestService'
+import { formatIstDateTime } from '../../utils/dateTimeFormatting'
 import {
   calculateConsolidatedPaperRequirement,
   getApprovedPaperRequestDetails,
@@ -11,9 +12,7 @@ import {
 } from './paperPoCalculationService'
 import './paper-po-calculation.css'
 
-const displayDate = (value: string | null | undefined) => value
-  ? new Date(value).toLocaleString('en-IN')
-  : '—'
+const displayDate = (value: string | null | undefined) => formatIstDateTime(value)
 const displayNumber = (value: number | null | undefined, digits = 3) => (
   typeof value === 'number' && Number.isFinite(value)
     ? value.toLocaleString('en-IN', { maximumFractionDigits: digits })

@@ -40,7 +40,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   if (customerId && !itemId) {
     const specifications = await context.env.DB.prepare(
       `SELECT id, specification_name, polar_canvas_item_code, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
-        length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, updated_at
+        length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, created_at, updated_at
        FROM product_specification_records
        WHERE customer_id = ?
        ORDER BY item_name ASC, polar_canvas_item_code ASC, updated_at DESC`,
@@ -50,7 +50,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   if (!customerId || !itemId) {
     const specifications = await context.env.DB.prepare(
       `SELECT id, specification_name, polar_canvas_item_code, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
-        length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, updated_at
+        length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, created_at, updated_at
        FROM product_specification_records
        ORDER BY updated_at DESC, customer_name ASC, item_name ASC`,
     ).all()
@@ -59,7 +59,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
 
   const specification = await context.env.DB.prepare(
     `SELECT id, specification_name, polar_canvas_item_code, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
-      length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, updated_at
+      length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, created_at, updated_at
      FROM product_specification_records WHERE customer_id = ? AND item_id = ? ORDER BY updated_at DESC LIMIT 1`,
   ).bind(customerId, itemId).first()
   return response({ specification: specification ?? null })
@@ -89,7 +89,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return response({ error: 'Specification measurements must be valid positive numbers.' }, 400)
   }
   const attributes: Record<string, unknown> = Object.fromEntries([
-    'flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type',
+    'flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type',
   ].map((key) => [key, text(key)]))
   const paperLayers = Array.isArray(body.paper_layers) ? body.paper_layers
     .filter((layer): layer is Record<string, unknown> => Boolean(layer) && typeof layer === 'object')

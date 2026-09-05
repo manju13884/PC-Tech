@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { AlertTriangle, BarChart3, Calculator, ChevronRight, CircleDollarSign, ClipboardCheck, ClipboardList, Clock3, FileText, PackageCheck, ShoppingCart, TrendingUp, Users, Zap, type LucideIcon } from 'lucide-react'
 import { useDashboardData } from './hooks/useDashboardData'
 import { formatCompactIndianCurrency, formatIndianCurrency } from './utils/currencyFormatting'
+import { formatIstDateTime } from '../utils/dateTimeFormatting'
 
 interface DashboardAction {
   key: string
@@ -36,15 +37,13 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
   const sales = summary.salesOrders
   const finance = summary.invoices
   const maxTrend = Math.max(...(finance?.salesTrend.map((point) => point.amount) ?? [0]), 1)
-  const dateFormatter = new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-  const timeFormatter = new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit' })
 
   return (
     <div className="erp-dashboard">
       <header className="erp-dashboard-header">
         <div><h2>Dashboard</h2><p>Operational overview across sales, finance and purchases.</p></div>
         <div className="erp-dashboard-header-actions">
-          <span>As of {dateFormatter.format(new Date())}{refreshedAt ? ` · ${timeFormatter.format(refreshedAt)}` : ''}</span>
+          <span>As of {formatIstDateTime(refreshedAt)}</span>
         </div>
       </header>
 

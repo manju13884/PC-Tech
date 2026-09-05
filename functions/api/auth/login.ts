@@ -44,7 +44,6 @@ const ALL_MENU_KEYS = [
   'paper-purchase-request',
   'paper-purchase-request-approvals',
   'paper-po-calculation',
-  'purchase-reports',
   'job-cards',
   'production-planning',
   'job-tracking',
