@@ -2,13 +2,9 @@
 .pc-paper-purchase-request * { box-sizing: border-box; }
 .pc-paper-purchase-request { width: 100%; color: #172033; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 .dashboard-card:has(.pc-paper-purchase-request) .dashboard-page-heading { max-width: none; padding: 0 0 .95rem; border-bottom: 1px solid #e2e8f0; }
-.dashboard-card:has(.pc-purchase-reports) .dashboard-page-heading { max-width: none; padding: 0 0 .95rem; border-bottom: 1px solid #e2e8f0; }
-.dashboard-card:has(.pc-paper-purchase-request) .dashboard-page-heading h2,
-.dashboard-card:has(.pc-purchase-reports) .dashboard-page-heading h2 { margin: 0; color: #1e293b; font-size: 1.105rem; font-weight: 600; line-height: 1.25; }
-.dashboard-card:has(.pc-paper-purchase-request) .dashboard-page-heading p,
-.dashboard-card:has(.pc-purchase-reports) .dashboard-page-heading p { margin: .26rem 0 0; color: #64748b; font-size: .690625rem; line-height: 1.4; }
+.dashboard-card:has(.pc-paper-purchase-request) .dashboard-page-heading h2 { margin: 0; color: #1e293b; font-size: 1.105rem; font-weight: 600; line-height: 1.25; }
+.dashboard-card:has(.pc-paper-purchase-request) .dashboard-page-heading p { margin: .26rem 0 0; color: #64748b; font-size: .690625rem; line-height: 1.4; }
 .dashboard-details:has(> .pc-paper-purchase-request) { margin-top: 1rem; padding-top: 0; border-top: 0; }
-.dashboard-details:has(> .pc-purchase-reports) { margin-top: 1rem; padding-top: 0; border-top: 0; }
 .paper-request-section { overflow: visible; padding: .7rem; border: 1px solid #d6e4f0; border-radius: 6px; background: #fff; box-shadow: 0 3px 10px rgb(15 23 42 / 5%); }
 .paper-request-section > header { margin: -.7rem -.7rem .75rem; padding: .65rem .7rem; border-bottom: 1px solid #dbe3ee; background: #f8fafc; }
 .paper-request-section > header h3 { display: flex; align-items: center; gap: .5rem; margin: 0; color: #1e293b; font-size: .901rem; font-weight: 600; line-height: 1.25; }

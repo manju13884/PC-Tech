@@ -118,29 +118,22 @@ const menuGroups: MenuGroup[] = [
         description: 'Consolidate approved Paper Purchase Requests by procurement specification.',
         icon: ClipboardList,
       },
-      {
-        key: 'purchase-reports',
-        title: 'Purchase Reports',
-        menuTitle: 'Reports',
-        description: 'View reporting and analysis for Purchase workflows.',
-        icon: BarChart3,
-      },
     ],
   },
   {
     title: 'Production',
     items: [
       {
-        key: 'job-cards',
-        title: 'Job Cards',
-        description: 'Create and track production job cards.',
-        icon: ClipboardList,
-      },
-      {
         key: 'production-planning',
         title: 'Production Planning',
         description: 'Plan production work, capacity, and schedules.',
         icon: BarChart3,
+      },
+      {
+        key: 'job-cards',
+        title: 'Job Cards',
+        description: 'Create and track production job cards.',
+        icon: ClipboardList,
       },
       {
         key: 'job-tracking',
@@ -210,7 +203,6 @@ const PANEL_HEADING_MENU_KEYS = new Set([
   ADVANCED_BOX_CALCULATOR_ROUTE_KEY,
   'corrugated-board-price',
   'paper-purchase-request',
-  'purchase-reports',
   'production-specifications',
   'job-cards',
   'production-planning',
@@ -2090,15 +2082,6 @@ export default function Dashboard({
               )}
               {selectedItem.key === 'paper-po-calculation' && (
                 <PaperPoCalculation />
-              )}
-              {selectedItem.key === 'purchase-reports' && (
-                <section className="paper-request-section pc-purchase-reports">
-                  <header>
-                    <h3><BarChart3 size={16} /> Purchase Reports</h3>
-                    <p>Purchase workflow reports and analysis will be available here.</p>
-                  </header>
-                  <p className="paper-request-empty">No Purchase Reports are available yet.</p>
-                </section>
               )}
               {selectedItem.key === 'product-specifications' && (
                 <ProductSpecifications />
