@@ -10,6 +10,7 @@ import { getSavedCoa, regenerateCoa, saveCoa, type CoaRecord } from './coaServic
 import { getDeliveryChallanById, getDeliveryChallansByCustomer, type DeliveryChallan, type DeliveryChallanDetail } from './deliveryChallanService'
 import { getInvoiceById, getInvoicesByCustomer, getInvoicesError, type Invoice, type InvoiceDetail } from './invoiceService'
 import { getCustomerOpenSalesOrderSummary } from './homeDashboardService'
+import { formatIstDate, formatIstDateTime } from './utils/dateTimeFormatting'
 import DashboardPage from './dashboard/DashboardPage'
 import AdvancedCorrugatedBoxCalculatorPage from './features/advanced-corrugated-box-calculator/AdvancedCorrugatedBoxCalculatorPage'
 import {
@@ -238,8 +239,7 @@ const coaAnalysisFieldByHeading: Record<CoaAnalysisHeading, keyof Pick<
 }
 
 function formatCoaAuditDate(value: string): string {
-  const date = new Date(value.endsWith('Z') || value.includes('+') ? value : `${value.replace(' ', 'T')}Z`)
-  return Number.isFinite(date.getTime()) ? date.toLocaleString() : value
+  return formatIstDateTime(value, value)
 }
 
 const coaAnalysisDefaults: Record<string, Record<string, CoaAnalysisDefaults>> = {
@@ -474,17 +474,7 @@ function removeEmptyCocPages(previewElement: HTMLElement) {
 }
 
 function formatAdminDate(value: string): string {
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = date.toLocaleString('en-US', { month: 'short' })
-  const year = date.getFullYear()
-
-  return `${day}-${month}-${year}`
+  return formatIstDate(value, value)
 }
 
 function ensureCoaDocumentFooter(previewElement: HTMLElement) {
@@ -2138,7 +2128,7 @@ export default function Dashboard({
                       <div className="data-management-actions">
                         {customersRefreshedAt && (
                           <span className="data-management-refreshed-at">
-                            Refreshed on {customersRefreshedAt.toLocaleString('en-IN')}
+                            Refreshed on {formatIstDateTime(customersRefreshedAt)}
                           </span>
                         )}
                         <button type="button" onClick={() => void refreshCustomerDetails()} disabled={customerRefreshLoading}>
@@ -2164,7 +2154,7 @@ export default function Dashboard({
                       <div className="data-management-actions">
                         {itemsRefreshedAt && (
                           <span className="data-management-refreshed-at">
-                            Refreshed on {itemsRefreshedAt.toLocaleString('en-IN')}
+                            Refreshed on {formatIstDateTime(itemsRefreshedAt)}
                           </span>
                         )}
                         <button type="button" onClick={() => void refreshItemDetails()} disabled={itemRefreshLoading}>
@@ -2190,7 +2180,7 @@ export default function Dashboard({
                       <div className="data-management-actions">
                         {dashboardRefreshedAt && (
                           <span className="data-management-refreshed-at">
-                            Refreshed on {dashboardRefreshedAt.toLocaleString('en-IN')}
+                            Refreshed on {formatIstDateTime(dashboardRefreshedAt)}
                           </span>
                         )}
                         <button type="button" onClick={() => void refreshDashboardData()} disabled={dashboardRefreshLoading}>

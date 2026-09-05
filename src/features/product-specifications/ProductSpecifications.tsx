@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { CircleCheck, Pencil, Plus, Printer, Save, X } from 'lucide-react'
 import { getCustomers, type Customer } from '../../customerService'
 import { getItems, type Item } from '../../itemService'
+import { formatIstDateTime } from '../../utils/dateTimeFormatting'
 import './product-specifications.css'
 
 type PaperLayer = {
@@ -14,21 +15,21 @@ type FormState = {
   specification_type: string; length_mm: string; width_mm: string; height_mm: string
   ply: string; gsm: string; bf: string; print_required: boolean; print_colors: string; notes: string
   flute_type: string; paper_type: string; material: string; shade_color: string
-  finish: string; thickness_micron: string; roll_length_m: string; joint_type: string
+  finish: string; thickness_micron: string; roll_length_m: string; joint_type: string; board_type: string
   paper_layers: PaperLayer[]; production_stages: string[]
 }
 const emptyForm: FormState = {
   specification_name: '', polar_canvas_item_code: '', specification_type: 'GENERAL', length_mm: '', width_mm: '', height_mm: '', ply: '', gsm: '', bf: '',
   print_required: false, print_colors: '', notes: '', flute_type: '', paper_type: '', material: '',
-  shade_color: '', finish: '', thickness_micron: '', roll_length_m: '', joint_type: '',
+  shade_color: '', finish: '', thickness_micron: '', roll_length_m: '', joint_type: '', board_type: '',
   paper_layers: [], production_stages: [],
 }
 type Specification = Omit<FormState, 'print_required'> & {
   id: number; customer_id: string; customer_name: string; item_id: string; item_name: string
-  item_sku: string; print_required: boolean | number; updated_at: string; attributes_json?: string
+  item_sku: string; print_required: boolean | number; created_at: string; updated_at: string; attributes_json?: string
 }
 
-const attributeKeys = ['flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type'] as const
+const attributeKeys = ['flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type'] as const
 type AttributeFields = Pick<FormState, (typeof attributeKeys)[number]>
 const emptyAttributes = Object.fromEntries(attributeKeys.map((key) => [key, ''])) as AttributeFields
 const productionStageOptions = [
@@ -106,6 +107,36 @@ function specificationSize(specification: Specification): string {
   return parts.join(' · ') || '—'
 }
 
+function IsometricBoxDrawing({ length, width, height }: { length: string; width: string; height: string }) {
+  const dimension = (value: string) => value ? `${value} mm` : '—'
+  const numericLength = Number(length)
+  const numericWidth = Number(width)
+  const numericHeight = Number(height)
+  const hasDimensions = numericLength > 0 && numericWidth > 0 && numericHeight > 0
+  const rotary = hasDimensions ? (2 * numericLength) + (2 * numericWidth) + 50 : 0
+  const deckle = hasDimensions ? numericWidth + numericHeight + 20 : 0
+  const sheetDimension = hasDimensions ? `${calculatedNumber(deckle)} × ${calculatedNumber(rotary)} mm` : '—'
+  const deckleFormula = hasDimensions ? `(${calculatedNumber(numericWidth)} + ${calculatedNumber(numericHeight)} + 20) ×` : '—'
+  const rotaryFormula = hasDimensions ? `(2×${calculatedNumber(numericLength)} + 2×${calculatedNumber(numericWidth)} + 50)` : ''
+  return <svg className="spec-report-box-drawing" viewBox="0 0 1000 330" role="img" aria-label={`Isometric box dimensions: length ${dimension(length)}, width ${dimension(width)}, height ${dimension(height)}; sheet size ${sheetDimension}`}>
+    <defs><marker id="spec-dimension-arrow" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto-start-reverse"><path d="M0,0 L9,4.5 L0,9 Z" /></marker></defs>
+    <g className="box-faces">
+      <path className="box-top" d="M90 95 L195 35 L570 35 L465 95 Z" />
+      <path className="box-front" d="M90 95 L465 95 L465 245 L90 245 Z" />
+      <path className="box-side" d="M465 95 L570 35 L570 185 L465 245 Z" />
+    </g>
+    <g className="box-edges"><path d="M90 95 L195 35 L570 35 L570 185 L465 245 L90 245 Z" /><path d="M90 95 L465 95 L570 35 M465 95 L465 245" /></g>
+    <g className="dimension-lines">
+      <path d="M90 282 L465 282" markerStart="url(#spec-dimension-arrow)" markerEnd="url(#spec-dimension-arrow)" />
+      <path d="M482 270 L568 220" markerStart="url(#spec-dimension-arrow)" markerEnd="url(#spec-dimension-arrow)" />
+      <path d="M625 95 L625 245" markerStart="url(#spec-dimension-arrow)" markerEnd="url(#spec-dimension-arrow)" />
+    </g>
+    <g className="dimension-labels"><text x="277" y="315" textAnchor="middle">LENGTH · {dimension(length)}</text><text x="530" y="295" textAnchor="middle">WIDTH · {dimension(width)}</text><text x="602" y="170" transform="rotate(-90 602 170)" textAnchor="middle">HEIGHT · {dimension(height)}</text></g>
+    <text className="box-reference-label" x="278" y="178" textAnchor="middle">POLAR CANVAS</text>
+    <g className="sheet-drawing"><text x="825" y="28" textAnchor="middle">SHEET SIZE</text><rect x="710" y="48" width="230" height="210" /><text x="825" y="125" textAnchor="middle">{sheetDimension}</text><text className="sheet-formula" x="825" y="158" textAnchor="middle"><tspan x="825">{deckleFormula}</tspan><tspan x="825" dy="18">{rotaryFormula}</tspan></text><text className="sheet-axis-label" x="825" y="282" textAnchor="middle">DECKLE × ROTARY</text></g>
+  </svg>
+}
+
 function calculatedDeckle(form: FormState): string {
   const width = Number(form.width_mm)
   const height = Number(form.height_mm)
@@ -146,7 +177,9 @@ function calculatedSpecificationValues(form: FormState) {
     rotarySize: hasBoxDimensions
       ? `${calculatedNumber(2 * length)} + ${calculatedNumber(2 * width)} + 50 = ${calculatedNumber(rotaryMm)} mm (${calculatedNumber(rotaryMm / 10)} cm)`
       : rotaryMm ? `${calculatedNumber(rotaryMm)} mm (${calculatedNumber(rotaryMm / 10)} cm)` : '—',
-    sheetSize: rotaryMm && deckleMm ? `${calculatedNumber(rotaryMm)} × ${calculatedNumber(deckleMm)} mm` : '—',
+    sheetSize: rotaryMm && deckleMm
+      ? `${calculatedNumber(deckleMm)} × ${calculatedNumber(rotaryMm)} mm (${calculatedNumber(deckleMm / 10)} × ${calculatedNumber(rotaryMm / 10)} cm)`
+      : '—',
     boxWeight: boxWeightG ? `${calculatedNumber(boxWeightG)} g (${calculatedNumber(boxWeightG / 1000, 3)} kg)` : '—',
     boardGsm: boardGsm ? `${calculatedNumber(boardGsm)} gsm` : '—',
     burstingStrength: burstingStrength ? `${calculatedNumber(burstingStrength)} kg/cm² (est.)` : '—',
@@ -172,6 +205,7 @@ export default function ProductSpecifications() {
   const [reportOpen, setReportOpen] = useState(false)
   const customer = customers.find((value) => value.customer_id === customerId)
   const item = items.find((value) => value.item_id === itemId)
+  const reportSpecification = editingId ? specifications.find((value) => value.id === editingId) : undefined
   const displayedSpecifications = listCustomerId
     ? specifications.filter((specification) => specification.customer_id === listCustomerId && (!listItemId || specification.item_id === listItemId))
     : []
@@ -318,11 +352,12 @@ export default function ProductSpecifications() {
         {showsFlexibleFields && <label>Thickness (micron)<input type="number" min="0" step="0.01" value={form.thickness_micron} onChange={(e) => update('thickness_micron', e.target.value)} /></label>}
         {(showsFlexibleFields || showsRollFields) && <label>Roll Length (m)<input type="number" min="0" step="0.01" value={form.roll_length_m} onChange={(e) => update('roll_length_m', e.target.value)} /></label>}
         {showsHeight && <label>Joint Type<select value={form.joint_type} onChange={(e) => update('joint_type', e.target.value)}><option value="">Select joint</option><option value="Glue">Glue</option><option value="Stitch">Stitch</option><option value="Brass Pinning">Brass Pinning</option><option value="SS Pinning">SS Pinning</option><option value="GI Pinning">GI Pinning</option><option value="Glue & Stitch">Glue &amp; Stitch</option><option value="Self Lock">Self Lock</option><option value="Not Applicable">Not Applicable</option>{form.joint_type && !['Glue', 'Stitch', 'Brass Pinning', 'SS Pinning', 'GI Pinning', 'Glue & Stitch', 'Self Lock', 'Not Applicable'].includes(form.joint_type) && <option value={form.joint_type}>{form.joint_type}</option>}</select></label>}
+        {showsBoardFields && <label>Board Type<select value={form.board_type} onChange={(e) => update('board_type', e.target.value)}><option value="">Select board type</option><option value="Plant Board">Plant Board</option><option value="Manual Board">Manual Board</option>{form.board_type && !['Plant Board', 'Manual Board'].includes(form.board_type) && <option value={form.board_type}>{form.board_type}</option>}</select></label>}
         <label>Finish<select value={form.finish} onChange={(e) => update('finish', e.target.value)}><option value="">Select finish</option><option value="Normal">Normal</option><option value="Gloss Lamination">Gloss Lamination</option><option value="Matt Lamination">Matt Lamination</option><option value="Varnish">Varnish</option><option value="UV Coating">UV Coating</option><option value="Water Resistant">Water Resistant</option><option value="Not Applicable">Not Applicable</option>{form.finish && !['Normal', 'Gloss Lamination', 'Matt Lamination', 'Varnish', 'UV Coating', 'Water Resistant', 'Not Applicable'].includes(form.finish) && <option value={form.finish}>{form.finish}</option>}</select></label>
         {form.specification_type !== 'PAPER / ROLL' && <label>Print<select value={form.print_required ? 'YES' : 'NO'} onChange={(e) => updatePrintRequired(e.target.value === 'YES')}><option>NO</option><option>YES</option></select></label>}
         {form.print_required && <label>Print Colours<input value={form.print_colors} onChange={(e) => update('print_colors', e.target.value)} placeholder="e.g. 2 colours" /></label>}
         {showsBoardFields && <label>Rotary Size<input value={calculatedValues.rotarySize} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label>Sheet Size<input value={calculatedValues.sheetSize} readOnly aria-readonly="true" /></label>}
+        {showsBoardFields && <label>Sheet Size (Deckle × Rotary)<input value={calculatedValues.sheetSize} readOnly aria-readonly="true" title="Sheet Size = Deckle Size × Rotary Size" /></label>}
         {showsBoardFields && <label>Box Weight<input value={calculatedValues.boxWeight} readOnly aria-readonly="true" /></label>}
         {showsBoardFields && <label>Board GSM<input value={calculatedValues.boardGsm} readOnly aria-readonly="true" /></label>}
         {showsBoardFields && <label>BS<input value={calculatedValues.burstingStrength} readOnly aria-readonly="true" /></label>}
@@ -347,6 +382,10 @@ export default function ProductSpecifications() {
           </label>)}
         </div>
       </div>
+      {form.specification_type === 'BOX' && <div className="product-spec-box-preview">
+        <div className="product-spec-box-preview-heading"><strong>Box Dimension Drawing (Isometric Projection)</strong><span>Generated from the Length, Width and Height above.</span></div>
+        <IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} />
+      </div>}
       <footer><div>{error && <span className="spec-error">{error}</span>}{message && <span className="spec-success"><CircleCheck size={14} />{message}</span>}</div><button type="submit" disabled={saving}><Save size={15} />{saving ? 'Saving…' : 'Save Specification'}</button></footer>
     </section>}
     {error && !item && <p className="spec-error">{error}</p>}
@@ -354,7 +393,7 @@ export default function ProductSpecifications() {
     <section className="product-spec-list product-spec-panel">
       <header><div><h3>Saved Specifications</h3><p>Customer-wise specifications. Items are available irrespective of the selected customer.</p></div></header>
       <div className="product-spec-table-wrap"><table><thead><tr><th>#</th><th>PC Item Code</th><th>Item</th><th>Size</th><th>Type</th><th>GSM</th><th>BF</th><th>Print</th><th>Updated</th><th aria-label="Actions" /></tr></thead><tbody>
-        {displayedSpecifications.map((specification, index) => <tr key={specification.id}><td>{index + 1}</td><td><strong>{specification.polar_canvas_item_code}</strong></td><td><strong>{specification.item_name}</strong>{specification.item_sku && <small>{specification.item_sku}</small>}</td><td>{specificationSize(specification)}</td><td><span className="spec-type-badge">{specification.specification_type}</span></td><td>{['BOX', 'BOARD / SHEET'].includes(specification.specification_type) ? 'Layer-wise' : specification.gsm ?? '—'}</td><td>{['BOX', 'BOARD / SHEET'].includes(specification.specification_type) ? 'Layer-wise' : specification.bf ?? '—'}</td><td>{specification.print_required ? 'Yes' : 'No'}</td><td>{new Date(specification.updated_at).toLocaleString('en-IN')}</td><td><button type="button" className="spec-edit-button" onClick={() => edit(specification)}><Pencil size={13} /> Edit</button></td></tr>)}
+        {displayedSpecifications.map((specification, index) => <tr key={specification.id}><td>{index + 1}</td><td><strong>{specification.polar_canvas_item_code}</strong></td><td><strong>{specification.item_name}</strong>{specification.item_sku && <small>{specification.item_sku}</small>}</td><td>{specificationSize(specification)}</td><td><span className="spec-type-badge">{specification.specification_type}</span></td><td>{['BOX', 'BOARD / SHEET'].includes(specification.specification_type) ? 'Layer-wise' : specification.gsm ?? '—'}</td><td>{['BOX', 'BOARD / SHEET'].includes(specification.specification_type) ? 'Layer-wise' : specification.bf ?? '—'}</td><td>{specification.print_required ? 'Yes' : 'No'}</td><td>{formatIstDateTime(specification.updated_at)}</td><td><button type="button" className="spec-edit-button" onClick={() => edit(specification)}><Pencil size={13} /> Edit</button></td></tr>)}
         {!loading && !listCustomerId && <tr><td colSpan={10} className="product-spec-empty">Select a customer to display saved specifications.</td></tr>}
         {!loading && listCustomerId && displayedSpecifications.length === 0 && <tr><td colSpan={10} className="product-spec-empty">No product specifications are saved for this customer.</td></tr>}
       </tbody></table></div>
@@ -364,17 +403,18 @@ export default function ProductSpecifications() {
         <header><strong>Product Specification Report</strong><div><button type="button" onClick={printReport}><Printer size={14} /> Print</button><button type="button" onClick={() => setReportOpen(false)} aria-label="Close report"><X size={16} /></button></div></header>
         <div className="product-spec-report-scroll">
           <article className="product-spec-report-a4">
-            <div className="spec-report-brand"><img src="/assets/Bird Logo-transparent.png" alt="Polar Canvas" /><div><h1>POLAR CANVAS</h1><p>PRODUCT SPECIFICATION REPORT</p></div><strong>{form.polar_canvas_item_code}</strong></div>
-            <dl className="spec-report-master"><div><dt>Customer</dt><dd>{customer.customer_name}</dd></div><div><dt>Item</dt><dd>{item.item_name}</dd></div><div><dt>Item SKU</dt><dd>{item.sku || '—'}</dd></div><div><dt>Design Type</dt><dd>{form.specification_type}</dd></div></dl>
+            <div className="spec-report-brand"><img src="/assets/Bird Logo-transparent.png" alt="Polar Canvas" /><div><h1>POLAR CANVAS</h1><p>PRODUCT SPECIFICATION</p></div><strong>Polar Canvas Item Code : {form.polar_canvas_item_code}</strong></div>
+            <dl className="spec-report-master"><div><dt>Customer</dt><dd>{customer.customer_name}</dd></div><div><dt>Item</dt><dd>{item.item_name}</dd></div><div><dt>Created DateTime</dt><dd>{formatIstDateTime(reportSpecification?.created_at)}</dd></div><div><dt>Updated DateTime</dt><dd>{formatIstDateTime(reportSpecification?.updated_at)}</dd></div><div><dt>Design Type</dt><dd>{form.specification_type}</dd></div><div><dt>Board Type</dt><dd>{form.board_type || '—'}</dd></div></dl>
             <section><h2>Technical Specification</h2><dl className="spec-report-details">
               <div><dt>Length (OD)</dt><dd>{form.length_mm ? `${form.length_mm} mm` : '—'}</dd></div><div><dt>Width (OD)</dt><dd>{form.width_mm ? `${form.width_mm} mm` : '—'}</dd></div><div><dt>Height (OD)</dt><dd>{form.height_mm ? `${form.height_mm} mm` : '—'}</dd></div><div><dt>Ply</dt><dd>{form.ply ? `${form.ply} Ply` : '—'}</dd></div>
               <div><dt>Material</dt><dd>{form.material || '—'}</dd></div><div><dt>Joint Type</dt><dd>{form.joint_type || '—'}</dd></div><div><dt>Finish</dt><dd>{form.finish || '—'}</dd></div><div><dt>Print</dt><dd>{form.print_required ? `Yes${form.print_colors ? ` · ${form.print_colors}` : ''}` : 'No'}</dd></div>
-              <div><dt>Rotary Size</dt><dd>{calculatedValues.rotarySize}</dd></div><div><dt>Sheet Size</dt><dd>{calculatedValues.sheetSize}</dd></div><div><dt>Box Weight</dt><dd>{calculatedValues.boxWeight}</dd></div><div><dt>Board GSM</dt><dd>{calculatedValues.boardGsm}</dd></div><div><dt>BS</dt><dd>{calculatedValues.burstingStrength}</dd></div><div><dt>Moisture</dt><dd>{calculatedValues.moisture}</dd></div>
+              <div><dt>Rotary Size</dt><dd>{calculatedValues.rotarySize}</dd></div><div><dt>Sheet Size (Deckle × Rotary)</dt><dd>{calculatedValues.sheetSize}</dd></div><div><dt>Box Weight</dt><dd>{calculatedValues.boxWeight}</dd></div><div><dt>Board GSM</dt><dd>{calculatedValues.boardGsm}</dd></div><div><dt>BS</dt><dd>{calculatedValues.burstingStrength}</dd></div><div><dt>Moisture</dt><dd>{calculatedValues.moisture}</dd></div>
             </dl></section>
             {form.paper_layers.length > 0 && <section><h2>Paper Composition</h2><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>{form.paper_layers.map((layer, index) => <tr key={`${layer.layer_name}-report`}><td>{index + 1}</td><td>{layer.layer_name}</td><td>{layer.gsm || '—'}</td><td>{layer.bf_rct || '—'}</td><td>{calculatedDeckle(form)}</td><td>{layer.shade || '—'}</td><td>{layer.paper_grade || '—'}</td><td>{layer.flute || '—'}</td></tr>)}</tbody></table></section>}
             <section><h2>Production Stages</h2><ol className="spec-report-stages">{form.production_stages.map((stage) => <li key={`${stage}-report`}>{stage}</li>)}</ol></section>
+            {form.specification_type === 'BOX' && <section className="spec-report-drawing-section"><h2>Box Dimension Drawing (Isometric Projection)</h2><IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} /></section>}
             {form.notes && <section><h2>Specification Notes</h2><p className="spec-report-notes">{form.notes}</p></section>}
-            <footer><span>Generated from PC-Tech</span><span>{new Date().toLocaleString('en-IN')}</span></footer>
+            <footer><span>Generated by PC-Tech | Confidential | Shred Upon Job Completion</span><span>{formatIstDateTime(new Date())}</span></footer>
           </article>
         </div>
       </div>

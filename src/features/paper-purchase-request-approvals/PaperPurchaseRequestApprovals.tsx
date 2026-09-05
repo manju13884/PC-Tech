@@ -1,6 +1,7 @@
 import { Check, Eye, RefreshCw, ShieldCheck, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import type { SavedPaperRequest } from '../paper-purchase-request/paperPurchaseRequestService'
+import { formatIstDateTime } from '../../utils/dateTimeFormatting'
 import {
   approvePaperRequest,
   getPaperRequestDetails,
@@ -10,9 +11,7 @@ import {
 } from './paperRequestApprovalService'
 import './paper-purchase-request-approvals.css'
 
-const dateTime = (value: string | null | undefined) => (
-  value ? new Date(value).toLocaleString('en-IN') : '—'
-)
+const dateTime = (value: string | null | undefined) => formatIstDateTime(value)
 const number = (value: number | null | undefined, digits = 3) => (
   typeof value === 'number' && Number.isFinite(value)
     ? value.toLocaleString('en-IN', { maximumFractionDigits: digits })
