@@ -52,6 +52,15 @@ function App() {
   const [message, setMessage] = useState('')
   const [user, setUser] = useState<AuthenticatedUser | null>(null)
   const [checkingSession, setCheckingSession] = useState(true)
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null)
+      setPassword('')
+      setMessage('Your sign-in session has expired. Please sign in again.')
+    }
+    window.addEventListener('pc-tech-session-expired', handleSessionExpired)
+    return () => window.removeEventListener('pc-tech-session-expired', handleSessionExpired)
+  }, [])
   const loginBrand = (
     <div className="login-brand">
       <img

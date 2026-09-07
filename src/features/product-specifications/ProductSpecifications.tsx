@@ -8,7 +8,7 @@ import './product-specifications.css'
 
 type PaperLayer = {
   layer_name: string; paper_grade: string; gsm: string; bf_rct: string
-  shade: string; flute: string
+  deckle_size: string; shade: string; flute: string
 }
 type FormState = {
   specification_name: string; polar_canvas_item_code: string
@@ -56,6 +56,7 @@ function readAttributes(value?: string): AttributeFields & { paper_layers: Paper
         paper_grade: String(layer.paper_grade ?? layer.paper_type ?? ''),
         gsm: String(layer.gsm ?? ''),
         bf_rct: String(layer.bf_rct ?? layer.bf ?? ''),
+        deckle_size: String(layer.deckle_size ?? ''),
         shade: String(layer.shade ?? ''),
         flute: String(layer.flute ?? ''),
       })) : []
@@ -80,6 +81,7 @@ function buildPaperLayers(ply: string, current: PaperLayer[]): PaperLayer[] {
     paper_grade: current[index]?.paper_grade ?? '',
     gsm: current[index]?.gsm ?? '',
     bf_rct: current[index]?.bf_rct ?? '',
+    deckle_size: current[index]?.deckle_size ?? '',
     shade: current[index]?.shade ?? '',
     flute: layerName.toLowerCase().includes('fluting') ? current[index]?.flute ?? '' : '',
   }))
@@ -369,7 +371,7 @@ export default function ProductSpecifications() {
         {form.paper_layers.length > 0 && <div className="paper-composition-table"><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>
           {form.paper_layers.map((layer, index) => {
             const isFluting = layer.layer_name.toLowerCase().includes('fluting')
-            return <tr key={`${layer.layer_name}-${index}`}><td>{index + 1}</td><td><strong>{layer.layer_name}</strong></td><td><input type="number" min="0" step="0.01" value={layer.gsm} onChange={(e) => updatePaperLayer(index, 'gsm', e.target.value)} placeholder="GSM" /></td><td><input type="number" min="0" step="0.01" value={layer.bf_rct} onChange={(e) => updatePaperLayer(index, 'bf_rct', e.target.value)} placeholder="BF / RCT" /></td><td><output className="paper-deckle-value">{calculatedDeckle(form)}</output></td><td><select value={layer.shade} onChange={(e) => updatePaperLayer(index, 'shade', e.target.value)}><option value="">Select</option><option value="GYT">GYT</option><option value="Natural">Natural</option><option value="White">White</option></select></td><td><input value={layer.paper_grade} onChange={(e) => updatePaperLayer(index, 'paper_grade', e.target.value)} placeholder={isFluting ? 'Fluting medium' : 'Kraft liner'} /></td><td>{isFluting ? <select value={layer.flute} onChange={(e) => updatePaperLayer(index, 'flute', e.target.value)}><option value="">Select</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="E">E</option><option value="F">F</option></select> : <span className="not-applicable">—</span>}</td></tr>
+            return <tr key={`${layer.layer_name}-${index}`}><td>{index + 1}</td><td><strong>{layer.layer_name}</strong></td><td><input type="number" min="0" step="0.01" value={layer.gsm} onChange={(e) => updatePaperLayer(index, 'gsm', e.target.value)} placeholder="GSM" /></td><td><input type="number" min="0" step="0.01" value={layer.bf_rct} onChange={(e) => updatePaperLayer(index, 'bf_rct', e.target.value)} placeholder="BF / RCT" /></td><td><input type="text" value={layer.deckle_size || calculatedDeckle(form)} onChange={(e) => updatePaperLayer(index, 'deckle_size', e.target.value)} placeholder="Deckle size" /></td><td><select value={layer.shade} onChange={(e) => updatePaperLayer(index, 'shade', e.target.value)}><option value="">Select</option><option value="GYT">GYT</option><option value="Natural">Natural</option><option value="White">White</option></select></td><td><input value={layer.paper_grade} onChange={(e) => updatePaperLayer(index, 'paper_grade', e.target.value)} placeholder={isFluting ? 'Fluting medium' : 'Kraft liner'} /></td><td>{isFluting ? <select value={layer.flute} onChange={(e) => updatePaperLayer(index, 'flute', e.target.value)}><option value="">Select</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="E">E</option><option value="F">F</option></select> : <span className="not-applicable">—</span>}</td></tr>
           })}
         </tbody></table></div>}
       </div>}
@@ -410,7 +412,7 @@ export default function ProductSpecifications() {
               <div><dt>Material</dt><dd>{form.material || '—'}</dd></div><div><dt>Joint Type</dt><dd>{form.joint_type || '—'}</dd></div><div><dt>Finish</dt><dd>{form.finish || '—'}</dd></div><div><dt>Print</dt><dd>{form.print_required ? `Yes${form.print_colors ? ` · ${form.print_colors}` : ''}` : 'No'}</dd></div>
               <div><dt>Rotary Size</dt><dd>{calculatedValues.rotarySize}</dd></div><div><dt>Sheet Size (Deckle × Rotary)</dt><dd>{calculatedValues.sheetSize}</dd></div><div><dt>Box Weight</dt><dd>{calculatedValues.boxWeight}</dd></div><div><dt>Board GSM</dt><dd>{calculatedValues.boardGsm}</dd></div><div><dt>BS</dt><dd>{calculatedValues.burstingStrength}</dd></div><div><dt>Moisture</dt><dd>{calculatedValues.moisture}</dd></div>
             </dl></section>
-            {form.paper_layers.length > 0 && <section><h2>Paper Composition</h2><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>{form.paper_layers.map((layer, index) => <tr key={`${layer.layer_name}-report`}><td>{index + 1}</td><td>{layer.layer_name}</td><td>{layer.gsm || '—'}</td><td>{layer.bf_rct || '—'}</td><td>{calculatedDeckle(form)}</td><td>{layer.shade || '—'}</td><td>{layer.paper_grade || '—'}</td><td>{layer.flute || '—'}</td></tr>)}</tbody></table></section>}
+            {form.paper_layers.length > 0 && <section><h2>Paper Composition</h2><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>{form.paper_layers.map((layer, index) => <tr key={`${layer.layer_name}-report`}><td>{index + 1}</td><td>{layer.layer_name}</td><td>{layer.gsm || '—'}</td><td>{layer.bf_rct || '—'}</td><td>{layer.deckle_size || calculatedDeckle(form)}</td><td>{layer.shade || '—'}</td><td>{layer.paper_grade || '—'}</td><td>{layer.flute || '—'}</td></tr>)}</tbody></table></section>}
             <section><h2>Production Stages</h2><ol className="spec-report-stages">{form.production_stages.map((stage) => <li key={`${stage}-report`}>{stage}</li>)}</ol></section>
             {form.specification_type === 'BOX' && <section className="spec-report-drawing-section"><h2>Box Dimension Drawing (Isometric Projection)</h2><IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} /></section>}
             {form.notes && <section><h2>Specification Notes</h2><p className="spec-report-notes">{form.notes}</p></section>}

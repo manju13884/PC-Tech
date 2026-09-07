@@ -3,6 +3,12 @@ import { zohoGet, type ZohoEnv } from './zoho'
 export interface SalesOrderSummary {
   salesorder_id: string
   salesorder_number: string
+  customer_id?: string
+  customer_name?: string
+  date?: string
+  reference_number?: string
+  shipment_date?: string
+  status?: string
 }
 
 export interface SalesOrderLineItem {
@@ -34,8 +40,10 @@ interface ZohoSalesOrder {
   customer_name?: string
   invoices?: unknown[]
   line_items?: unknown[]
+  date?: string
+  reference_number?: string
+  shipment_date?: string
 }
-
 
 export interface CustomerOpenSalesOrderSummary {
   customerId: string
@@ -78,7 +86,11 @@ interface ZohoSalesOrdersResponse {
 }
 
 const SALES_ORDERS_PER_PAGE = 200
-const OPEN_SALES_ORDER_STATUSES = new Set(['open', 'confirmed', 'partiallyinvoiced'])
+const OPEN_SALES_ORDER_STATUSES = new Set([
+  'open',
+  'confirmed',
+  'partiallyinvoiced',
+])
 
 function normalizeText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
@@ -90,7 +102,10 @@ function normalizeNumber(value: unknown): number | null {
   return Number.isFinite(number) ? number : null
 }
 
-function mapSalesOrderLineItem(value: unknown, index: number): SalesOrderLineItem | null {
+function mapSalesOrderLineItem(
+  value: unknown,
+  index: number,
+): SalesOrderLineItem | null {
   if (!value || typeof value !== 'object') {
     return null
   }
@@ -98,9 +113,8 @@ function mapSalesOrderLineItem(value: unknown, index: number): SalesOrderLineIte
   const item = value as ZohoSalesOrderLineItem
   const name = normalizeText(item.name) || normalizeText(item.item_name)
   const description = normalizeText(item.description)
-  const quantity = typeof item.quantity === 'number'
-    ? item.quantity
-    : Number(item.quantity)
+  const quantity =
+    typeof item.quantity === 'number' ? item.quantity : Number(item.quantity)
 
   if (!name && !description) {
     return null
@@ -120,25 +134,41 @@ function mapSalesOrderLineItem(value: unknown, index: number): SalesOrderLineIte
   }
 }
 
-function mapSalesOrder(value: unknown, customerId: string): SalesOrderSummary | null {
+function mapSalesOrder(
+  value: unknown,
+  customerId: string,
+): SalesOrderSummary | null {
   if (!value || typeof value !== 'object') {
     return null
   }
 
   const salesOrder = value as ZohoSalesOrder
-  const salesOrderId = salesOrder.salesorder_id != null ? String(salesOrder.salesorder_id) : ''
-  const salesOrderNumber = typeof salesOrder.salesorder_number === 'string'
-    ? salesOrder.salesorder_number.trim()
-    : ''
-  const responseCustomerId = salesOrder.customer_id != null ? String(salesOrder.customer_id) : ''
+  const salesOrderId =
+    salesOrder.salesorder_id != null ? String(salesOrder.salesorder_id) : ''
+  const salesOrderNumber =
+    typeof salesOrder.salesorder_number === 'string'
+      ? salesOrder.salesorder_number.trim()
+      : ''
+  const responseCustomerId =
+    salesOrder.customer_id != null ? String(salesOrder.customer_id) : ''
 
-  if (!salesOrderId || !salesOrderNumber || (responseCustomerId && responseCustomerId !== customerId)) {
+  if (
+    !salesOrderId ||
+    !salesOrderNumber ||
+    (responseCustomerId && responseCustomerId !== customerId)
+  ) {
     return null
   }
 
   return {
     salesorder_id: salesOrderId,
     salesorder_number: salesOrderNumber,
+    customer_id: responseCustomerId || customerId,
+    customer_name: normalizeText(salesOrder.customer_name),
+    date: normalizeText(salesOrder.date),
+    reference_number: normalizeText(salesOrder.reference_number),
+    shipment_date: normalizeText(salesOrder.shipment_date),
+    status: normalizeText(salesOrder.status),
   }
 }
 
@@ -175,17 +205,23 @@ export async function getZohoSalesOrdersByCustomer(
         : []
 
     salesOrders.push(...pageSalesOrders)
-    hasMorePage = response.page_context?.has_more_page
-      ?? pageSalesOrders.length === SALES_ORDERS_PER_PAGE
+    hasMorePage =
+      response.page_context?.has_more_page ??
+      pageSalesOrders.length === SALES_ORDERS_PER_PAGE
     page += 1
   }
 
   return salesOrders
     .map((salesOrder) => mapSalesOrder(salesOrder, normalizedCustomerId))
-    .filter((salesOrder): salesOrder is SalesOrderSummary => salesOrder !== null)
+    .filter(
+      (salesOrder): salesOrder is SalesOrderSummary => salesOrder !== null,
+    )
 }
 
-function getListedSalesOrderFinancials(order: ZohoSalesOrder): { totalAmount: number; openValue: number } {
+function getListedSalesOrderFinancials(order: ZohoSalesOrder): {
+  totalAmount: number
+  openValue: number
+} {
   const subTotal = normalizeNumber(order.sub_total)
   const total = normalizeNumber(order.total)
   const taxTotal = normalizeNumber(order.tax_total)
@@ -195,21 +231,25 @@ function getListedSalesOrderFinancials(order: ZohoSalesOrder): { totalAmount: nu
   // Zoho normally includes sub_total and balance in the list response. Avoid a
   // detail request per order: a large open-order set can exceed a Worker's
   // outbound request allowance and make the whole dashboard fail.
-  const totalAmount = subTotal !== null
-    ? subTotal
-    : total !== null
-      ? Math.max(0, total - (taxTotal ?? 0))
-      : 0
-  const openValue = balance !== null
-    ? Math.max(0, balance)
-    : total !== null
-      ? Math.max(0, total - (amountInvoiced ?? 0))
-      : 0
+  const totalAmount =
+    subTotal !== null
+      ? subTotal
+      : total !== null
+        ? Math.max(0, total - (taxTotal ?? 0))
+        : 0
+  const openValue =
+    balance !== null
+      ? Math.max(0, balance)
+      : total !== null
+        ? Math.max(0, total - (amountInvoiced ?? 0))
+        : 0
 
   return { totalAmount, openValue }
 }
 
-export async function getZohoOpenSalesOrderSummary(env?: ZohoEnv): Promise<OpenSalesOrderDashboardSummary> {
+export async function getZohoOpenSalesOrderSummary(
+  env?: ZohoEnv,
+): Promise<OpenSalesOrderDashboardSummary> {
   const salesOrders: unknown[] = []
   let page = 1
   let hasMorePage = true
@@ -226,22 +266,31 @@ export async function getZohoOpenSalesOrderSummary(env?: ZohoEnv): Promise<OpenS
     const response = payload as ZohoSalesOrdersResponse
     const pageSalesOrders = Array.isArray(response.salesorders)
       ? response.salesorders
-      : Array.isArray(response.data) ? response.data : []
+      : Array.isArray(response.data)
+        ? response.data
+        : []
     salesOrders.push(...pageSalesOrders)
-    hasMorePage = response.page_context?.has_more_page
-      ?? pageSalesOrders.length === SALES_ORDERS_PER_PAGE
+    hasMorePage =
+      response.page_context?.has_more_page ??
+      pageSalesOrders.length === SALES_ORDERS_PER_PAGE
     page += 1
   }
 
-  const eligibleOrders = salesOrders.filter((value): value is ZohoSalesOrder => {
-    if (!value || typeof value !== 'object') return false
-    const order = value as ZohoSalesOrder
-    const status = normalizeText(order.status).toLowerCase().replace(/[^a-z]/g, '')
-    return OPEN_SALES_ORDER_STATUSES.has(status)
-      && Boolean(String(order.salesorder_id ?? '').trim())
-      && Boolean(String(order.customer_id ?? '').trim())
-      && Boolean(normalizeText(order.customer_name))
-  })
+  const eligibleOrders = salesOrders.filter(
+    (value): value is ZohoSalesOrder => {
+      if (!value || typeof value !== 'object') return false
+      const order = value as ZohoSalesOrder
+      const status = normalizeText(order.status)
+        .toLowerCase()
+        .replace(/[^a-z]/g, '')
+      return (
+        OPEN_SALES_ORDER_STATUSES.has(status) &&
+        Boolean(String(order.salesorder_id ?? '').trim()) &&
+        Boolean(String(order.customer_id ?? '').trim()) &&
+        Boolean(normalizeText(order.customer_name))
+      )
+    },
+  )
 
   const byCustomer = new Map<string, CustomerOpenSalesOrderSummary>()
   for (const order of eligibleOrders) {
@@ -261,25 +310,40 @@ export async function getZohoOpenSalesOrderSummary(env?: ZohoEnv): Promise<OpenS
     byCustomer.set(customerId, current)
   }
 
-  const customers = [...byCustomer.values()]
-    .sort((left, right) => (
-      right.openSalesOrderValue - left.openSalesOrderValue
-      || right.totalSalesOrderAmount - left.totalSalesOrderAmount
-      || left.customerName.localeCompare(right.customerName)
-    ))
+  const customers = [...byCustomer.values()].sort(
+    (left, right) =>
+      right.openSalesOrderValue - left.openSalesOrderValue ||
+      right.totalSalesOrderAmount - left.totalSalesOrderAmount ||
+      left.customerName.localeCompare(right.customerName),
+  )
   return {
     customers: customers.slice(0, 5),
-    totals: customers.reduce((totals, customer) => ({
-      openSalesOrderCount: totals.openSalesOrderCount + customer.openSalesOrderCount,
-      totalSalesOrderAmount: totals.totalSalesOrderAmount + customer.totalSalesOrderAmount,
-      openSalesOrderValue: totals.openSalesOrderValue + customer.openSalesOrderValue,
-    }), { openSalesOrderCount: 0, totalSalesOrderAmount: 0, openSalesOrderValue: 0 }),
-    statusCounts: eligibleOrders.reduce((counts, order) => {
-      const status = normalizeText(order.status).toLowerCase().replace(/[^a-z]/g, '')
-      if (status === 'partiallyinvoiced') counts.partiallyBilled += 1
-      else counts.open += 1
-      return counts
-    }, { open: 0, partiallyBilled: 0 }),
+    totals: customers.reduce(
+      (totals, customer) => ({
+        openSalesOrderCount:
+          totals.openSalesOrderCount + customer.openSalesOrderCount,
+        totalSalesOrderAmount:
+          totals.totalSalesOrderAmount + customer.totalSalesOrderAmount,
+        openSalesOrderValue:
+          totals.openSalesOrderValue + customer.openSalesOrderValue,
+      }),
+      {
+        openSalesOrderCount: 0,
+        totalSalesOrderAmount: 0,
+        openSalesOrderValue: 0,
+      },
+    ),
+    statusCounts: eligibleOrders.reduce(
+      (counts, order) => {
+        const status = normalizeText(order.status)
+          .toLowerCase()
+          .replace(/[^a-z]/g, '')
+        if (status === 'partiallyinvoiced') counts.partiallyBilled += 1
+        else counts.open += 1
+        return counts
+      },
+      { open: 0, partiallyBilled: 0 },
+    ),
   }
 }
 
@@ -292,7 +356,10 @@ export async function getZohoSalesOrderById(
     return null
   }
 
-  const payload = await zohoGet(`/salesorders/${encodeURIComponent(normalizedSalesOrderId)}`, env)
+  const payload = await zohoGet(
+    `/salesorders/${encodeURIComponent(normalizedSalesOrderId)}`,
+    env,
+  )
   if (!payload || typeof payload !== 'object') {
     return null
   }
@@ -311,11 +378,17 @@ export async function getZohoSalesOrderById(
   return {
     salesorder_id: id,
     salesorder_number: normalizeText(value.salesorder_number),
+    customer_id: value.customer_id != null ? String(value.customer_id) : '',
+    customer_name: normalizeText(value.customer_name),
+    date: normalizeText(value.date),
+    reference_number: normalizeText(value.reference_number),
+    shipment_date: normalizeText(value.shipment_date),
+    status: normalizeText(value.status),
     total: Number.isFinite(Number(value.total)) ? Number(value.total) : 0,
     line_items: Array.isArray(value.line_items)
       ? value.line_items
-        .map(mapSalesOrderLineItem)
-        .filter((item): item is SalesOrderLineItem => item !== null)
+          .map(mapSalesOrderLineItem)
+          .filter((item): item is SalesOrderLineItem => item !== null)
       : [],
   }
 }

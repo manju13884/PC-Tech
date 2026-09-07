@@ -8,19 +8,21 @@ const menuKeys = [
   'production-specifications',
   'job-cards',
   'production-planning',
+  'production-planned',
   'job-tracking',
 ]
 
 test('new Sales and Production menus are permission-controlled everywhere', async () => {
-  const files = await Promise.all([
+  const [dashboard, login, currentUser, originalMigration, plannedMigration] = await Promise.all([
     readFile('src/Dashboard.tsx', 'utf8'),
     readFile('functions/api/auth/login.ts', 'utf8'),
     readFile('functions/api/auth/me.ts', 'utf8'),
     readFile('migrations/0015_add_sales_production_menu_permissions.sql', 'utf8'),
+    readFile('migrations/0025_add_production_planned_permission.sql', 'utf8'),
   ])
 
   for (const menuKey of menuKeys) {
-    for (const source of files) {
+    for (const source of [dashboard, login, currentUser, `${originalMigration}\n${plannedMigration}`]) {
       assert.match(source, new RegExp(`['\"]${menuKey}['\"]`))
     }
   }

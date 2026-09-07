@@ -37,6 +37,7 @@ const ALL_MENU_KEYS = [
   'paper-po-calculation',
   'job-cards',
   'production-planning',
+  'production-planned',
   'job-tracking',
   'coc',
   'packing-slip',

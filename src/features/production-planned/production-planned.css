@@ -1,0 +1,76 @@
+.production-planned-workspace { gap: 0; min-height: 0; }
+.production-planned-toolbar { display: flex; min-height: 36px; align-items: center; justify-content: space-between; gap: .65rem; border: 1px solid #b9cce0; border-bottom: 0; padding: 3px 5px 3px 8px; background: #edf5fc; box-shadow: inset 3px 0 #2563eb; }
+.production-planned-title { display: flex; min-width: 0; align-items: center; gap: 6px; color: #163b65; white-space: nowrap; }
+.production-planned-title svg { color: #2563eb; }
+.production-planned-title strong { font-size: .66rem; font-weight: 700; }
+.production-planned-title span { border-left: 1px solid #aac3dd; padding-left: 7px; color: #55718e; font-size: .54rem; font-variant-numeric: tabular-nums; }
+.production-planned-controls { display: flex; align-items: center; gap: 4px; }
+.production-planned-controls input, .production-planned-controls select { box-sizing: border-box; height: 27px; border: 1px solid #aebfd1; border-radius: 3px; padding: 0 7px; background: #fff; color: #263548; font: inherit; font-size: .57rem; }
+.production-planned-controls > input { border-color: #9dbbdd; background: #f8fbff; }
+.production-planned-controls > input:focus { outline: 2px solid rgb(37 99 235 / 18%); border-color: #3b82f6; }
+.production-planned-controls input { width: min(260px, 26vw); }
+.production-planned-controls select { width: 150px; border-color: #85c5a4; background: #f0faf4; color: #17603d; font-weight: 700; }
+.production-planned-date-range { display: flex; align-items: center; gap: 4px; }
+.production-planned-date-range label { position: relative; display: flex; height: 27px; align-items: center; gap: 4px; overflow: hidden; border: 1px solid #e2b45d; border-radius: 3px; padding: 0 6px; background: #fff9e8; color: #946315; font-size: .48rem; font-weight: 700; cursor: pointer; }
+.production-planned-date-range label b { min-width: 72px; color: #684a16; font-size: .53rem; font-weight: 650; }
+.production-planned-controls .production-planned-date-range input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .01; cursor: pointer; }
+.production-planned-controls button { display: grid; width: 27px; height: 27px; place-items: center; border: 1px solid #bfcbd8; border-radius: 3px; padding: 0; background: #fff; color: #475569; cursor: pointer; }
+.production-planned-controls button[aria-label="Clear filters"] { border-color: #e5b3b3; background: #fff5f5; color: #b42318; }
+.production-planned-controls button[aria-label="Refresh production plans"] { border-color: #8db6df; background: #eaf4ff; color: #1d5f9e; }
+.production-planned-controls button.production-planned-print { display: inline-flex; width: auto; min-width: 112px; gap: 5px; padding: 0 10px; border-color: #1d4ed8; background: #2563eb; color: #fff; font-size: .55rem; font-weight: 700; line-height: 1; white-space: nowrap; box-shadow: 0 1px 2px rgb(15 23 42 / 16%); transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease; }
+.production-planned-controls button.production-planned-print:hover:not(:disabled) { border-color: #1e40af; background: #1d4ed8; color: #fff; box-shadow: 0 2px 5px rgb(30 64 175 / 24%); }
+.production-planned-controls button.production-planned-print:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 2px rgb(30 64 175 / 18%); }
+.production-planned-controls button.production-planned-print:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+.production-planned-controls button.production-planned-print:disabled { border-color: #cbd5e1; background: #e2e8f0; color: #64748b; box-shadow: none; }
+.production-planned-controls button.production-planned-print svg { flex: 0 0 auto; }
+.production-planned-controls button:hover { border-color: #8da2b8; background: #eef2f6; color: #1e3a5f; }
+.production-planned-controls button:disabled { opacity: .5; cursor: not-allowed; }
+.production-planned-controls button[aria-label="Refresh production plans"]:disabled { cursor: progress; }
+.production-planned-workspace .production-planning-message { justify-content: space-between; }
+.production-planned-workspace .production-planning-message button { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid #fecaca; border-radius: 3px; padding: .2rem .4rem; background: #fff; color: #b42318; font: inherit; font-weight: 700; cursor: pointer; }
+.production-planned-grid-panel { min-height: 0; overflow: hidden; border: 1px solid #cfd8e3; border-radius: 0; background: #fff; box-shadow: none; }
+.production-planned-grid-panel .production-lines-scroll { min-height: 260px; max-height: calc(100vh - 230px); }
+.production-planned-grid-panel .production-planning-grid { min-width: 1320px; }
+.production-planned-grid-panel .production-lines-scroll th { height: 26px; padding: 2px 1px; font-size: .4rem; font-weight: 700; }
+.production-planned-grid-panel .production-grid-groups th { height: 22px; letter-spacing: 0; }
+.production-planned-grid-panel .production-lines-scroll td { height: 25px; padding: 2px 3px; border-color: #e3e8ee; font-size: .49rem; }
+.production-planned-grid-panel .production-lines-scroll td strong { font-size: .51rem; }
+.production-planned-grid-panel .production-lines-scroll td small { font-size: .43rem; }
+.production-planned-grid-panel .production-planning-grid tbody tr:nth-child(even) td { background: #fafbfc; }
+.production-planned-grid-panel .production-planning-grid tbody tr:hover td { background: #edf4fb; }
+.production-planned-grid-panel > footer { min-height: 30px; padding: 3px 7px; background: #f4f6f8; font-size: .54rem; }
+.production-planned-print-heading { display: none; }
+@media (max-width: 800px) { .production-planned-toolbar { align-items: stretch; flex-direction: column; padding: 5px; } .production-planned-controls { width: 100%; } .production-planned-controls input { min-width: 0; width: 100%; } }
+@media print {
+  @page { size: A4 landscape; margin: 5mm 7mm; }
+  html, body { width: auto !important; background: #fff !important; }
+  .dashboard-header, .dashboard-menu, .dashboard-page-heading, .production-planned-toolbar, .production-planned-grid-panel > footer { display: none !important; }
+  .dashboard-grid, .dashboard-content, .dashboard-card, .dashboard-details, .production-planned-workspace { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }
+  .production-planned-grid-panel { box-sizing: border-box; width: 100%; overflow: visible; border: 0; padding-right: 4mm !important; padding-left: 4mm !important; }
+  .production-planned-print-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 2mm; border-bottom: 1px solid #64748b; padding-bottom: 1.5mm; }
+  .production-planned-print-heading h1 { margin: 0; font-size: 10pt; }
+  .production-planned-print-heading p { margin: 0; font-size: 6.5pt; }
+  .production-planned-grid-panel .production-lines-scroll { max-height: none; min-height: 0; overflow: visible; }
+  .production-planned-grid-panel .production-planning-grid { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; border: .6pt solid #94a3b8; border-collapse: collapse; table-layout: fixed; outline: .6pt solid #94a3b8; outline-offset: -.6pt; }
+  .production-planned-grid-panel .production-planning-grid .col-serial { width: 2%; }
+  .production-planned-grid-panel .production-planning-grid .col-order-number { width: 5%; }
+  .production-planned-grid-panel .production-planning-grid .col-code { width: 4%; }
+  .production-planned-grid-panel .production-planning-grid .col-customer { width: 7%; }
+  .production-planned-grid-panel .production-planning-grid .col-date { width: 5%; }
+  .production-planned-grid-panel .production-planning-grid .col-quantity { width: 3.5%; }
+  .production-planned-grid-panel .production-planning-grid .col-description { width: 8%; }
+  .production-planned-grid-panel .production-planning-grid .col-dimension { width: 2%; }
+  .production-planned-grid-panel .production-planning-grid .col-product-type { width: 3.5%; }
+  .production-planned-grid-panel .production-planning-grid .col-ply { width: 2.5%; }
+  .production-planned-grid-panel .production-planning-grid .col-flute-run { width: 3.5%; }
+  .production-planned-grid-panel .production-planning-grid .col-machine { width: 3.5%; }
+  .production-planned-grid-panel .production-planning-grid .col-paper { width: 2.6%; }
+  .production-planned-grid-panel .production-lines-scroll th { height: auto; padding: 1px; color: #0f172a; font-size: 3.5pt; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+  .production-planned-grid-panel .production-lines-scroll td { height: auto; padding: 1px; color: #111827; font-size: 4pt; font-weight: 650; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+  .production-planned-grid-panel .production-planning-grid tr > :first-child { border-left: .6pt solid #94a3b8; }
+  .production-planned-grid-panel .production-planning-grid tr > :last-child { border-right: .6pt solid #94a3b8; }
+  .production-planned-grid-panel .production-lines-scroll td strong { font-size: 4pt; font-weight: 800; }
+  .production-planned-grid-panel .production-lines-scroll td small { color: #334155; font-size: 3.25pt; font-weight: 650; }
+  .production-planned-grid-panel .production-planning-grid thead { display: table-header-group; }
+  .production-planned-grid-panel .production-planning-grid tr { break-inside: avoid; }
+}

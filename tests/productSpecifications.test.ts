@@ -56,6 +56,8 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /attributes\.paper_layers\.length > 0 \? attributes\.paper_layers : buildPaperLayers\(savedPly, \[\]\)/)
   assert.match(component, /Select Ply above to enter paper composition\./)
   assert.match(component, /Deckle Size/)
+  assert.match(component, /type="text" value=\{layer\.deckle_size \|\| calculatedDeckle\(form\)\}/)
+  assert.match(component, /updatePaperLayer\(index, 'deckle_size', e\.target\.value\)/)
   assert.match(component, /width \+ height \+ 20/)
   assert.match(component, /deckleMm \/ 10/)
   for (const calculatedField of ['Rotary Size', 'Sheet Size', 'Box Weight', 'Board GSM', '>BS<', 'Moisture']) {

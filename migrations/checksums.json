@@ -21,5 +21,8 @@
   "0020_shorten_polar_canvas_item_code.sql": "c3f0397139d4128c41704bc5b01bc3094f7eb4c1c28ae3ecaaeca850e96e58ad",
   "0021_create_so_specification_mappings.sql": "7db85780b3d90365043df02f5db3bf4c770e4ce2862cbc024e22ba9e79f0f091",
   "0022_archive_inactive_user_emails.sql": "97805d1082d96bdd06efd5a673935cdc1fe6755b1d113601e209ed0ca354812a",
-  "0023_normalize_inactive_user_emails.sql": "b0157b5e39c6301ca162bdeef0abe56a68f8455e26afbdbf9dcb95131ca0881d"
+  "0023_normalize_inactive_user_emails.sql": "b0157b5e39c6301ca162bdeef0abe56a68f8455e26afbdbf9dcb95131ca0881d",
+  "0024_create_production_planning.sql": "218fcc5f31e18b6462722bd19ece80bed4c3e88d5597eccbd93e38b919997bed",
+  "0025_add_production_planned_permission.sql": "8f895b0a5318b4cc93b6f2b6b771a98c65140c78adf82002071fbd88ab092a37",
+  "0026_add_production_plan_machine_values.sql": "dd28016145d3c16682bb93bb9a25ac67a613199a04e1dd4959e2dba243fb8fa4"
 }

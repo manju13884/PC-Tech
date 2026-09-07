@@ -99,6 +99,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
       paper_grade: typeof layer.paper_grade === 'string' ? layer.paper_grade.trim().slice(0, 100) : '',
       gsm: layer.gsm == null || layer.gsm === '' ? '' : String(layer.gsm),
       bf_rct: layer.bf_rct == null || layer.bf_rct === '' ? '' : String(layer.bf_rct),
+      deckle_size: typeof layer.deckle_size === 'string' ? layer.deckle_size.trim().slice(0, 100) : '',
       shade: typeof layer.shade === 'string' && ['GYT', 'Natural', 'White'].includes(layer.shade) ? layer.shade : '',
       flute: typeof layer.flute === 'string' && ['A', 'B', 'C', 'E', 'F'].includes(layer.flute) ? layer.flute : '',
     })) : []
