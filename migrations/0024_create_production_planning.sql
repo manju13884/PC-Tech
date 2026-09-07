@@ -95,21 +95,23 @@ CREATE TRIGGER IF NOT EXISTS validate_production_plan_line_insert
 BEFORE INSERT ON production_plan_lines
 WHEN (SELECT status FROM production_plans WHERE id = NEW.production_plan_id) <> 'DRAFT'
 BEGIN
-  SELECT CASE WHEN NEW.production_quantity > NEW.ordered_quantity - COALESCE((
+  SELECT RAISE(ABORT, 'production_quantity_exceeds_balance')
+  WHERE NEW.production_quantity > NEW.ordered_quantity - COALESCE((
     SELECT SUM(existing.production_quantity)
     FROM production_plan_lines existing
     INNER JOIN production_plans plan ON plan.id = existing.production_plan_id
     WHERE existing.zoho_sales_order_line_item_id = NEW.zoho_sales_order_line_item_id
       AND plan.deleted_at IS NULL
       AND plan.status IN ('PLANNED', 'TAKEN_FOR_PRODUCTION', 'PARTIALLY_COMPLETED', 'COMPLETED', 'ON_HOLD')
-  ), 0) THEN RAISE(ABORT, 'production_quantity_exceeds_balance') END;
+  ), 0);
 END;
 
 CREATE TRIGGER IF NOT EXISTS validate_production_plan_finalisation
 BEFORE UPDATE OF status ON production_plans
 WHEN OLD.status = 'DRAFT' AND NEW.status <> 'DRAFT' AND NEW.status <> 'CANCELLED'
 BEGIN
-  SELECT CASE WHEN EXISTS (
+  SELECT RAISE(ABORT, 'production_quantity_exceeds_balance')
+  WHERE EXISTS (
     SELECT 1 FROM production_plan_lines draft_line
     WHERE draft_line.production_plan_id = NEW.id
       AND draft_line.production_quantity > draft_line.ordered_quantity - COALESCE((
@@ -121,5 +123,5 @@ BEGIN
           AND plan.deleted_at IS NULL
           AND plan.status IN ('PLANNED', 'TAKEN_FOR_PRODUCTION', 'PARTIALLY_COMPLETED', 'COMPLETED', 'ON_HOLD')
       ), 0)
-  ) THEN RAISE(ABORT, 'production_quantity_exceeds_balance') END;
+  );
 END;
