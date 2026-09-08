@@ -117,6 +117,13 @@ function detectType(item?: Item): string {
   return 'GENERAL'
 }
 
+function matchingPlyItem(items: Item[], currentItem: Item | undefined, ply: string): Item | undefined {
+  if (!currentItem || !ply) return undefined
+  const expectedName = currentItem.item_name.replace(/\b\d+\s*ply\b/i, `${ply} Ply`)
+  if (expectedName === currentItem.item_name) return undefined
+  return items.find((candidate) => candidate.item_name.trim().toLowerCase() === expectedName.trim().toLowerCase())
+}
+
 function specificationSize(specification: Specification): string {
   const value = (input: string | number | null | undefined) => input == null || input === '' ? '' : String(input)
   const length = value(specification.length_mm)
@@ -286,7 +293,18 @@ export default function ProductSpecifications() {
       ? current.production_stages.filter((value) => value !== stage)
       : productionStageOptions.filter((value) => [...current.production_stages, stage].includes(value)),
   }))
-  const updatePly = (ply: string) => setForm((current) => ({ ...current, ply, paper_layers: buildPaperLayers(ply, current.paper_layers) }))
+  const updatePly = (ply: string) => {
+    setForm((current) => ({ ...current, ply, paper_layers: buildPaperLayers(ply, current.paper_layers) }))
+    if (!ply) return
+    const matchingItem = matchingPlyItem(items, item, ply)
+    if (!matchingItem) {
+      setError(`A matching ${ply} Ply item is not available for ${item?.item_name || 'the selected item'}.`)
+      return
+    }
+    setItemId(matchingItem.item_id)
+    setListItemId(matchingItem.item_id)
+    setError('')
+  }
   const updatePaperLayer = (index: number, key: keyof Omit<PaperLayer, 'layer_name'>, value: string) => setForm((current) => ({
     ...current,
     paper_layers: (current.paper_layers.length > 0 ? current.paper_layers : buildPaperLayers(current.ply, []))
