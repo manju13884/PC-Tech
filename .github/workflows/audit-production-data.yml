@@ -1,0 +1,36 @@
+name: Audit Production Data
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v5
+
+      - name: Count production records
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 execute pc-tech-production-db --remote --env production --command="SELECT (SELECT COUNT(*) FROM product_specification_records) AS specifications, (SELECT COUNT(*) FROM production_plans WHERE deleted_at IS NULL) AS production_plans, (SELECT COUNT(*) FROM production_plan_lines) AS production_lines, (SELECT COUNT(*) FROM job_cards) AS job_cards;"
+
+      - name: Verify G K UDYOG specifications
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 execute pc-tech-production-db --remote --env production --command="SELECT id, polar_canvas_item_code, customer_id, customer_name, item_name FROM product_specification_records WHERE customer_id = '898884000001896067' OR UPPER(customer_name) = 'G K UDYOG' ORDER BY id;"
+
+      - name: Verify Production Pages project
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project list
