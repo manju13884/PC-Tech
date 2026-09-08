@@ -4,6 +4,7 @@ import { CircleCheck, Copy, Pencil, Plus, Printer, Save, X } from 'lucide-react'
 import { getCustomers, type Customer } from '../../customerService'
 import { getItems, type Item } from '../../itemService'
 import { formatIstDateTime } from '../../utils/dateTimeFormatting'
+import { calculateRotarySize, calculateSlottingSize } from './rotarySizeCalculations'
 import './product-specifications.css'
 
 type PaperLayer = {
@@ -15,13 +16,13 @@ type FormState = {
   specification_type: string; length_mm: string; width_mm: string; height_mm: string
   ply: string; gsm: string; bf: string; print_required: boolean; print_colors: string; notes: string
   flute_type: string; paper_type: string; material: string; shade_color: string
-  finish: string; thickness_micron: string; roll_length_m: string; joint_type: string; board_type: string
+  finish: string; thickness_micron: string; roll_length_m: string; joint_type: string; board_type: string; board_creasing_allowance: string
   paper_layers: PaperLayer[]; production_stages: string[]
 }
 const emptyForm: FormState = {
   specification_name: '', polar_canvas_item_code: '', product_name: '', specification_type: 'GENERAL', length_mm: '', width_mm: '', height_mm: '', ply: '', gsm: '', bf: '',
   print_required: false, print_colors: '', notes: '', flute_type: '', paper_type: '', material: '',
-  shade_color: '', finish: '', thickness_micron: '', roll_length_m: '', joint_type: '', board_type: '',
+  shade_color: '', finish: '', thickness_micron: '', roll_length_m: '', joint_type: '', board_type: '', board_creasing_allowance: '',
   paper_layers: [], production_stages: [],
 }
 type Specification = Omit<FormState, 'print_required'> & {
@@ -29,12 +30,12 @@ type Specification = Omit<FormState, 'print_required'> & {
   item_sku: string; print_required: boolean | number; created_at: string; updated_at: string; attributes_json?: string
 }
 
-const attributeKeys = ['flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type'] as const
+const attributeKeys = ['flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type', 'board_creasing_allowance'] as const
 type AttributeFields = Pick<FormState, (typeof attributeKeys)[number]>
 const emptyAttributes = Object.fromEntries(attributeKeys.map((key) => [key, ''])) as AttributeFields
 const productionStageOptions = [
-  'Paper Cutting', 'Corrugation', 'Pasting', 'Board / Sheet Cutting', 'Printing', 'RS4',
-  'Creasing', 'Slotting', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing',
+  'Paper Cutting', 'Corrugation', 'Pasting', 'Board / Sheet Cutting', 'Printing', 'Creasing',
+  'RS4', 'Slotting', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing',
 ] as const
 
 function defaultProductionStages(type: string, printRequired: boolean): string[] {
@@ -136,17 +137,19 @@ function specificationSize(specification: Specification): string {
   return parts.join(' · ') || '—'
 }
 
-function IsometricBoxDrawing({ length, width, height }: { length: string; width: string; height: string }) {
+function IsometricBoxDrawing({ length, width, height, creasingAllowance }: { length: string; width: string; height: string; creasingAllowance: string }) {
   const dimension = (value: string) => value ? `${value} mm` : '—'
   const numericLength = Number(length)
   const numericWidth = Number(width)
   const numericHeight = Number(height)
+  const numericCreasingAllowance = Number(creasingAllowance)
   const hasDimensions = numericLength > 0 && numericWidth > 0 && numericHeight > 0
-  const rotary = hasDimensions ? (2 * numericLength) + (2 * numericWidth) + 50 : 0
+  const rotaryCalculation = calculateRotarySize(numericWidth, numericHeight, numericCreasingAllowance)
+  const rotary = rotaryCalculation?.rotarySize ?? 0
   const deckle = hasDimensions ? numericWidth + numericHeight + 20 : 0
   const sheetDimension = hasDimensions ? `${calculatedNumber(deckle)} × ${calculatedNumber(rotary)} mm` : '—'
   const deckleFormula = hasDimensions ? `(${calculatedNumber(numericWidth)} + ${calculatedNumber(numericHeight)} + 20) ×` : '—'
-  const rotaryFormula = hasDimensions ? `(2×${calculatedNumber(numericLength)} + 2×${calculatedNumber(numericWidth)} + 50)` : ''
+  const rotaryFormula = rotaryCalculation ? `(${calculatedNumber(rotaryCalculation.topFlap)} + ${calculatedNumber(numericHeight)} + ${calculatedNumber(rotaryCalculation.bottomFlap)})` : ''
   return <svg className="spec-report-box-drawing" viewBox="0 0 1000 330" role="img" aria-label={`Isometric box dimensions: length ${dimension(length)}, width ${dimension(width)}, height ${dimension(height)}; sheet size ${sheetDimension}`}>
     <defs><marker id="spec-dimension-arrow" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto-start-reverse"><path d="M0,0 L9,4.5 L0,9 Z" /></marker></defs>
     <g className="box-faces">
@@ -186,9 +189,12 @@ function calculatedSpecificationValues(form: FormState) {
   const length = Number(form.length_mm)
   const width = Number(form.width_mm)
   const height = Number(form.height_mm)
+  const creasingAllowance = Number(form.board_creasing_allowance)
   const hasBoxDimensions = form.specification_type === 'BOX' && length > 0 && width > 0 && height > 0
   const hasSheetDimensions = form.specification_type === 'BOARD / SHEET' && length > 0 && width > 0
-  const rotaryMm = hasBoxDimensions ? (2 * length) + (2 * width) + 50 : hasSheetDimensions ? length : 0
+  const rotaryCalculation = form.specification_type === 'BOX' ? calculateRotarySize(width, height, creasingAllowance) : null
+  const slottingSizeMm = form.specification_type === 'BOX' ? calculateSlottingSize(width, creasingAllowance) : null
+  const rotaryMm = rotaryCalculation?.rotarySize ?? (hasSheetDimensions ? length : 0)
   const deckleMm = hasBoxDimensions ? width + height + 20 : hasSheetDimensions ? width : 0
   const validLayers = form.paper_layers.map((layer) => {
     const isFluting = layer.layer_name.toLowerCase().includes('fluting')
@@ -203,12 +209,18 @@ function calculatedSpecificationValues(form: FormState) {
     ? validLayers.reduce((total, layer) => total + ((layer.gsm * layer.bf) / 1000), 0)
     : 0
   return {
-    rotarySize: hasBoxDimensions
-      ? `${calculatedNumber(2 * length)} + ${calculatedNumber(2 * width)} + 50 = ${calculatedNumber(rotaryMm)} mm (${calculatedNumber(rotaryMm / 10)} cm)`
+    creasingAllowance: creasingAllowance > 0 ? `${calculatedNumber(creasingAllowance)} mm` : '—',
+    adjustedWidth: rotaryCalculation ? `${calculatedNumber(rotaryCalculation.adjustedWidth)} mm` : '—',
+    topFlap: rotaryCalculation ? `${calculatedNumber(rotaryCalculation.topFlap)} mm` : '—',
+    boxHeight: rotaryCalculation ? `${calculatedNumber(height)} mm` : '—',
+    bottomFlap: rotaryCalculation ? `${calculatedNumber(rotaryCalculation.bottomFlap)} mm` : '—',
+    rotarySize: rotaryCalculation
+      ? `${calculatedNumber(rotaryCalculation.topFlap)} + ${calculatedNumber(height)} + ${calculatedNumber(rotaryCalculation.bottomFlap)} = ${calculatedNumber(rotaryMm)} mm (${calculatedNumber(rotaryMm / 10)} cm)`
       : rotaryMm ? `${calculatedNumber(rotaryMm)} mm (${calculatedNumber(rotaryMm / 10)} cm)` : '—',
     sheetSize: rotaryMm && deckleMm
       ? `${calculatedNumber(deckleMm)} × ${calculatedNumber(rotaryMm)} mm (${calculatedNumber(deckleMm / 10)} × ${calculatedNumber(rotaryMm / 10)} cm)`
       : '—',
+    slottingSize: slottingSizeMm == null ? '—' : `${calculatedNumber(slottingSizeMm)} mm`,
     boxWeight: boxWeightG ? `${calculatedNumber(boxWeightG)} g (${calculatedNumber(boxWeightG / 1000, 3)} kg)` : '—',
     boardGsm: boardGsm ? `${calculatedNumber(boardGsm)} gsm` : '—',
     burstingStrength: burstingStrength ? `${calculatedNumber(burstingStrength)} kg/cm² (est.)` : '—',
@@ -394,9 +406,15 @@ export default function ProductSpecifications() {
         {showsBoardFields && <label>Board Type<select value={form.board_type} onChange={(e) => update('board_type', e.target.value)}><option value="">Select board type</option><option value="Plant Board">Plant Board</option><option value="Manual Board">Manual Board</option>{form.board_type && !['Plant Board', 'Manual Board'].includes(form.board_type) && <option value={form.board_type}>{form.board_type}</option>}</select></label>}
         <label>Finish<select value={form.finish} onChange={(e) => update('finish', e.target.value)}><option value="">Select finish</option><option value="Normal">Normal</option><option value="Gloss Lamination">Gloss Lamination</option><option value="Matt Lamination">Matt Lamination</option><option value="Varnish">Varnish</option><option value="UV Coating">UV Coating</option><option value="Water Resistant">Water Resistant</option><option value="Not Applicable">Not Applicable</option>{form.finish && !['Normal', 'Gloss Lamination', 'Matt Lamination', 'Varnish', 'UV Coating', 'Water Resistant', 'Not Applicable'].includes(form.finish) && <option value={form.finish}>{form.finish}</option>}</select></label>
         {form.specification_type !== 'PAPER / ROLL' && <label>Print<select value={form.print_required ? 'YES' : 'NO'} onChange={(e) => updatePrintRequired(e.target.value === 'YES')}><option>NO</option><option>YES</option></select></label>}
+        {showsBoardFields && <label>Board / Creasing Allowance<select value={form.board_creasing_allowance} onChange={(e) => update('board_creasing_allowance', e.target.value)}><option value="">Select allowance</option>{['6', '7', '8', '10'].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
         {form.print_required && <label>Print Colours<input value={form.print_colors} onChange={(e) => update('print_colors', e.target.value)} placeholder="e.g. 2 colours" /></label>}
-        {showsBoardFields && <label>Rotary Size<input value={calculatedValues.rotarySize} readOnly aria-readonly="true" /></label>}
+        {showsBoardFields && <label>Adjusted Width<input value={calculatedValues.adjustedWidth} readOnly aria-readonly="true" /></label>}
+        {showsBoardFields && <label>Top Flap<input value={calculatedValues.topFlap} readOnly aria-readonly="true" /></label>}
+        {showsBoardFields && <label>Box Height<input value={calculatedValues.boxHeight} readOnly aria-readonly="true" /></label>}
+        {showsBoardFields && <label>Bottom Flap<input value={calculatedValues.bottomFlap} readOnly aria-readonly="true" /></label>}
+        {showsBoardFields && <label className="product-spec-rotary-result">Rotary Size<input value={calculatedValues.rotarySize} readOnly aria-readonly="true" /></label>}
         {showsBoardFields && <label>Sheet Size (Deckle × Rotary)<input value={calculatedValues.sheetSize} readOnly aria-readonly="true" title="Sheet Size = Deckle Size × Rotary Size" /></label>}
+        {showsBoardFields && <label>Slotting Size<input value={calculatedValues.slottingSize} readOnly aria-readonly="true" /></label>}
         {showsBoardFields && <label>Box Weight<input value={calculatedValues.boxWeight} readOnly aria-readonly="true" /></label>}
         {showsBoardFields && <label>Board GSM<input value={calculatedValues.boardGsm} readOnly aria-readonly="true" /></label>}
         {showsBoardFields && <label>BS<input value={calculatedValues.burstingStrength} readOnly aria-readonly="true" /></label>}
@@ -423,7 +441,7 @@ export default function ProductSpecifications() {
       </div>
       {form.specification_type === 'BOX' && <div className="product-spec-box-preview">
         <div className="product-spec-box-preview-heading"><strong>Box Dimension Drawing (Isometric Projection)</strong><span>Generated from the Length, Width and Height above.</span></div>
-        <IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} />
+        <IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} creasingAllowance={form.board_creasing_allowance} />
       </div>}
       <footer><div>{error && <span className="spec-error">{error}</span>}{message && <span className="spec-success"><CircleCheck size={14} />{message}</span>}</div><button type="submit" disabled={saving}><Save size={15} />{saving ? 'Saving…' : 'Save Specification'}</button></footer>
     </section>}
@@ -447,12 +465,12 @@ export default function ProductSpecifications() {
             <dl className="spec-report-master"><div><dt>Customer</dt><dd>{customer.customer_name}</dd></div><div><dt>Product Name</dt><dd>{form.product_name || '—'}</dd></div><div><dt>Item</dt><dd>{item.item_name}</dd></div><div><dt>Created DateTime</dt><dd>{formatIstDateTime(reportSpecification?.created_at)}</dd></div><div><dt>Updated DateTime</dt><dd>{formatIstDateTime(reportSpecification?.updated_at)}</dd></div><div><dt>Design Type</dt><dd>{form.specification_type}</dd></div><div><dt>Board Type</dt><dd>{form.board_type || '—'}</dd></div></dl>
             <section><h2>Technical Specification</h2><dl className="spec-report-details">
               <div><dt>Length (OD)</dt><dd>{form.length_mm ? `${form.length_mm} mm` : '—'}</dd></div><div><dt>Width (OD)</dt><dd>{form.width_mm ? `${form.width_mm} mm` : '—'}</dd></div><div><dt>Height (OD)</dt><dd>{form.height_mm ? `${form.height_mm} mm` : '—'}</dd></div><div><dt>Ply</dt><dd>{form.ply ? `${form.ply} Ply` : '—'}</dd></div>
-              <div><dt>Material</dt><dd>{form.material || '—'}</dd></div><div><dt>Joint Type</dt><dd>{form.joint_type || '—'}</dd></div><div><dt>Finish</dt><dd>{form.finish || '—'}</dd></div><div><dt>Print</dt><dd>{form.print_required ? `Yes${form.print_colors ? ` · ${form.print_colors}` : ''}` : 'No'}</dd></div>
-              <div><dt>Rotary Size</dt><dd>{calculatedValues.rotarySize}</dd></div><div><dt>Sheet Size (Deckle × Rotary)</dt><dd>{calculatedValues.sheetSize}</dd></div><div><dt>Box Weight</dt><dd>{calculatedValues.boxWeight}</dd></div><div><dt>Board GSM</dt><dd>{calculatedValues.boardGsm}</dd></div><div><dt>BS</dt><dd>{calculatedValues.burstingStrength}</dd></div><div><dt>Moisture</dt><dd>{calculatedValues.moisture}</dd></div>
+              <div><dt>Material</dt><dd>{form.material || '—'}</dd></div><div><dt>Joint Type</dt><dd>{form.joint_type || '—'}</dd></div><div><dt>Board / Creasing Allowance</dt><dd>{form.board_creasing_allowance || '—'}</dd></div><div><dt>Finish</dt><dd>{form.finish || '—'}</dd></div><div><dt>Print</dt><dd>{form.print_required ? `Yes${form.print_colors ? ` · ${form.print_colors}` : ''}` : 'No'}</dd></div>
+              <div><dt>Adjusted Width</dt><dd>{calculatedValues.adjustedWidth}</dd></div><div><dt>Top Flap</dt><dd>{calculatedValues.topFlap}</dd></div><div><dt>Box Height</dt><dd>{calculatedValues.boxHeight}</dd></div><div><dt>Bottom Flap</dt><dd>{calculatedValues.bottomFlap}</dd></div><div><dt>Rotary Size</dt><dd>{calculatedValues.rotarySize}</dd></div><div><dt>Sheet Size (Deckle × Rotary)</dt><dd>{calculatedValues.sheetSize}</dd></div><div><dt>Slotting Size</dt><dd>{calculatedValues.slottingSize}</dd></div><div><dt>Box Weight</dt><dd>{calculatedValues.boxWeight}</dd></div><div><dt>Board GSM</dt><dd>{calculatedValues.boardGsm}</dd></div><div><dt>BS</dt><dd>{calculatedValues.burstingStrength}</dd></div><div><dt>Moisture</dt><dd>{calculatedValues.moisture}</dd></div>
             </dl></section>
             {form.paper_layers.length > 0 && <section><h2>Paper Composition</h2><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>{form.paper_layers.map((layer, index) => <tr key={`${layer.layer_name}-report`}><td>{index + 1}</td><td>{layer.layer_name}</td><td>{layer.gsm || '—'}</td><td>{layer.bf_rct || '—'}</td><td>{layer.deckle_size || calculatedDeckle(form)}</td><td>{layer.shade || '—'}</td><td>{layer.paper_grade || '—'}</td><td>{layer.flute || '—'}</td></tr>)}</tbody></table></section>}
             <section><h2>Production Stages</h2><ol className="spec-report-stages">{form.production_stages.map((stage) => <li key={`${stage}-report`}>{stage}</li>)}</ol></section>
-            {form.specification_type === 'BOX' && <section className="spec-report-drawing-section"><h2>Box Dimension Drawing (Isometric Projection)</h2><IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} /></section>}
+            {form.specification_type === 'BOX' && <section className="spec-report-drawing-section"><h2>Box Dimension Drawing (Isometric Projection)</h2><IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} creasingAllowance={form.board_creasing_allowance} /></section>}
             {form.notes && <section><h2>Specification Notes</h2><p className="spec-report-notes">{form.notes}</p></section>}
             <footer><span>Generated by PC-Tech | Confidential | Shred Upon Job Completion</span><span>{formatIstDateTime(new Date())}</span></footer>
           </article>

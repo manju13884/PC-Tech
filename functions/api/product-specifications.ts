@@ -90,7 +90,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return response({ error: 'Specification measurements must be valid positive numbers.' }, 400)
   }
   const attributes: Record<string, unknown> = Object.fromEntries([
-    'flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type',
+    'flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type', 'board_creasing_allowance',
   ].map((key) => [key, text(key)]))
   const paperLayers = Array.isArray(body.paper_layers) ? body.paper_layers
     .filter((layer): layer is Record<string, unknown> => Boolean(layer) && typeof layer === 'object')

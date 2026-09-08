@@ -42,20 +42,21 @@
 .production-planned-print-heading { display: none; }
 @media (max-width: 800px) { .production-planned-toolbar { align-items: stretch; flex-direction: column; padding: 5px; } .production-planned-controls { width: 100%; } .production-planned-controls input { min-width: 0; width: 100%; } }
 @media print {
-  @page { size: A4 landscape; margin: 5mm 7mm; }
+  @page { size: A4 landscape; margin: 5mm; }
   html, body { width: auto !important; background: #fff !important; }
   .dashboard-header, .dashboard-menu, .dashboard-page-heading, .production-planned-toolbar, .production-planned-grid-panel > footer { display: none !important; }
   .dashboard-grid, .dashboard-content, .dashboard-card, .dashboard-details, .production-planned-workspace { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }
-  .production-planned-grid-panel { box-sizing: border-box; width: 100%; overflow: visible; border: 0; padding-right: 4mm !important; padding-left: 4mm !important; }
-  .production-planned-print-heading { display: flex; align-items: end; justify-content: space-between; margin-bottom: 2mm; border-bottom: 1px solid #64748b; padding-bottom: 1.5mm; }
-  .production-planned-print-heading h1 { margin: 0; font-size: 10pt; }
-  .production-planned-print-heading p { margin: 0; font-size: 6.5pt; }
+  .production-planned-grid-panel { box-sizing: border-box; width: 100%; overflow: visible; border: 0; padding-right: 2mm !important; padding-left: 2mm !important; font-family: Arial, "Segoe UI", sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .production-planned-print-heading { position: relative; display: flex; min-height: 8mm; align-items: center; justify-content: flex-end; margin-bottom: 2mm; border-bottom: 1px solid #64748b; padding-bottom: 1.5mm; }
+  .production-planned-print-heading img { position: absolute; left: 0; width: 9mm; height: 8mm; object-fit: contain; }
+  .production-planned-print-heading h1 { position: absolute; left: 50%; margin: 0; transform: translateX(-50%); text-align: center; font-size: 12pt; font-weight: 800; }
+  .production-planned-print-heading p { margin: 0; font-size: 7pt; font-weight: 700; }
   .production-planned-grid-panel .production-lines-scroll { max-height: none; min-height: 0; overflow: visible; }
-  .production-planned-grid-panel .production-planning-grid { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; border: .6pt solid #94a3b8; border-collapse: collapse; table-layout: fixed; outline: .6pt solid #94a3b8; outline-offset: -.6pt; }
+  .production-planned-grid-panel .production-planning-grid { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; border: .8pt solid #475569; border-collapse: collapse; table-layout: fixed; outline: .8pt solid #475569; outline-offset: -.8pt; }
   .production-planned-grid-panel .production-planning-grid .col-serial { width: 2%; }
-  .production-planned-grid-panel .production-planning-grid .col-order-number { width: 5%; }
+  .production-planned-grid-panel .production-planning-grid .col-order-number { width: 6.5%; }
   .production-planned-grid-panel .production-planning-grid .col-code { width: 4%; }
-  .production-planned-grid-panel .production-planning-grid .col-customer { width: 7%; }
+  .production-planned-grid-panel .production-planning-grid .col-customer { width: 6.5%; }
   .production-planned-grid-panel .production-planning-grid .col-date { width: 5%; }
   .production-planned-grid-panel .production-planning-grid .col-quantity { width: 3.5%; }
   .production-planned-grid-panel .production-planning-grid .col-description { width: 8%; }
@@ -64,13 +65,16 @@
   .production-planned-grid-panel .production-planning-grid .col-ply { width: 2.5%; }
   .production-planned-grid-panel .production-planning-grid .col-flute-run { width: 3.5%; }
   .production-planned-grid-panel .production-planning-grid .col-machine { width: 3.5%; }
-  .production-planned-grid-panel .production-planning-grid .col-paper { width: 2.6%; }
-  .production-planned-grid-panel .production-lines-scroll th { height: auto; padding: 1px; color: #0f172a; font-size: 3.5pt; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
-  .production-planned-grid-panel .production-lines-scroll td { height: auto; padding: 1px; color: #111827; font-size: 4pt; font-weight: 650; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
-  .production-planned-grid-panel .production-planning-grid tr > :first-child { border-left: .6pt solid #94a3b8; }
-  .production-planned-grid-panel .production-planning-grid tr > :last-child { border-right: .6pt solid #94a3b8; }
-  .production-planned-grid-panel .production-lines-scroll td strong { font-size: 4pt; font-weight: 800; }
-  .production-planned-grid-panel .production-lines-scroll td small { color: #334155; font-size: 3.25pt; font-weight: 650; }
+  .production-planned-grid-panel .production-planning-grid .col-paper { width: 2.5%; }
+  .production-planned-grid-panel .production-lines-scroll th { height: auto; padding: 1.2px 1px; border-color: #64748b; color: #0f172a; font-size: 4.35pt; font-weight: 800; line-height: 1.12; overflow-wrap: anywhere; }
+  .production-planned-grid-panel .production-lines-scroll td { min-height: 5.5mm; padding: 1.4px 1px; border-color: #94a3b8; color: #111827; font-size: 5pt; font-weight: 700; line-height: 1.18; white-space: normal; overflow-wrap: anywhere; vertical-align: middle; }
+  .production-planned-grid-panel .production-planning-grid tbody tr:nth-child(odd) td { background: #fff !important; }
+  .production-planned-grid-panel .production-planning-grid tbody tr:nth-child(even) td { background: #eaf1f7 !important; }
+  .production-planned-grid-panel .production-planning-grid tr > :first-child { border-left: .8pt solid #475569; }
+  .production-planned-grid-panel .production-planning-grid tr > :last-child { border-right: .8pt solid #475569; }
+  .production-planned-grid-panel .production-lines-scroll td strong { font-size: 5.1pt; font-weight: 800; }
+  .production-planned-grid-panel .production-lines-scroll td:nth-child(2) strong { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+  .production-planned-grid-panel .production-lines-scroll td small { color: #334155; font-size: 4.25pt; font-weight: 700; }
   .production-planned-grid-panel .production-planning-grid thead { display: table-header-group; }
   .production-planned-grid-panel .production-planning-grid tr { break-inside: avoid; }
 }

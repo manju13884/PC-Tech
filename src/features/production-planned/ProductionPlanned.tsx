@@ -249,6 +249,22 @@ export default function ProductionPlanned() {
     filtered.length === 0
       ? "No production lines are available to print"
       : "Print or save the displayed production lines as PDF";
+  const printProductionPlan = () => {
+    const productionDates = [...new Set(filtered.map((line) => line.plan_date).filter(Boolean))].sort();
+    const firstDate = productionDates[0]
+      ? formatIstDate(productionDates[0], "DD-MMM-YYYY")
+      : "Undated";
+    const finalProductionDate = productionDates[productionDates.length - 1];
+    const lastDate = finalProductionDate
+      ? formatIstDate(finalProductionDate, "DD-MMM-YYYY")
+      : firstDate;
+    const previousTitle = document.title;
+    document.title = productionDates.length > 1
+      ? `Production-Planned-${firstDate}-to-${lastDate}`
+      : `Production-Planned-${firstDate}`;
+    window.addEventListener("afterprint", () => { document.title = previousTitle; }, { once: true });
+    window.print();
+  };
 
   return (
     <div className="production-planning-workspace production-planned-workspace">
@@ -345,7 +361,7 @@ export default function ProductionPlanned() {
             type="button"
             title={printUnavailableReason}
             disabled={filtered.length === 0}
-            onClick={() => window.print()}
+            onClick={printProductionPlan}
           >
             <Printer size={14} /> Print / Save PDF
           </button>
@@ -353,6 +369,7 @@ export default function ProductionPlanned() {
       </div>
       <section className="production-selection-panel production-planned-grid-panel">
         <header className="production-planned-print-heading">
+          <img src="/assets/PC-Bord-Logo-only-transparent.png" alt="PolarCanvas" />
           <h1>Production Planned</h1>
           <p>
             {printFilterLabel} | {filtered.length} production lines

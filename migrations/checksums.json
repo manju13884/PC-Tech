@@ -26,5 +26,10 @@
   "0025_add_production_planned_permission.sql": "8f895b0a5318b4cc93b6f2b6b771a98c65140c78adf82002071fbd88ab092a37",
   "0026_add_production_plan_machine_values.sql": "dd28016145d3c16682bb93bb9a25ac67a613199a04e1dd4959e2dba243fb8fa4",
   "0027_add_optional_product_specification_product_name.sql": "7664cefdd2d8a9a962165bd0d7f95d72ad7858fdcb56891cef6669c6b69ef15d",
-  "0028_create_job_cards.sql": "3650cff3d3760dac0153a6af84d40a264d25cef5504f6a9c413e24996e5bf435"
+  "0028_create_job_cards.sql": "3650cff3d3760dac0153a6af84d40a264d25cef5504f6a9c413e24996e5bf435",
+  "0029_create_job_card_process_entries.sql": "1b6b7445a25268d3a22584e52ae100f1112137cc4a4bc933b7abb297cf379102",
+  "0030_add_job_card_process_outputs.sql": "6c577677d682efb7f94f6b510257bd765ba1ae02c79a014925e7fcacdc48e5cd",
+  "0031_add_second_corrugation_process_outputs.sql": "fee4c6ff3c3628fde033a9404ad9a0395c67d24dadaf16a7538a628a2cf8925d",
+  "0032_add_job_card_process_reel_details.sql": "154a1589a6ff196464312b7973c0568090fb5bd2c51815fc766a99ccee237fc7",
+  "0033_add_job_card_completion_details.sql": "c4ea9e4411fd32ec489d0f7dcacbe1e93e582c9c908a80b1022f267ba1cd624c"
 }

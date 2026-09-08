@@ -92,6 +92,7 @@
 .production-stage-grid .is-selected b { background:#22a35a; color:#fff; }
 .production-stage-grid em { color:#64748b; font-size:.52rem; font-weight:500; white-space:nowrap; }
 .product-spec-box-preview { margin-top:.5rem; overflow:hidden; border:1px solid #dbe3ee; border-radius:6px; background:#fff; }.product-spec-box-preview-heading { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.42rem .55rem; border-bottom:1px solid #dbe3ee; background:#f4f7fb; font-size:.62rem; }.product-spec-box-preview-heading span { color:#64748b; }.product-spec-box-preview .spec-report-box-drawing { height:270px; border:0; background:#fbfdff; }
+.product-spec-rotary-result { color:#17468e!important; font-weight:800!important; }.product-spec-rotary-result input { border-color:#60a5fa!important; background:#eff6ff!important; color:#17468e!important; font-weight:850!important; }
 .product-spec-report-backdrop { position:fixed; z-index:1200; inset:0; display:flex; align-items:center; justify-content:center; padding:1rem; background:rgb(15 23 42 / 58%); }
 .product-spec-report-dialog { display:flex; width:min(100%,900px); max-height:calc(100vh - 2rem); flex-direction:column; overflow:hidden; border-radius:8px; background:#eef2f7; box-shadow:0 24px 70px rgb(15 23 42 / 30%); }
 .product-spec-report-dialog>header { display:flex; min-height:46px; align-items:center; justify-content:space-between; gap:1rem; padding:.55rem .75rem; border-bottom:1px solid #cbd5e1; background:#fff; color:#1e293b; font-size:.76rem; }

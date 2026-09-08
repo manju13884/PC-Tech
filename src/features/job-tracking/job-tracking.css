@@ -1,0 +1,89 @@
+.job-tracking-toolbar { box-shadow: inset 3px 0 #7c3aed; }
+.job-tracking-toolbar .production-planned-title svg { color: #7c3aed; }
+.job-tracking-list .tracking-col-expand { width: 3%; }
+.job-tracking-list .tracking-col-job { width: 7%; }
+.job-tracking-list .tracking-col-status { width: 9%; }
+.job-tracking-list .tracking-col-date { width: 8%; }
+.job-tracking-list .tracking-col-plan { width: 8%; }
+.job-tracking-list .tracking-col-order { width: 9%; }
+.job-tracking-list .tracking-col-item { width: 7%; }
+.job-tracking-list .tracking-col-customer { width: 11%; }
+.job-tracking-list .tracking-col-product { width: 9%; }
+.job-tracking-list .tracking-col-description { width: 11%; }
+.job-tracking-list .tracking-col-qty { width: 6%; }
+.job-tracking-list .tracking-col-ply { width: 4%; }
+.job-tracking-list .tracking-col-updated { width: 8%; }
+.job-tracking-list table { font-size: .58rem; }
+.job-tracking-list th { padding-right: 3px; padding-left: 3px; font-size: .48rem; line-height: 1.15; text-align: center; }
+.job-tracking-list td { height: 34px; padding: 4px; font-size: .56rem; line-height: 1.25; }
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(2),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(4),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(5),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(6),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(7),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(11),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(12),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(13) { text-align: center; }
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(2),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(4),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(5),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(6),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(7),
+.job-tracking-list tbody tr:not(.job-tracking-detail-row) td:nth-child(13) { white-space: nowrap; overflow-wrap: normal; }
+.job-tracking-list .job-tracking-centered { text-align: center; }
+.job-tracking-status { box-sizing: border-box; width: 100%; min-width: 0; height: 23px; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0 3px; background: #fff; color: #334155; font: inherit; font-size: .48rem; font-weight: 800; }
+.job-tracking-status.is-created { border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
+.job-tracking-status.is-in_progress { border-color: #f4c86a; background: #fff8e7; color: #8a5a08; }
+.job-tracking-status.is-completed { border-color: #86d6aa; background: #ecfdf5; color: #166534; }
+.job-tracking-status.is-cancelled { border-color: #f2a8a8; background: #fff1f2; color: #b42318; }
+.job-tracking-list td:first-child { text-align: center; vertical-align: middle; }
+.job-tracking-expand { display: grid; width: 20px; height: 20px; margin: 0 auto; place-items: center; border: 1px solid #d97706; border-radius: 3px; padding: 0; background: #f59e0b; color: #5f2b00; box-shadow: 0 1px 2px rgb(15 23 42 / 14%); cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, box-shadow 140ms ease; }
+.job-tracking-expand:hover { border-color: #b45309; background: #e88908; color: #4c2200; box-shadow: 0 2px 4px rgb(180 83 9 / 20%); }
+.job-tracking-expand:focus-visible { outline: 2px solid #93c5fd; outline-offset: 1px; }
+.job-tracking-expand svg { transition: transform 140ms ease; }
+.job-tracking-list tr.is-expanded .job-tracking-expand { border-color: #1d4ed8; background: #2563eb; color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 16%); }
+.job-tracking-list tr.is-expanded .job-tracking-expand svg { transform: rotate(90deg); }
+.job-tracking-list tr.is-expanded > td { background: #eef6ff; }
+.job-tracking-detail-row > td { padding: 8px !important; background: #e8edf3 !important; }
+.job-tracking-expanded-card { max-width: 1100px; margin: 0 auto; overflow: auto; border: 1px solid #94a3b8; background: #fff; box-shadow: 0 2px 7px rgb(15 23 42 / 12%); }
+.job-tracking-expanded-card .job-card-sheet { width: 100%; color: #111827; font-family: Arial, "Segoe UI", sans-serif; font-size: 10px; line-height: 1.15; }
+.job-tracking-expanded-card .job-card-sheet header { position: relative; display: flex; min-height: 42px; align-items: center; border-bottom: 1px solid #334155; padding: 4px 10px; background: #e8eef5; }
+.job-tracking-expanded-card .job-card-logo { width: 34px; height: 30px; object-fit: contain; }
+.job-tracking-expanded-card .job-card-heading { margin: 0; font: 800 14px/1.1 Arial, "Segoe UI", sans-serif; text-align: center; }
+.job-tracking-expanded-card header .job-card-heading { position: absolute; left: 50%; transform: translateX(-50%); }
+.job-tracking-expanded-card header > strong { margin-left: auto; font-size: 11px; }
+.job-tracking-expanded-card .job-card-sheet h2 { border-top: 1px solid #334155; border-bottom: 1px solid #334155; padding: 5px; background: #dbe5ef; }
+.job-tracking-expanded-card table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.job-tracking-expanded-card th,.job-tracking-expanded-card td { height: 29px; border: 1px solid #64748b; padding: 3px 5px; overflow-wrap: anywhere; vertical-align: middle; }
+.job-tracking-expanded-card th { background: #edf1f5; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.job-tracking-expanded-card .job-card-items th,.job-tracking-expanded-card .job-card-process th { background: #263746; color: #fff; text-align: center; }
+.job-tracking-expanded-card .job-card-items td,.job-tracking-expanded-card .job-card-process td { text-align: center; }
+.job-tracking-expanded-card .job-card-process input[type="datetime-local"] { display:block; width:100%; min-width:0; height:25px; box-sizing:border-box; border:1px solid #93a4b8; border-radius:3px; padding:1px 2px; background:#fff; color:#172033; font:700 8px Arial,"Segoe UI",sans-serif; font-variant-numeric:tabular-nums; }
+.job-tracking-expanded-card .job-card-process input[type="datetime-local"]:focus { border-color:#2563eb; outline:2px solid #bfdbfe; outline-offset:0; }
+.job-tracking-expanded-card .job-card-process input[type="datetime-local"]:disabled { background:#e8eef5; color:#64748b; cursor:progress; }
+.job-tracking-expanded-card .job-card-process-entry { display:block; width:100%; min-width:0; height:25px; box-sizing:border-box; border:1px solid #93a4b8; border-radius:3px; padding:2px 3px; background:#fff; color:#172033; font:700 9px Arial,"Segoe UI",sans-serif; text-align:center; }
+.job-tracking-expanded-card .job-card-process-entry:focus { border-color:#2563eb; outline:2px solid #bfdbfe; outline-offset:0; }
+.job-tracking-expanded-card .job-card-process-entry:disabled { background:#e8eef5; color:#64748b; cursor:progress; }
+.job-tracking-expanded-card .job-card-process td.job-card-split-process-values { padding: 3px 5px; }
+.job-tracking-expanded-card .job-card-process-entry-stack { display: grid; height: 52px; grid-template-rows: 25px 25px; place-items: center; align-content: center; gap: 2px; }
+.job-tracking-expanded-card .job-card-process-entry-stack > .job-card-process-entry { width: 100%; height: 25px; justify-self: center; align-self: center; }
+.job-tracking-expanded-card .job-card-process-entry-stack > span { display: flex; min-width: 0; align-items: center; justify-content: center; }
+.job-tracking-expanded-card .job-card-master .job-card-creasing-row > td { height: auto; padding: 0; }
+.job-tracking-expanded-card .job-card-creasing-summary { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); margin: 0; }
+.job-tracking-expanded-card .job-card-creasing-summary > div { min-width: 0; min-height: 42px; box-sizing: border-box; padding: 5px 3px; border-right: 1px solid #64748b; text-align: center; }
+.job-tracking-expanded-card .job-card-creasing-summary > div:last-child { border-right: 0; }
+.job-tracking-expanded-card .job-card-creasing-summary dt { font-size: 8px; font-weight: 800; line-height: 1.05; text-transform: uppercase; }
+.job-tracking-expanded-card .job-card-creasing-summary dd { margin: 4px 0 0; font-size: 10px; font-weight: 800; }
+.job-tracking-expanded-card .job-card-process td.job-card-process-name { padding-right: 3px; padding-left: 3px; font-size: 9px; font-weight: 800; line-height: 1.05; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+.job-tracking-expanded-card .job-card-process .job-card-corrugation-row td { height: 58px; }
+.job-tracking-expanded-card .job-card-process td.job-card-split-reels { padding: 0; }
+.job-tracking-expanded-card .job-card-split-reels span { display: block; height: 50%; box-sizing: border-box; }
+.job-tracking-expanded-card .job-card-process td.job-card-split-reels,.job-tracking-expanded-card .job-card-process td.job-card-split-process-values { position: relative; }
+.job-tracking-expanded-card .job-card-process td.job-card-split-reels::after,.job-tracking-expanded-card .job-card-process td.job-card-split-process-values::after { position: absolute; z-index: 2; right: 0; left: 0; top: 50%; border-top: 1px solid #64748b; content: ''; pointer-events: none; }
+.job-tracking-expanded-card footer { display: grid; grid-template-columns: repeat(5, 1fr); min-height: 52px; border: 1px solid #334155; border-top: 0; }
+.job-tracking-expanded-card footer label { display:grid; grid-template-rows:auto 1fr; gap:4px; padding:6px; border-right:1px solid #64748b; }
+.job-tracking-expanded-card footer label:last-child { border-right:0; }
+.job-tracking-expanded-card footer span { padding:0; font-weight:800; text-align:center; text-transform:uppercase; }
+.job-tracking-expanded-card .job-card-footer-entry { display:block; width:100%; min-width:0; height:26px; box-sizing:border-box; align-self:center; border:1px solid #93a4b8; border-radius:3px; padding:2px 4px; background:#fff; color:#172033; font:700 10px Arial,"Segoe UI",sans-serif; text-align:center; }
+.job-tracking-expanded-card .job-card-footer-entry:focus { border-color:#2563eb; outline:2px solid #bfdbfe; outline-offset:0; }
+.job-tracking-expanded-card .job-card-footer-entry:disabled { background:#e8eef5; color:#64748b; cursor:progress; }

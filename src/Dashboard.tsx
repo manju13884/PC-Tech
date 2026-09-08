@@ -29,6 +29,7 @@ import ProductionPlanning from './features/production-planning/ProductionPlannin
 import ProductionPlanned from './features/production-planned/ProductionPlanned'
 import ProductSpecifications from './features/product-specifications/ProductSpecifications'
 import JobCards from './features/job-cards/JobCards'
+import JobTracking from './features/job-tracking/JobTracking'
 import SoSpecificationMapping from './features/so-specification-mapping/SoSpecificationMapping'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
 import type { CoaAnalysisItem, CoaInvoiceValues } from './lib/coaGenerator'
@@ -213,11 +214,9 @@ const PANEL_HEADING_MENU_KEYS = new Set([
   'corrugated-board-price',
   'paper-purchase-request',
   'production-specifications',
-  'job-tracking',
 ])
 const NEW_MODULE_MENU_KEYS = new Set([
   'production-specifications',
-  'job-tracking',
 ])
 const MOBILE_NO_PATTERN = /^\d{10}$/
 const coaAnalysisHeadings = ['Board GSM', 'GSM', 'Bursting Strength', 'Moisture', 'Ply'] as const
@@ -2041,7 +2040,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' || selectedItem.key === 'job-tracking' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
             {selectedItem.key !== 'home' && (
               <header className="dashboard-page-heading">
                 <h2>
@@ -2102,6 +2101,9 @@ export default function Dashboard({
               )}
               {selectedItem.key === 'job-cards' && (
                 <JobCards />
+              )}
+              {selectedItem.key === 'job-tracking' && (
+                <JobTracking />
               )}
               {NEW_MODULE_MENU_KEYS.has(selectedItem.key) && (
                 <section className="paper-request-section pc-module-placeholder">
