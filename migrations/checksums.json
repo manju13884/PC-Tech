@@ -24,5 +24,7 @@
   "0023_normalize_inactive_user_emails.sql": "b0157b5e39c6301ca162bdeef0abe56a68f8455e26afbdbf9dcb95131ca0881d",
   "0024_create_production_planning.sql": "2cb520f8ad01dc432a8272c84040024ecf29d77497ec0953c2a7cec5b8ee18f0",
   "0025_add_production_planned_permission.sql": "8f895b0a5318b4cc93b6f2b6b771a98c65140c78adf82002071fbd88ab092a37",
-  "0026_add_production_plan_machine_values.sql": "dd28016145d3c16682bb93bb9a25ac67a613199a04e1dd4959e2dba243fb8fa4"
+  "0026_add_production_plan_machine_values.sql": "dd28016145d3c16682bb93bb9a25ac67a613199a04e1dd4959e2dba243fb8fa4",
+  "0027_add_optional_product_specification_product_name.sql": "7664cefdd2d8a9a962165bd0d7f95d72ad7858fdcb56891cef6669c6b69ef15d",
+  "0028_create_job_cards.sql": "3650cff3d3760dac0153a6af84d40a264d25cef5504f6a9c413e24996e5bf435"
 }

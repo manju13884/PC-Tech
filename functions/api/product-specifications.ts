@@ -39,7 +39,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   const itemId = url.searchParams.get('item_id')?.trim()
   if (customerId && !itemId) {
     const specifications = await context.env.DB.prepare(
-      `SELECT id, specification_name, polar_canvas_item_code, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
+      `SELECT id, specification_name, polar_canvas_item_code, product_name, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
         length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, created_at, updated_at
        FROM product_specification_records
        WHERE customer_id = ?
@@ -49,7 +49,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   }
   if (!customerId || !itemId) {
     const specifications = await context.env.DB.prepare(
-      `SELECT id, specification_name, polar_canvas_item_code, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
+      `SELECT id, specification_name, polar_canvas_item_code, product_name, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
         length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, created_at, updated_at
        FROM product_specification_records
        ORDER BY updated_at DESC, customer_name ASC, item_name ASC`,
@@ -58,7 +58,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   }
 
   const specification = await context.env.DB.prepare(
-    `SELECT id, specification_name, polar_canvas_item_code, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
+    `SELECT id, specification_name, polar_canvas_item_code, product_name, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
       length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, created_at, updated_at
      FROM product_specification_records WHERE customer_id = ? AND item_id = ? ORDER BY updated_at DESC LIMIT 1`,
   ).bind(customerId, itemId).first()
@@ -78,6 +78,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const customerName = text('customer_name')
   const itemId = text('item_id')
   const itemName = text('item_name')
+  const productName = text('product_name').slice(0, 200)
   const recordId = Number(body.id)
   if (!customerId || !customerName || !itemId || !itemName) {
     return response({ error: 'Customer and item are required.' }, 400)
@@ -113,7 +114,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     : []
 
   const commonValues = [
-    customerId, customerName, itemId, itemName, text('item_sku'), text('specification_type') || 'GENERAL',
+    productName, customerId, customerName, itemId, itemName, text('item_sku'), text('specification_type') || 'GENERAL',
     numbers.length_mm, numbers.width_mm, numbers.height_mm, numbers.ply, numbers.gsm, numbers.bf,
     body.print_required === true ? 1 : 0, text('print_colors'), text('notes'), JSON.stringify(attributes), user.id,
   ]
@@ -121,7 +122,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   if (Number.isInteger(recordId) && recordId > 0) {
     saved = await context.env.DB.prepare(
       `UPDATE product_specification_records SET
-        customer_id = ?, customer_name = ?, item_id = ?, item_name = ?, item_sku = ?,
+        product_name = ?, customer_id = ?, customer_name = ?, item_id = ?, item_name = ?, item_sku = ?,
         specification_type = ?, length_mm = ?, width_mm = ?, height_mm = ?, ply = ?, gsm = ?, bf = ?,
         print_required = ?, print_colors = ?, notes = ?, attributes_json = ?, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? RETURNING id, updated_at`,
@@ -129,10 +130,10 @@ export async function onRequestPost(context: Context): Promise<Response> {
   } else {
     const inserted = await context.env.DB.prepare(
       `INSERT INTO product_specification_records (
-        specification_name, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
+        specification_name, product_name, customer_id, customer_name, item_id, item_name, item_sku, specification_type,
         length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json,
         created_by_user_id, updated_by_user_id
-      ) VALUES ('AUTO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+      ) VALUES ('AUTO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
     ).bind(...commonValues, user.id).run()
     const newId = Number(inserted.meta.last_row_id)
     const generatedCode = `PC-${String(newId).padStart(4, '0')}`

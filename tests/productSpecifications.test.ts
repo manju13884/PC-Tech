@@ -11,6 +11,12 @@ test('product specifications use cached customers and cached Zoho items', async 
   assert.match(component, /getCustomers\(\)/)
   assert.match(component, /getItems\(\)/)
   assert.match(component, /Promise\.allSettled/)
+  assert.match(component, /specification\.customer_id === listCustomerId\)/)
+  assert.doesNotMatch(component, /!listItemId \|\| specification\.item_id === listItemId/)
+  assert.match(component, /response\.status === 401/)
+  assert.match(component, /pc-tech-session-expired/)
+  assert.match(component, /specificationsLoaded/)
+  assert.match(component, /Unable to load saved specifications\. Refresh after checking the local backend\./)
   assert.match(itemsApi, /FROM item_cache/)
   assert.match(itemsApi, /isCurrentDailyCustomerCache/)
   assert.doesNotMatch(itemsApi, /paper_purchase_request_items|PC-TECH-FALLBACK/)
@@ -21,10 +27,11 @@ test('product specifications use cached customers and cached Zoho items', async 
 })
 
 test('product specification persistence supports multiple variants and never deletes data', async () => {
-  const [migration, variantMigration, codeMigration, api] = await Promise.all([
+  const [migration, variantMigration, codeMigration, productNameMigration, api] = await Promise.all([
     readFile('migrations/0016_create_item_cache_and_product_specifications.sql', 'utf8'),
     readFile('migrations/0018_create_product_specification_records.sql', 'utf8'),
     readFile('migrations/0019_add_polar_canvas_item_code.sql', 'utf8'),
+    readFile('migrations/0027_add_optional_product_specification_product_name.sql', 'utf8'),
     readFile('functions/api/product-specifications.ts', 'utf8'),
   ])
   assert.match(migration, /CREATE TABLE IF NOT EXISTS item_cache/)
@@ -36,7 +43,8 @@ test('product specification persistence supports multiple variants and never del
   assert.doesNotMatch(api, /ON CONFLICT\(customer_id, item_id\)/)
   assert.match(codeMigration, /'PC-' \|\| printf\('%06d', id\)/)
   assert.match(codeMigration, /CREATE UNIQUE INDEX/)
-  assert.doesNotMatch(`${migration}\n${variantMigration}\n${codeMigration}\n${api}`, /\b(?:DELETE|DROP|TRUNCATE|REPLACE)\b/i)
+  assert.match(productNameMigration, /ADD COLUMN product_name TEXT NOT NULL DEFAULT ''/)
+  assert.doesNotMatch(`${migration}\n${variantMigration}\n${codeMigration}\n${productNameMigration}\n${api}`, /\b(?:DELETE|DROP|TRUNCATE|REPLACE)\b/i)
   assert.match(api, /WHERE customer_id = \?/)
   assert.match(api, /'so-specification-mapping'/)
 })
@@ -50,6 +58,16 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   for (const field of ['length_mm', 'width_mm', 'height_mm', 'gsm', 'bf', 'print_required']) {
     assert.match(component, new RegExp(field))
   }
+  for (const label of ['Customer', 'Item', 'Design Type']) {
+    assert.match(component, new RegExp(`<span className="spec-field-label">${label} <b className="spec-required-mark"`))
+  }
+  assert.equal((component.match(/className="spec-required-mark"/g) ?? []).length, 3)
+  assert.match(component, /<label>Product Name<input type="text" maxLength=\{200\} value=\{form\.product_name\}/)
+  assert.doesNotMatch(component, /Product Name.*spec-required-mark/)
+  assert.doesNotMatch(component, /Product Name<input[^>]*required/)
+  assert.match(component, /product_name: specification\.product_name \|\| ''/)
+  assert.match(api, /const productName = text\('product_name'\)\.slice\(0, 200\)/)
+  assert.doesNotMatch(api, /Product Name are required/)
   assert.match(component, /detectType/)
   for (const ply of [2, 3, 5, 7, 9]) assert.match(component, new RegExp(`'${ply}'`))
   assert.match(component, /Paper Composition/)
@@ -114,7 +132,6 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /SS Pinning/)
   assert.match(component, /GI Pinning/)
   assert.match(component, /Select finish/)
-  assert.match(component, /Layer-wise/)
   for (const heading of ['Layer Type', 'BF/RCT', 'Shade', 'Paper Grade', 'Flute']) assert.match(component, new RegExp(heading))
   for (const type of ['BOX', 'BOARD \/ SHEET', 'PAPER \/ ROLL', 'TAPE', 'FILM']) {
     assert.match(component, new RegExp(type))
@@ -127,10 +144,19 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.doesNotMatch(component, /Specification Exists/)
   assert.match(component, /Saved Specifications/)
   assert.match(component, /specificationSize/)
-  assert.match(component, /<th>#<\/th><th>PC Item Code<\/th><th>Item<\/th><th>Size<\/th>/)
+  assert.match(component, /<th>#<\/th><th>PC Item Code<\/th><th>Product Name<\/th><th>Item<\/th><th>Size<\/th>/)
   assert.match(component, /Select a customer to display saved specifications/)
   assert.match(component, /All items/)
   assert.match(component, /> Edit</)
+  assert.match(component, /> Clone</)
+  assert.match(component, /editorRef\.current\?\.scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\)/)
+  assert.doesNotMatch(component, /window\.scrollTo/)
+  assert.match(component, /<th>Specification Notes<\/th>/)
+  assert.match(component, /className="specification-notes"/)
+  assert.doesNotMatch(component, /<th>GSM<\/th><th>BF<\/th><th>Print<\/th>/)
+  assert.match(component, /colSpan=\{10\}/)
+  assert.match(component, /const clone = \(specification: Specification\)/)
+  assert.match(component, /formFromSpecification\(specification, nextItemCode\(\)\)/)
   assert.doesNotMatch(component, /No Zoho item description available/)
   assert.match(styles, /product-spec-technical \.product-spec-grid \{ grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/)
   assert.match(styles, /input\[readonly\]/)

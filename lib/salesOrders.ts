@@ -17,6 +17,7 @@ export interface SalesOrderLineItem {
   name: string
   description: string
   quantity: number
+  quantity_invoiced: number
   unit: string
   rate: number
   amount: number
@@ -70,6 +71,7 @@ interface ZohoSalesOrderLineItem {
   item_name?: string
   description?: string
   quantity?: string | number
+  quantity_invoiced?: string | number
   unit?: string
   rate?: string | number
   item_total?: string | number
@@ -90,6 +92,7 @@ const OPEN_SALES_ORDER_STATUSES = new Set([
   'open',
   'confirmed',
   'partiallyinvoiced',
+  'overdue',
 ])
 
 function normalizeText(value: unknown): string {
@@ -126,6 +129,7 @@ function mapSalesOrderLineItem(
     name,
     description,
     quantity: Number.isFinite(quantity) ? quantity : 0,
+    quantity_invoiced: Math.max(0, Number(item.quantity_invoiced) || 0),
     unit: normalizeText(item.unit),
     rate: Number.isFinite(Number(item.rate)) ? Number(item.rate) : 0,
     amount: Number.isFinite(Number(item.item_total ?? item.amount))

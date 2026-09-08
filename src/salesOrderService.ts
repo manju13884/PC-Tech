@@ -1,6 +1,7 @@
 export interface SalesOrder {
   salesorder_id: string
   salesorder_number: string
+  status?: string
 }
 
 export interface SalesOrderLineItem {
@@ -9,6 +10,7 @@ export interface SalesOrderLineItem {
   name: string
   description: string
   quantity: number
+  quantity_invoiced?: number
   unit: string
   rate: number
   amount: number
@@ -72,6 +74,7 @@ function isSalesOrderLineItem(value: unknown): value is SalesOrderLineItem {
     && typeof item.name === 'string'
     && typeof item.description === 'string'
     && typeof item.quantity === 'number'
+    && (item.quantity_invoiced == null || typeof item.quantity_invoiced === 'number')
     && typeof item.unit === 'string'
     && typeof item.rate === 'number'
     && typeof item.amount === 'number'

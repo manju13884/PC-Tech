@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { CircleCheck, Pencil, Plus, Printer, Save, X } from 'lucide-react'
+import { CircleCheck, Copy, Pencil, Plus, Printer, Save, X } from 'lucide-react'
 import { getCustomers, type Customer } from '../../customerService'
 import { getItems, type Item } from '../../itemService'
 import { formatIstDateTime } from '../../utils/dateTimeFormatting'
@@ -11,7 +11,7 @@ type PaperLayer = {
   deckle_size: string; shade: string; flute: string
 }
 type FormState = {
-  specification_name: string; polar_canvas_item_code: string
+  specification_name: string; polar_canvas_item_code: string; product_name: string
   specification_type: string; length_mm: string; width_mm: string; height_mm: string
   ply: string; gsm: string; bf: string; print_required: boolean; print_colors: string; notes: string
   flute_type: string; paper_type: string; material: string; shade_color: string
@@ -19,7 +19,7 @@ type FormState = {
   paper_layers: PaperLayer[]; production_stages: string[]
 }
 const emptyForm: FormState = {
-  specification_name: '', polar_canvas_item_code: '', specification_type: 'GENERAL', length_mm: '', width_mm: '', height_mm: '', ply: '', gsm: '', bf: '',
+  specification_name: '', polar_canvas_item_code: '', product_name: '', specification_type: 'GENERAL', length_mm: '', width_mm: '', height_mm: '', ply: '', gsm: '', bf: '',
   print_required: false, print_colors: '', notes: '', flute_type: '', paper_type: '', material: '',
   shade_color: '', finish: '', thickness_micron: '', roll_length_m: '', joint_type: '', board_type: '',
   paper_layers: [], production_stages: [],
@@ -65,6 +65,26 @@ function readAttributes(value?: string): AttributeFields & { paper_layers: Paper
       : []
     return { ...Object.fromEntries(attributeKeys.map((key) => [key, String(record[key] ?? '')])) as AttributeFields, paper_layers: paperLayers, production_stages: productionStages }
   } catch { return { ...emptyAttributes, paper_layers: [], production_stages: [] } }
+}
+
+function formFromSpecification(specification: Specification, itemCode = specification.polar_canvas_item_code): FormState {
+  const attributes = readAttributes(specification.attributes_json)
+  const printRequired = specification.print_required === true || specification.print_required === 1
+  const savedPly = specification.ply?.toString() ?? ''
+  return {
+    specification_name: specification.specification_name,
+    polar_canvas_item_code: itemCode,
+    product_name: specification.product_name || '',
+    specification_type: specification.specification_type || 'GENERAL',
+    length_mm: specification.length_mm?.toString() ?? '', width_mm: specification.width_mm?.toString() ?? '',
+    height_mm: specification.height_mm?.toString() ?? '', ply: savedPly,
+    gsm: specification.gsm?.toString() ?? '', bf: specification.bf?.toString() ?? '',
+    print_required: printRequired,
+    print_colors: specification.print_colors ?? '', notes: specification.notes ?? '',
+    ...attributes,
+    paper_layers: attributes.paper_layers.length > 0 ? attributes.paper_layers : buildPaperLayers(savedPly, []),
+    production_stages: attributes.production_stages.length > 0 ? attributes.production_stages : defaultProductionStages(specification.specification_type, printRequired),
+  }
 }
 
 const paperCompositionByPly: Record<string, string[]> = {
@@ -190,6 +210,7 @@ function calculatedSpecificationValues(form: FormState) {
 }
 
 export default function ProductSpecifications() {
+  const editorRef = useRef<HTMLElement>(null)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [items, setItems] = useState<Item[]>([])
   const [customerId, setCustomerId] = useState('')
@@ -200,6 +221,7 @@ export default function ProductSpecifications() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [specifications, setSpecifications] = useState<Specification[]>([])
+  const [specificationsLoaded, setSpecificationsLoaded] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [listCustomerId, setListCustomerId] = useState('')
   const [listItemId, setListItemId] = useState('')
@@ -209,7 +231,7 @@ export default function ProductSpecifications() {
   const item = items.find((value) => value.item_id === itemId)
   const reportSpecification = editingId ? specifications.find((value) => value.id === editingId) : undefined
   const displayedSpecifications = listCustomerId
-    ? specifications.filter((specification) => specification.customer_id === listCustomerId && (!listItemId || specification.item_id === listItemId))
+    ? specifications.filter((specification) => specification.customer_id === listCustomerId)
     : []
   const showsHeight = form.specification_type === 'BOX'
   const showsDimensions = form.specification_type === 'BOX' || form.specification_type === 'BOARD / SHEET'
@@ -220,9 +242,14 @@ export default function ProductSpecifications() {
 
   const loadSpecifications = async () => {
     const response = await fetch('/api/product-specifications', { credentials: 'include' })
+    if (response.status === 401) {
+      window.dispatchEvent(new CustomEvent('pc-tech-session-expired'))
+      throw new Error('Your sign-in session has expired. Please sign in again.')
+    }
     if (!response.ok) throw new Error('Unable to load product specifications.')
     const payload = await response.json() as { specifications?: Specification[] }
     setSpecifications(Array.isArray(payload.specifications) ? payload.specifications : [])
+    setSpecificationsLoaded(true)
   }
 
   useEffect(() => {
@@ -265,32 +292,23 @@ export default function ProductSpecifications() {
     paper_layers: (current.paper_layers.length > 0 ? current.paper_layers : buildPaperLayers(current.ply, []))
       .map((layer, layerIndex) => layerIndex === index ? { ...layer, [key]: value } : layer),
   }))
+  const nextItemCode = () => `PC-${String(specifications.reduce((maximum, value) => Math.max(maximum, value.id), 0) + 1).padStart(4, '0')}`
+  const scrollToEditor = () => window.setTimeout(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
   const startAdd = () => {
     if (!listCustomerId || !listItemId) { setError('Select a customer and item before adding a specification.'); return }
-    const nextRecordId = specifications.reduce((maximum, value) => Math.max(maximum, value.id), 0) + 1
-    const nextItemCode = `PC-${String(nextRecordId).padStart(4, '0')}`
     const specificationType = detectType(items.find((value) => value.item_id === listItemId))
-    setEditingId(null); setCustomerId(listCustomerId); setItemId(listItemId); setForm({ ...emptyForm, polar_canvas_item_code: nextItemCode, specification_type: specificationType, production_stages: defaultProductionStages(specificationType, false) }); setMessage(''); setError(''); setShowForm(true)
+    setEditingId(null); setCustomerId(listCustomerId); setItemId(listItemId); setForm({ ...emptyForm, polar_canvas_item_code: nextItemCode(), specification_type: specificationType, production_stages: defaultProductionStages(specificationType, false) }); setMessage(''); setError(''); setShowForm(true)
   }
   const edit = (specification: Specification) => {
     setEditingId(specification.id); setListCustomerId(specification.customer_id); setListItemId(specification.item_id); setCustomerId(specification.customer_id); setItemId(specification.item_id); setShowForm(true); setMessage(''); setError('')
-    const attributes = readAttributes(specification.attributes_json)
-    const printRequired = specification.print_required === true || specification.print_required === 1
-    const savedPly = specification.ply?.toString() ?? ''
-    setForm({
-      specification_name: specification.specification_name,
-      polar_canvas_item_code: specification.polar_canvas_item_code,
-      specification_type: specification.specification_type || 'GENERAL',
-      length_mm: specification.length_mm?.toString() ?? '', width_mm: specification.width_mm?.toString() ?? '',
-      height_mm: specification.height_mm?.toString() ?? '', ply: savedPly,
-      gsm: specification.gsm?.toString() ?? '', bf: specification.bf?.toString() ?? '',
-      print_required: printRequired,
-      print_colors: specification.print_colors ?? '', notes: specification.notes ?? '',
-      ...attributes,
-      paper_layers: attributes.paper_layers.length > 0 ? attributes.paper_layers : buildPaperLayers(savedPly, []),
-      production_stages: attributes.production_stages.length > 0 ? attributes.production_stages : defaultProductionStages(specification.specification_type, printRequired),
-    })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setForm(formFromSpecification(specification))
+    scrollToEditor()
+  }
+  const clone = (specification: Specification) => {
+    setEditingId(null); setListCustomerId(specification.customer_id); setListItemId(specification.item_id); setCustomerId(specification.customer_id); setItemId(specification.item_id); setShowForm(true); setError('')
+    setForm(formFromSpecification(specification, nextItemCode()))
+    setMessage(`Cloned from ${specification.polar_canvas_item_code}. Review and save as a new specification.`)
+    scrollToEditor()
   }
   async function save(event: FormEvent) {
     event.preventDefault(); if (!customer || !item) return
@@ -328,20 +346,21 @@ export default function ProductSpecifications() {
   return <form className="coc-form product-spec-form" onSubmit={save}>
     <div className="product-spec-toolbar"><div><strong>Product Specification Master</strong>{listCustomerId && <span>{displayedSpecifications.length} record{displayedSpecifications.length === 1 ? '' : 's'}</span>}</div></div>
     <section className="product-spec-filterbar">
-      <label><span>Customer</span><select value={listCustomerId} onChange={(event) => { setListCustomerId(event.target.value); setListItemId(''); setShowForm(false) }}><option value="">Select customer</option>{customers.map((value) => <option key={value.customer_id} value={value.customer_id}>{value.customer_name}</option>)}</select></label>
-      <label><span>Item</span><select value={listItemId} onChange={(event) => { setListItemId(event.target.value); setShowForm(false) }}><option value="">All items</option>{items.map((value) => <option key={value.item_id} value={value.item_id}>{value.item_name}{value.sku ? ` (${value.sku})` : ''}</option>)}</select></label>
+      <label><span className="spec-field-label">Customer <b className="spec-required-mark" aria-label="required">*</b></span><select value={listCustomerId} onChange={(event) => { setListCustomerId(event.target.value); setListItemId(''); setShowForm(false) }}><option value="">Select customer</option>{customers.map((value) => <option key={value.customer_id} value={value.customer_id}>{value.customer_name}</option>)}</select></label>
+      <label><span className="spec-field-label">Item <b className="spec-required-mark" aria-label="required">*</b></span><select value={listItemId} onChange={(event) => { setListItemId(event.target.value); setShowForm(false) }}><option value="">All items</option>{items.map((value) => <option key={value.item_id} value={value.item_id}>{value.item_name}{value.sku ? ` (${value.sku})` : ''}</option>)}</select></label>
       <button type="button" onClick={startAdd}><Plus size={15} /> Add Specification</button>
     </section>
     {showForm && <>
-    <section className="product-spec-panel product-spec-editor-heading">
+    <section ref={editorRef} className="product-spec-panel product-spec-editor-heading">
       <div className="product-spec-form-title"><strong>{editingId ? 'Edit Specification' : 'Add Specification'}</strong><button type="button" onClick={() => setShowForm(false)} aria-label="Close form"><X size={15} /></button></div>
       <div className="product-spec-editor-context"><span>Customer<strong>{customer?.customer_name}</strong></span><span>Item<strong>{item?.item_name}{item?.sku ? ` (${item.sku})` : ''}</strong></span><button type="button" onClick={() => setReportOpen(true)}><Printer size={14} /> Product Specification Report</button></div>
     </section>
     {customer && item && <section className="product-spec-panel product-spec-technical">
       <header><div><h3>Technical Specification</h3><p>Length, Width and Height are captured as Outer Dimensions (OD).</p></div><span className="spec-type-badge">{form.specification_type}</span></header>
       <div className="product-spec-grid">
+        <label>Product Name<input type="text" maxLength={200} value={form.product_name} onChange={(e) => update('product_name', e.target.value)} /></label>
         <label>Polar Canvas Item Code<input value={form.polar_canvas_item_code} readOnly aria-readonly="true" /></label>
-        <label>Design Type <select value={form.specification_type} onChange={(e) => updateDesignType(e.target.value)}><option>BOX</option><option>BOARD / SHEET</option><option>PAPER / ROLL</option><option>TAPE</option><option>FILM</option><option>GENERAL</option></select></label>
+        <label><span className="spec-field-label">Design Type <b className="spec-required-mark" aria-label="required">*</b></span><select required value={form.specification_type} onChange={(e) => updateDesignType(e.target.value)}><option>BOX</option><option>BOARD / SHEET</option><option>PAPER / ROLL</option><option>TAPE</option><option>FILM</option><option>GENERAL</option></select></label>
         {showsDimensions && <label>Length - OD (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.length_mm} onChange={(e) => update('length_mm', e.target.value)} /></label>}
         {(showsDimensions || showsFlexibleFields || showsRollFields) && <label>{showsRollFields ? 'Deckle / Width (mm)' : 'Width - OD (mm)'}<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.width_mm} onChange={(e) => update('width_mm', e.target.value)} /></label>}
         {showsHeight && <label>Height - OD (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.height_mm} onChange={(e) => update('height_mm', e.target.value)} /></label>}
@@ -394,10 +413,11 @@ export default function ProductSpecifications() {
     </>}
     <section className="product-spec-list product-spec-panel">
       <header><div><h3>Saved Specifications</h3><p>Customer-wise specifications. Items are available irrespective of the selected customer.</p></div></header>
-      <div className="product-spec-table-wrap"><table><thead><tr><th>#</th><th>PC Item Code</th><th>Item</th><th>Size</th><th>Type</th><th>GSM</th><th>BF</th><th>Print</th><th>Updated</th><th aria-label="Actions" /></tr></thead><tbody>
-        {displayedSpecifications.map((specification, index) => <tr key={specification.id}><td>{index + 1}</td><td><strong>{specification.polar_canvas_item_code}</strong></td><td><strong>{specification.item_name}</strong>{specification.item_sku && <small>{specification.item_sku}</small>}</td><td>{specificationSize(specification)}</td><td><span className="spec-type-badge">{specification.specification_type}</span></td><td>{['BOX', 'BOARD / SHEET'].includes(specification.specification_type) ? 'Layer-wise' : specification.gsm ?? '—'}</td><td>{['BOX', 'BOARD / SHEET'].includes(specification.specification_type) ? 'Layer-wise' : specification.bf ?? '—'}</td><td>{specification.print_required ? 'Yes' : 'No'}</td><td>{formatIstDateTime(specification.updated_at)}</td><td><button type="button" className="spec-edit-button" onClick={() => edit(specification)}><Pencil size={13} /> Edit</button></td></tr>)}
-        {!loading && !listCustomerId && <tr><td colSpan={10} className="product-spec-empty">Select a customer to display saved specifications.</td></tr>}
-        {!loading && listCustomerId && displayedSpecifications.length === 0 && <tr><td colSpan={10} className="product-spec-empty">No product specifications are saved for this customer.</td></tr>}
+      <div className="product-spec-table-wrap"><table><thead><tr><th>#</th><th>PC Item Code</th><th>Product Name</th><th>Item</th><th>Size</th><th>Type</th><th>Print</th><th>Specification Notes</th><th>Updated</th><th aria-label="Actions" /></tr></thead><tbody>
+        {displayedSpecifications.map((specification, index) => <tr key={specification.id}><td>{index + 1}</td><td><strong>{specification.polar_canvas_item_code}</strong></td><td>{specification.product_name || ''}</td><td><strong>{specification.item_name}</strong>{specification.item_sku && <small>{specification.item_sku}</small>}</td><td>{specificationSize(specification)}</td><td><span className="spec-type-badge">{specification.specification_type}</span></td><td>{specification.print_required ? 'Yes' : 'No'}</td><td className="specification-notes" title={specification.notes || undefined}>{specification.notes || '—'}</td><td>{formatIstDateTime(specification.updated_at)}</td><td><div className="spec-row-actions"><button type="button" className="spec-edit-button" onClick={() => edit(specification)}><Pencil size={13} /> Edit</button><button type="button" className="spec-clone-button" onClick={() => clone(specification)} title={`Clone ${specification.polar_canvas_item_code}`}><Copy size={13} /> Clone</button></div></td></tr>)}
+        {!loading && !specificationsLoaded && <tr><td colSpan={10} className="product-spec-empty spec-error">Unable to load saved specifications. Refresh after checking the local backend.</td></tr>}
+        {!loading && specificationsLoaded && !listCustomerId && <tr><td colSpan={10} className="product-spec-empty">Select a customer to display saved specifications.</td></tr>}
+        {!loading && specificationsLoaded && listCustomerId && displayedSpecifications.length === 0 && <tr><td colSpan={10} className="product-spec-empty">No product specifications are saved for this customer.</td></tr>}
       </tbody></table></div>
     </section>
     {reportOpen && customer && item && createPortal(<div className="product-spec-report-backdrop" role="dialog" aria-modal="true" aria-label="Product Specification Report">
@@ -406,7 +426,7 @@ export default function ProductSpecifications() {
         <div className="product-spec-report-scroll">
           <article className="product-spec-report-a4">
             <div className="spec-report-brand"><img src="/assets/Bird Logo-transparent.png" alt="Polar Canvas" /><div><h1>POLAR CANVAS</h1><p>PRODUCT SPECIFICATION</p></div><strong>Polar Canvas Item Code : {form.polar_canvas_item_code}</strong></div>
-            <dl className="spec-report-master"><div><dt>Customer</dt><dd>{customer.customer_name}</dd></div><div><dt>Item</dt><dd>{item.item_name}</dd></div><div><dt>Created DateTime</dt><dd>{formatIstDateTime(reportSpecification?.created_at)}</dd></div><div><dt>Updated DateTime</dt><dd>{formatIstDateTime(reportSpecification?.updated_at)}</dd></div><div><dt>Design Type</dt><dd>{form.specification_type}</dd></div><div><dt>Board Type</dt><dd>{form.board_type || '—'}</dd></div></dl>
+            <dl className="spec-report-master"><div><dt>Customer</dt><dd>{customer.customer_name}</dd></div><div><dt>Product Name</dt><dd>{form.product_name || '—'}</dd></div><div><dt>Item</dt><dd>{item.item_name}</dd></div><div><dt>Created DateTime</dt><dd>{formatIstDateTime(reportSpecification?.created_at)}</dd></div><div><dt>Updated DateTime</dt><dd>{formatIstDateTime(reportSpecification?.updated_at)}</dd></div><div><dt>Design Type</dt><dd>{form.specification_type}</dd></div><div><dt>Board Type</dt><dd>{form.board_type || '—'}</dd></div></dl>
             <section><h2>Technical Specification</h2><dl className="spec-report-details">
               <div><dt>Length (OD)</dt><dd>{form.length_mm ? `${form.length_mm} mm` : '—'}</dd></div><div><dt>Width (OD)</dt><dd>{form.width_mm ? `${form.width_mm} mm` : '—'}</dd></div><div><dt>Height (OD)</dt><dd>{form.height_mm ? `${form.height_mm} mm` : '—'}</dd></div><div><dt>Ply</dt><dd>{form.ply ? `${form.ply} Ply` : '—'}</dd></div>
               <div><dt>Material</dt><dd>{form.material || '—'}</dd></div><div><dt>Joint Type</dt><dd>{form.joint_type || '—'}</dd></div><div><dt>Finish</dt><dd>{form.finish || '—'}</dd></div><div><dt>Print</dt><dd>{form.print_required ? `Yes${form.print_colors ? ` · ${form.print_colors}` : ''}` : 'No'}</dd></div>

@@ -35,6 +35,8 @@ interface PlanLine {
   itemName: string
   itemDescription: string
   orderedQuantity: number
+  invoicedQuantity: number
+  remainingQuantity: number
   previouslyPlannedQuantity: number
   balanceQuantity: number
   productionQuantity: number
@@ -81,6 +83,10 @@ const preloadedDeckleSize = (line: PlanLine) => {
   return savedDeckle?.trim() || calculatedDeckleSize(line)
 }
 const todayIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+const isProductionSalesOrder = (order: SalesOrder) => {
+  const status = (order.status ?? '').toLowerCase().replace(/[^a-z]/g, '')
+  return status === 'open' || status === 'partiallyinvoiced' || status === 'overdue'
+}
 const request = async <T,>(url: string, body: unknown): Promise<T> => {
   const response = await fetch(url, {
     method: 'POST',
@@ -122,8 +128,8 @@ const PlanningGridHeader = () => (
       <th className="group-paper" colSpan={12}>Paper Composition</th>
     </tr>
     <tr className="production-grid-columns">
-      <th>Sales Order</th><th>PC Item Code</th><th>Customer</th>
-      <th>Production Date</th><th>Delivery Date</th><th>Box Qty</th><th>Top Sheet</th><th>2 Ply Qty</th>
+      <th>Sales Order</th><th>PC Item Code <span className="production-required-mark" aria-label="required">*</span></th><th>Customer</th>
+      <th>Production Date <span className="production-required-mark" aria-label="required">*</span></th><th>Delivery Date <span className="production-required-mark" aria-label="required">*</span></th><th>Box Qty <span className="production-required-mark" aria-label="required">*</span></th><th>Top Sheet</th><th>2 Ply Qty</th>
       <th>Product Description</th>
       <th>L</th><th>W</th><th>H</th><th>Product<br />Type</th><th>Ply</th>
       <th>Flute<br />Run</th><th>Deckle Size</th><th>Cut Length</th><th>Top GSM</th><th>Top BF</th>
@@ -185,7 +191,7 @@ export default function ProductionPlanning() {
     setLoading(true)
     void getSalesOrdersByCustomer(customerId)
       .then((v) => {
-        if (active) setOrders(v)
+        if (active) setOrders(v.filter(isProductionSalesOrder))
       })
       .catch((e) => {
         if (active)
@@ -231,9 +237,6 @@ export default function ProductionPlanning() {
       }
     }
   }
-  const prepare = async () => {
-    if (lines.length) setStep('plan')
-  }
   const removeLine = (line: PlanLine) => {
     setLines((current) => {
       const remaining = current.filter((value) => value.salesOrderId !== line.salesOrderId || value.lineItemId !== line.lineItemId)
@@ -252,8 +255,7 @@ export default function ProductionPlanning() {
         v.productionQuantity > v.balanceQuantity ||
         !v.productionDate ||
         v.productionDate < todayIso() ||
-        !v.deliveryDate ||
-        v.deliveryDate < todayIso(),
+        !v.deliveryDate,
     )
   const submit = async (action: 'draft' | 'generate') => {
     setBusy(true)
@@ -275,7 +277,7 @@ export default function ProductionPlanning() {
       setStep('done')
     } catch (e) {
       setError(
-        e instanceof Error ? e.message : 'Unable to save Production Plan.',
+        e instanceof Error ? e.message : 'Unable to push the Production Plan.',
       )
     } finally {
       setBusy(false)
@@ -291,8 +293,8 @@ export default function ProductionPlanning() {
     return <tr key={`${v.salesOrderId}-${v.lineItemId}`} className={v.productionStatus === 'SPECIFICATION_MISSING' ? 'is-missing' : ''}>
       <td><span className="production-row-index">{index + 1}<button type="button" className="production-row-remove" aria-label={`Remove ${v.salesOrderNumber} ${v.itemName}`} title="Remove row" onClick={() => removeLine(v)}><X size={12} /></button></span></td><td>{v.salesOrderNumber}</td><td>{v.specificationCode ? <button type="button" className="production-spec-link" onClick={() => setViewingSpecification(v)}>{v.specificationCode}</button> : <span className="production-spec-missing">Specification Missing</span>}</td><td title={v.customerName}>{v.customerName}</td>
       <td><label className="production-date-control" title="Select Production Date"><span>{formatPlanDate(v.productionDate || todayIso())}</span><input className="production-date" aria-label="Production Date" type="date" min={todayIso()} value={v.productionDate || todayIso()} onClick={(e) => e.currentTarget.showPicker?.()} onChange={(e) => setLines((all) => all.map((x) => ({ ...x, productionDate: e.target.value })))} /></label></td>
-      <td><label className="production-date-control" title="Select Delivery Date"><span>{v.deliveryDate ? formatPlanDate(v.deliveryDate) : 'Select date'}</span><input className="production-date" aria-label="Delivery Date" type="date" min={todayIso()} value={v.deliveryDate || ''} onClick={(e) => e.currentTarget.showPicker?.()} onChange={(e) => setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deliveryDate: e.target.value } : x))} /></label></td>
-      <td><input className="production-quantity" type="number" min="0.001" max={v.balanceQuantity} step="any" value={v.productionQuantity} disabled={!v.included} onChange={(e) => { const productionQuantity = Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, productionQuantity, twoPlyQuantity: calculateTwoPlyQuantity(productionQuantity, x.ply) } : x)) }} /></td>
+      <td><label className="production-date-control" title="Select Delivery Date"><span>{v.deliveryDate ? formatPlanDate(v.deliveryDate) : 'Select date'}</span><input className="production-date" aria-label="Delivery Date" type="date" value={v.deliveryDate || ''} onClick={(e) => e.currentTarget.showPicker?.()} onChange={(e) => setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deliveryDate: e.target.value } : x))} /></label></td>
+      <td><input aria-label="Box Qty" title={`Maximum available quantity: ${v.balanceQuantity}`} className="production-quantity" type="number" min="0.001" max={v.balanceQuantity} step="any" value={v.productionQuantity} disabled={!v.included} onChange={(e) => { const productionQuantity = Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, productionQuantity, twoPlyQuantity: calculateTwoPlyQuantity(productionQuantity, x.ply) } : x)) }} /></td>
       <td className="numeric">{v.productionQuantity}</td>
       <td><input aria-label="2 Ply Qty" className="production-quantity" type="number" min="0" step="any" value={v.twoPlyQuantity ?? calculateTwoPlyQuantity(v.productionQuantity, v.ply) ?? ''} disabled={!v.included} onChange={(e) => { const twoPlyQuantity = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, twoPlyQuantity } : x)) }} /></td>
       <td className="production-description" title={v.itemDescription}>{v.itemDescription || v.itemName}</td>
@@ -394,13 +396,16 @@ export default function ProductionPlanning() {
               </table>
             </div>
             <footer>
-              <span>{selected.length} selected</span>
+              <div className="production-selection-meta">
+                <span>{selected.length} selected</span>
+                <span className="production-required-note"><b>*</b> Mandatory to push</span>
+              </div>
               <button
-                disabled={!selected.length || busy}
-                onClick={() => void prepare()}
+                disabled={!included.length || invalid || busy}
+                onClick={() => void submit('generate')}
               >
-                <Save size={14} />
-                {busy ? 'Saving…' : 'Save'}
+                <Factory size={14} />
+                {busy ? 'Pushing…' : 'Push to Production'}
               </button>
             </footer>
           </section>

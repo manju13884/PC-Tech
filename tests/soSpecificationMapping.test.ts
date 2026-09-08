@@ -30,5 +30,8 @@ test('SO Specification Mapping follows customer, Sales Order, display flow', asy
   assert.match(migration, /CREATE TABLE IF NOT EXISTS so_specification_mappings/)
   assert.doesNotMatch(`${api}\n${migration}`, /\b(?:DELETE|DROP|TRUNCATE|REPLACE)\b/i)
   assert.match(dashboard, /selectedItem\.key === 'so-specification-mapping'/)
-  assert.match(dashboard, /selectedItem\.key === 'product-specifications'.*selectedItem\.key === 'production-planned' \? ' document-form-page'/)
+  const documentPageClass = dashboard.match(/<div className=\{`dashboard-card([\s\S]*?)document-form-page/)?.[1] ?? ''
+  for (const menuKey of ['product-specifications', 'so-specification-mapping', 'production-planned', 'job-cards']) {
+    assert.match(documentPageClass, new RegExp(`selectedItem\\.key === '${menuKey}'`))
+  }
 })

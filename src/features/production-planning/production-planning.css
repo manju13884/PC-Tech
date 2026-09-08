@@ -43,6 +43,10 @@
 .production-grid-groups .group-machine { background:#fff5e7; color:#a1490c; }
 .production-grid-groups .group-paper { background:#eaf8f1; color:#087454; }
 .production-grid-groups .group-order { background:#f1f5f9; color:#475569; }
+.production-required-mark { margin-left:1px; color:#dc2626; font-size:.58rem; font-weight:900; }
+.production-selection-meta { display:flex; align-items:center; gap:.65rem; }
+.production-required-note { color:#64748b; font-size:.54rem; }
+.production-required-note b { margin-right:2px; color:#dc2626; font-size:.66rem; font-weight:900; }
 .production-grid-columns th { top:25px; background:#f7f9fc; color:#526174; }
 .production-planning-grid .col-serial{width:46px}.production-planning-grid .col-date{width:88px}
 .production-planning-grid .col-quantity{width:48px}.production-planning-grid .col-customer{width:102px}

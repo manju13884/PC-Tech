@@ -180,8 +180,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
       !/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)
     )
       return json({ error: 'Select both Production Date and Delivery Date.' }, 400)
-    if (productionDate < minimumDate || deliveryDate < minimumDate)
-      return json({ error: 'Previous dates cannot be selected.' }, 400)
+    if (productionDate < minimumDate)
+      return json({ error: 'Production Date cannot be in the past.' }, 400)
     if (
       !orderId ||
       !lineId ||
@@ -270,13 +270,17 @@ export async function onRequestPost(context: Context): Promise<Response> {
     const mappings = new Map(
       (mappingResult.results ?? []).map((row) => [row.line_id, row]),
     )
+    const allowedStatuses = new Set(['open', 'partiallyinvoiced', 'overdue'])
+    if (orders.some((order) => !allowedStatuses.has((order.status ?? '').toLowerCase().replace(/[^a-z]/g, ''))))
+      return json({ error: 'Only Open or Partially Invoiced Sales Orders can be pushed to production.' }, 409)
     for (const [lineId, quantity] of quantities) {
       const remote = remoteLines.get(lineId)!
-      const balance = remote.line.quantity - (planned.get(lineId) ?? 0)
+      const remainingQuantity = Math.max(0, remote.line.quantity - remote.line.quantity_invoiced)
+      const balance = Math.max(0, remainingQuantity - (planned.get(lineId) ?? 0))
       if (quantity > balance)
         return json(
           {
-            error: `Production quantity cannot exceed the available Sales Order balance of ${balance}.`,
+            error: `Box Qty cannot exceed the available Remaining Qty of ${balance}.`,
             lineItemId: lineId,
           },
           409,
@@ -359,7 +363,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
             deliveryDates.get(lineId),
             line.quantity,
             previous,
-            line.quantity - previous,
+            Math.max(0, line.quantity - line.quantity_invoiced - previous),
             quantity,
             twoPlyQuantities.get(lineId),
             deckleSizes.get(lineId),
@@ -416,7 +420,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
         status,
         message: draft
           ? `Production Plan ${planNumber} has been saved as Draft.`
-          : `Production Plan ${planNumber} has been generated successfully.`,
+          : `Production Plan ${planNumber} has been pushed to Production Planned.`,
       },
       201,
     )

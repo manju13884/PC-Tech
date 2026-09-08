@@ -120,7 +120,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     const mappings = new Map(
       (mappingResult.results ?? []).map((row) => [row.line_id, row]),
     )
-    const openStatuses = new Set(['open', 'confirmed', 'partiallyinvoiced'])
+    const openStatuses = new Set(['open', 'partiallyinvoiced', 'overdue'])
 
     const lines = orders.flatMap((order) => {
       const normalizedStatus = (order.status ?? '')
@@ -129,7 +129,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
       const orderOpen = !normalizedStatus || openStatuses.has(normalizedStatus)
       return order.line_items.map((line) => {
         const previouslyPlanned = planned.get(line.line_item_id) ?? 0
-        const balance = Math.max(0, line.quantity - previouslyPlanned)
+        const invoicedQuantity = Math.min(line.quantity, Math.max(0, line.quantity_invoiced))
+        const remainingQuantity = Math.max(0, line.quantity - invoicedQuantity)
+        const balance = Math.max(0, remainingQuantity - previouslyPlanned)
         const mapping = mappings.get(line.line_item_id)
         let attributes: Record<string, unknown> = {}
         try {
@@ -153,6 +155,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
           itemName: line.name,
           itemDescription: line.description,
           orderedQuantity: line.quantity,
+          invoicedQuantity,
+          remainingQuantity,
           previouslyPlannedQuantity: previouslyPlanned,
           balanceQuantity: balance,
           productionQuantity: balance,
