@@ -36,15 +36,29 @@ interface SpecificationLock {
 
 async function specificationLock(db: D1Database, specificationId: number): Promise<SpecificationLock | null> {
   return db.prepare(
-    `SELECT line.customer_product_specification_id AS specification_id,
-       GROUP_CONCAT(DISTINCT line.sales_order_number) AS sales_orders,
-       GROUP_CONCAT(DISTINCT plan.plan_number || ' (' || plan.status || ')') AS production_plans
-     FROM production_plan_lines line
-     INNER JOIN production_plans plan ON plan.id = line.production_plan_id
-     WHERE line.customer_product_specification_id = ?
-        OR line.approved_specification_revision_id = ?
-     GROUP BY line.customer_product_specification_id`,
-  ).bind(specificationId, specificationId).first<SpecificationLock>()
+    `SELECT specification_id,
+       GROUP_CONCAT(DISTINCT sales_order_number) AS sales_orders,
+       GROUP_CONCAT(DISTINCT production_plan) AS production_plans
+     FROM (
+       SELECT line.customer_product_specification_id AS specification_id,
+         line.sales_order_number,
+         plan.plan_number || ' (' || plan.status || ')' AS production_plan
+       FROM production_plan_lines line
+       INNER JOIN production_plans plan ON plan.id = line.production_plan_id
+       WHERE line.customer_product_specification_id = ? OR line.approved_specification_revision_id = ?
+       UNION ALL
+       SELECT child.product_specification_id AS specification_id,
+         line.sales_order_number,
+         plan.plan_number || ' (' || plan.status || ')' AS production_plan
+       FROM so_line_child_specifications child
+       INNER JOIN production_plan_lines line
+         ON line.zoho_sales_order_id = child.sales_order_id
+        AND line.zoho_sales_order_line_item_id = child.sales_order_line_item_id || ':child:' || child.product_specification_id
+       INNER JOIN production_plans plan ON plan.id = line.production_plan_id
+       WHERE child.product_specification_id = ?
+     ) associations
+     GROUP BY specification_id`,
+  ).bind(specificationId, specificationId, specificationId).first<SpecificationLock>()
 }
 
 async function attachSpecificationLocks(db: D1Database, rows: unknown[]): Promise<unknown[]> {

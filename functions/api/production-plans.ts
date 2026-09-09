@@ -223,15 +223,6 @@ export async function onRequestPost(context: Context): Promise<Response> {
         ),
       ),
     )
-    if ([...quantities.keys()].some((id) => !remoteLines.has(id)))
-      return json(
-        {
-          error:
-            'A Sales Order line changed after selection. Refresh and retry.',
-        },
-        409,
-      )
-
     const lineIds = [...quantities.keys()]
     const placeholders = lineIds.map(() => '?').join(', ')
     const [plannedResult, mappingResult] = await Promise.all([
@@ -246,19 +237,38 @@ export async function onRequestPost(context: Context): Promise<Response> {
         .all<{ line_id: string; quantity: number }>(),
       db
         .prepare(
-          `SELECT mapping.sales_order_line_item_id AS line_id, mapping.product_specification_id,
-           mapping.customer_id, mapping.customer_name, spec.specification_type, spec.ply
+          `SELECT mapping.sales_order_line_item_id AS line_id, mapping.sales_order_line_item_id AS source_line_id,
+           mapping.product_specification_id, mapping.customer_id, mapping.customer_name,
+           spec.specification_type, spec.ply, spec.item_id, spec.item_name, spec.product_name,
+           NULL AS mapped_quantity, 0 AS is_additional
          FROM so_specification_mappings mapping INNER JOIN product_specification_records spec ON spec.id = mapping.product_specification_id
-         WHERE mapping.sales_order_line_item_id IN (${placeholders})`,
+         WHERE mapping.sales_order_line_item_id IN (${placeholders})
+         UNION ALL
+         SELECT child.sales_order_line_item_id || ':child:' || child.product_specification_id AS line_id,
+           child.sales_order_line_item_id AS source_line_id, child.product_specification_id,
+           parent.customer_id, parent.customer_name, spec.specification_type, spec.ply,
+           spec.item_id, spec.item_name, spec.product_name, child.quantity AS mapped_quantity, 1 AS is_additional
+         FROM so_line_child_specifications child
+         INNER JOIN so_specification_mappings parent
+           ON parent.sales_order_id = child.sales_order_id AND parent.sales_order_line_item_id = child.sales_order_line_item_id
+         INNER JOIN product_specification_records spec ON spec.id = child.product_specification_id
+         WHERE child.sales_order_line_item_id || ':child:' || child.product_specification_id IN (${placeholders})
+           AND child.is_active = 1`,
         )
-        .bind(...lineIds)
+        .bind(...lineIds, ...lineIds)
         .all<{
           line_id: string
+          source_line_id: string
           product_specification_id: number
           customer_id: string
           customer_name: string
           specification_type: string
           ply: number | null
+          item_id: string
+          item_name: string
+          product_name: string
+          mapped_quantity: number | null
+          is_additional: number
         }>(),
     ])
     const planned = new Map(
@@ -270,6 +280,25 @@ export async function onRequestPost(context: Context): Promise<Response> {
     const mappings = new Map(
       (mappingResult.results ?? []).map((row) => [row.line_id, row]),
     )
+    for (const mapping of mappingResult.results ?? []) {
+      if (!mapping.is_additional) continue
+      const source = remoteLines.get(mapping.source_line_id)
+      if (!source) continue
+      remoteLines.set(mapping.line_id, {
+        order: source.order,
+        line: {
+          ...source.line,
+          line_item_id: mapping.line_id,
+          item_id: mapping.item_id,
+          name: mapping.product_name || mapping.item_name,
+          description: `Additional Product for ${source.line.name}`,
+          quantity: Number(mapping.mapped_quantity) || 0,
+          quantity_invoiced: 0,
+        },
+      })
+    }
+    if ([...quantities.keys()].some((id) => !remoteLines.has(id)))
+      return json({ error: 'A Sales Order line or Additional Product mapping changed after selection. Refresh and retry.' }, 409)
     const allowedStatuses = new Set(['open', 'partiallyinvoiced', 'overdue'])
     if (orders.some((order) => !allowedStatuses.has((order.status ?? '').toLowerCase().replace(/[^a-z]/g, ''))))
       return json({ error: 'Only Open or Partially Invoiced Sales Orders can be pushed to production.' }, 409)

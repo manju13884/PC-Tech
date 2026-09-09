@@ -1,4 +1,4 @@
-import { AlertCircle, BadgeIndianRupee, CircleCheck, FileText, Save } from 'lucide-react'
+import { AlertCircle, BadgeIndianRupee, CircleCheck, FileText, Plus, Save, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { getCustomers, getCustomersError, type Customer } from '../../customerService'
 import {
@@ -26,6 +26,23 @@ const formatCurrency = (value: number) => `₹${value.toLocaleString('en-IN', {
   maximumFractionDigits: 2,
 })}`
 
+async function readApiPayload<T>(response: Response): Promise<T> {
+  const responseText = await response.text()
+  try {
+    return JSON.parse(responseText) as T
+  } catch {
+    const local = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    throw new Error(local
+      ? 'Local PC-Tech backend is not running. Start the local Functions service and retry.'
+      : `The PC-Tech service returned an invalid response (${response.status}). Please retry.`)
+  }
+}
+
+const excludedSalesOrderStatuses = new Set(['closed', 'void', 'voided', 'invoiced'])
+const normalizedSalesOrderStatus = (status?: string) => ((status ?? '').trim().toLowerCase().match(/[a-z]+/g) ?? []).join('')
+const isMappableSalesOrder = (order: SalesOrder) => !excludedSalesOrderStatuses.has(normalizedSalesOrderStatus(order.status))
+interface AdditionalLineSpecification { specificationId: string; quantity: string }
+
 export default function SoSpecificationMapping() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customerId, setCustomerId] = useState('')
@@ -34,6 +51,7 @@ export default function SoSpecificationMapping() {
   const [detail, setDetail] = useState<SalesOrderDetail | null>(null)
   const [specifications, setSpecifications] = useState<ProductSpecificationOption[]>([])
   const [lineSpecifications, setLineSpecifications] = useState<Record<string, string>>({})
+  const [additionalLineSpecifications, setAdditionalLineSpecifications] = useState<Record<string, AdditionalLineSpecification[]>>({})
   const [customersLoading, setCustomersLoading] = useState(true)
   const [salesOrdersLoading, setSalesOrdersLoading] = useState(false)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -72,7 +90,7 @@ export default function SoSpecificationMapping() {
     setSalesOrdersLoading(true)
     void getSalesOrdersByCustomer(customerId)
       .then((orders) => {
-        if (requestId === salesOrderRequest.current) setSalesOrders(orders)
+        if (requestId === salesOrderRequest.current) setSalesOrders(orders.filter(isMappableSalesOrder))
       })
       .catch((error: unknown) => {
         if (requestId === salesOrderRequest.current) {
@@ -88,6 +106,7 @@ export default function SoSpecificationMapping() {
     let active = true
     setSpecifications([])
     setLineSpecifications({})
+    setAdditionalLineSpecifications({})
     setSpecificationError('')
     if (!customerId) {
       setSpecificationsLoading(false)
@@ -98,9 +117,12 @@ export default function SoSpecificationMapping() {
     const params = new URLSearchParams({ customer_id: customerId })
     void fetch(`/api/product-specifications?${params.toString()}`, { credentials: 'include' })
       .then(async (response) => {
-        const payload = await response.json() as { specifications?: ProductSpecificationOption[]; error?: string }
+        const payload = await readApiPayload<{ specifications?: ProductSpecificationOption[]; error?: string }>(response)
         if (!response.ok) throw new Error(payload.error || 'Unable to load Product Specifications.')
-        if (active) setSpecifications(Array.isArray(payload.specifications) ? payload.specifications : [])
+        if (active) {
+          setSpecifications(Array.isArray(payload.specifications) ? payload.specifications : [])
+          setSpecificationError('')
+        }
       })
       .catch((error: unknown) => {
         if (active) setSpecificationError(error instanceof Error ? error.message : 'Unable to load Product Specifications.')
@@ -115,6 +137,7 @@ export default function SoSpecificationMapping() {
     const requestId = ++detailRequest.current
     setDetail(null)
     setLineSpecifications({})
+    setAdditionalLineSpecifications({})
     setSaveMessage('')
     setSalesOrderError('')
     if (!salesOrderId) {
@@ -147,9 +170,16 @@ export default function SoSpecificationMapping() {
     const params = new URLSearchParams({ sales_order_id: salesOrderId })
     void fetch(`/api/so-specification-mappings?${params.toString()}`, { credentials: 'include' })
       .then(async (response) => {
-        const payload = await response.json() as { mappings?: Array<{ sales_order_line_item_id: string; product_specification_id: number }>; error?: string }
+        const payload = await readApiPayload<{ mappings?: Array<{ sales_order_line_item_id: string; product_specification_id: number }>; childMappings?: Array<{ sales_order_line_item_id: string; product_specification_id: number; quantity: number }>; error?: string }>(response)
         if (!response.ok) throw new Error(payload.error || 'Unable to load saved mappings.')
-        if (active) setLineSpecifications(Object.fromEntries((payload.mappings ?? []).map((mapping) => [mapping.sales_order_line_item_id, String(mapping.product_specification_id)])))
+        if (active) {
+          setLineSpecifications(Object.fromEntries((payload.mappings ?? []).map((mapping) => [mapping.sales_order_line_item_id, String(mapping.product_specification_id)])))
+          setAdditionalLineSpecifications((payload.childMappings ?? []).reduce<Record<string, AdditionalLineSpecification[]>>((grouped, mapping) => {
+            grouped[mapping.sales_order_line_item_id] = [...(grouped[mapping.sales_order_line_item_id] ?? []), { specificationId: String(mapping.product_specification_id), quantity: String(mapping.quantity) }]
+            return grouped
+          }, {}))
+          setSpecificationError('')
+        }
       })
       .catch((error: unknown) => {
         if (active) setSpecificationError(error instanceof Error ? error.message : 'Unable to load saved mappings.')
@@ -171,9 +201,28 @@ export default function SoSpecificationMapping() {
   }
   const allItemsMapped = Boolean(detail?.line_items.length)
     && detail!.line_items.every((line) => Boolean(lineSpecifications[line.line_item_id]))
+  const additionalProductsValid = Object.values(additionalLineSpecifications).every((additional) => additional.every((value) => Boolean(value.specificationId) && Number.isFinite(Number(value.quantity)) && Number(value.quantity) > 0))
+  const addAdditionalSpecification = (lineItemId: string, mainQuantity: number) => {
+    setAdditionalLineSpecifications((current) => ({ ...current, [lineItemId]: [...(current[lineItemId] ?? []), { specificationId: '', quantity: String(mainQuantity) }] }))
+    setSaveMessage('')
+  }
+  const updateAdditionalSpecification = (lineItemId: string, index: number, field: keyof AdditionalLineSpecification, value: string) => {
+    setAdditionalLineSpecifications((current) => ({
+      ...current,
+      [lineItemId]: (current[lineItemId] ?? []).map((specification, itemIndex) => itemIndex === index ? { ...specification, [field]: value } : specification),
+    }))
+    setSaveMessage('')
+  }
+  const removeAdditionalSpecification = (lineItemId: string, index: number) => {
+    setAdditionalLineSpecifications((current) => ({
+      ...current,
+      [lineItemId]: (current[lineItemId] ?? []).filter((_, itemIndex) => itemIndex !== index),
+    }))
+    setSaveMessage('')
+  }
 
   const saveMappings = async () => {
-    if (!detail || !allItemsMapped) return
+    if (!detail || !allItemsMapped || !additionalProductsValid) return
     setSaving(true)
     setSaveMessage('')
     setSpecificationError('')
@@ -188,6 +237,7 @@ export default function SoSpecificationMapping() {
           mappings: detail.line_items.map((line) => ({
             lineItemId: line.line_item_id,
             specificationId: Number(lineSpecifications[line.line_item_id]),
+            additionalSpecifications: (additionalLineSpecifications[line.line_item_id] ?? []).filter((value) => value.specificationId).map((value) => ({ specificationId: Number(value.specificationId), quantity: Number(value.quantity) })),
           })),
         }),
       })
@@ -199,7 +249,8 @@ export default function SoSpecificationMapping() {
         throw new Error(`Unable to save mappings (${response.status}). Please retry.`)
       }
       if (!response.ok) throw new Error(payload.error || 'Unable to save mappings.')
-      setSaveMessage('Product Specifications mapped successfully for all Sales Order items.')
+      setSpecificationError('')
+      setSaveMessage('Primary and additional Product Specifications mapped successfully for all Sales Order items.')
     } catch (error) {
       setSpecificationError(error instanceof Error ? error.message : 'Unable to save mappings.')
     } finally {
@@ -229,13 +280,13 @@ export default function SoSpecificationMapping() {
           <div><dt><BadgeIndianRupee size={13} /> Total Amount</dt><dd>{formatCurrency(detail.total)}</dd></div>
         </dl>
         <div className="so-order-table-wrap"><table>
-          <thead><tr><th>#</th><th>Item &amp; Description</th><th>Product Specification</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th></tr></thead>
+          <thead><tr><th>#</th><th>Item &amp; Description</th><th>Product Specification(s)</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Amount</th></tr></thead>
           <tbody>
-            {detail.line_items.map((line, index) => <tr key={line.line_item_id}><td>{index + 1}</td><td><strong>{line.name || '—'}</strong>{line.description && <small>{line.description}</small>}</td><td><select className="so-line-specification" value={lineSpecifications[line.line_item_id] ?? ''} disabled={specificationsLoading || mappingsLoading || specifications.length === 0} onChange={(event) => { setLineSpecifications((current) => ({ ...current, [line.line_item_id]: event.target.value })); setSaveMessage('') }}><option value="">{specificationsLoading || mappingsLoading ? 'Loading specifications…' : specifications.length ? 'Select specification' : 'No specifications available'}</option>{specifications.map((specification) => <option key={specification.id} value={specification.id}>{specificationLabel(specification)}</option>)}</select></td><td>{line.quantity.toLocaleString('en-IN')}</td><td>{line.unit || '—'}</td><td>{formatCurrency(line.rate)}</td><td>{formatCurrency(line.amount)}</td></tr>)}
+            {detail.line_items.map((line, index) => <tr key={line.line_item_id}><td>{index + 1}</td><td><strong>{line.name || '—'}</strong>{line.description && <small>{line.description}</small>}</td><td><div className="so-line-specifications"><label><span>Primary product <b>*</b></span><select className="so-line-specification" value={lineSpecifications[line.line_item_id] ?? ''} disabled={specificationsLoading || mappingsLoading || specifications.length === 0} onChange={(event) => { setLineSpecifications((current) => ({ ...current, [line.line_item_id]: event.target.value })); setSaveMessage('') }}><option value="">{specificationsLoading || mappingsLoading ? 'Loading specifications…' : specifications.length ? 'Select specification' : 'No specifications available'}</option>{specifications.map((specification) => <option key={specification.id} value={specification.id}>{specificationLabel(specification)}</option>)}</select></label>{(additionalLineSpecifications[line.line_item_id] ?? []).map((additional, childIndex) => <label key={`${line.line_item_id}-child-${childIndex}`}><span>Additional product {childIndex + 1}</span><div className="so-child-specification"><select className="so-line-specification" value={additional.specificationId} disabled={specificationsLoading || mappingsLoading || specifications.length === 0} onChange={(event) => updateAdditionalSpecification(line.line_item_id, childIndex, 'specificationId', event.target.value)}><option value="">Select additional specification</option>{specifications.filter((specification) => String(specification.id) !== lineSpecifications[line.line_item_id] && !(additionalLineSpecifications[line.line_item_id] ?? []).some((value, valueIndex) => valueIndex !== childIndex && value.specificationId === String(specification.id))).map((specification) => <option key={specification.id} value={specification.id}>{specificationLabel(specification)}</option>)}</select><input className="so-child-quantity" type="number" min="0.01" step="0.01" aria-label={`Quantity for additional product ${childIndex + 1}`} value={additional.quantity} onChange={(event) => updateAdditionalSpecification(line.line_item_id, childIndex, 'quantity', event.target.value)} /><button type="button" title="Remove additional product association" aria-label={`Remove additional product ${childIndex + 1}`} onClick={() => removeAdditionalSpecification(line.line_item_id, childIndex)}><X size={13} /></button></div></label>)}<button className="so-add-child" type="button" disabled={!lineSpecifications[line.line_item_id] || specificationsLoading || mappingsLoading} onClick={() => addAdditionalSpecification(line.line_item_id, line.quantity)}><Plus size={13} /> Add Additional Product</button></div></td><td>{line.quantity.toLocaleString('en-IN')}</td><td>{line.unit || '—'}</td><td>{formatCurrency(line.rate)}</td><td>{formatCurrency(line.amount)}</td></tr>)}
             {detail.line_items.length === 0 && <tr><td colSpan={7} className="so-mapping-empty">No items found in this Sales Order.</td></tr>}
           </tbody>
         </table></div>
-        <footer className="so-mapping-footer"><div>{!allItemsMapped && <span className="so-mapping-required">Map a Product Specification to every Sales Order item.</span>}{saveMessage && <span className="spec-success"><CircleCheck size={14} />{saveMessage}</span>}</div><button type="button" disabled={!allItemsMapped || saving || mappingsLoading} onClick={() => void saveMappings()}><Save size={14} />{saving ? 'Saving…' : 'Save Mapping'}</button></footer>
+        <footer className="so-mapping-footer"><div>{!allItemsMapped && <span className="so-mapping-required">Map a Product Specification to every Sales Order item.</span>}{allItemsMapped && !additionalProductsValid && <span className="so-mapping-required">Select a specification and enter Qty greater than zero for every Additional Product.</span>}{saveMessage && <span className="spec-success"><CircleCheck size={14} />{saveMessage}</span>}</div><button type="button" disabled={!allItemsMapped || !additionalProductsValid || saving || mappingsLoading} onClick={() => void saveMappings()}><Save size={14} />{saving ? 'Saving…' : 'Save Mapping'}</button></footer>
       </section>}
     </div>
   )

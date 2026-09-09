@@ -31,5 +31,7 @@
   "0030_add_job_card_process_outputs.sql": "6c577677d682efb7f94f6b510257bd765ba1ae02c79a014925e7fcacdc48e5cd",
   "0031_add_second_corrugation_process_outputs.sql": "fee4c6ff3c3628fde033a9404ad9a0395c67d24dadaf16a7538a628a2cf8925d",
   "0032_add_job_card_process_reel_details.sql": "154a1589a6ff196464312b7973c0568090fb5bd2c51815fc766a99ccee237fc7",
-  "0033_add_job_card_completion_details.sql": "c4ea9e4411fd32ec489d0f7dcacbe1e93e582c9c908a80b1022f267ba1cd624c"
+  "0033_add_job_card_completion_details.sql": "c4ea9e4411fd32ec489d0f7dcacbe1e93e582c9c908a80b1022f267ba1cd624c",
+  "0034_add_so_line_child_specifications.sql": "c9992e0118702b5dc332fab415f3e4ee6f9961fc9bf38c3b6ed8c9d58f7e9881",
+  "0035_add_so_line_child_quantity.sql": "d197746a27f53a84e8c4efc0872012b1782e35c06e2676f78f673a3b44467893"
 }

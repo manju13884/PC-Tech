@@ -82,25 +82,38 @@ export async function onRequestPost(context: Context): Promise<Response> {
           `SELECT line.zoho_sales_order_line_item_id AS line_id, SUM(line.production_quantity) AS planned_quantity
          FROM production_plan_lines line
          INNER JOIN production_plans plan ON plan.id = line.production_plan_id
-         WHERE line.zoho_sales_order_line_item_id IN (${placeholders})
+         WHERE (line.zoho_sales_order_line_item_id IN (${placeholders})
+           OR substr(line.zoho_sales_order_line_item_id, 1, instr(line.zoho_sales_order_line_item_id, ':child:') - 1) IN (${placeholders}))
            AND plan.deleted_at IS NULL
            AND plan.status IN ('PLANNED', 'TAKEN_FOR_PRODUCTION', 'PARTIALLY_COMPLETED', 'COMPLETED', 'ON_HOLD')
          GROUP BY line.zoho_sales_order_line_item_id`,
         )
-        .bind(...lineIds)
+        .bind(...lineIds, ...lineIds)
         .all<{ line_id: string; planned_quantity: number }>(),
       db
         .prepare(
-          `SELECT mapping.sales_order_line_item_id AS line_id, mapping.product_specification_id,
+          `SELECT mapping.sales_order_line_item_id AS line_id, mapping.sales_order_line_item_id AS source_line_id,
+           mapping.product_specification_id,
            spec.polar_canvas_item_code, spec.specification_type, spec.length_mm, spec.width_mm, spec.height_mm,
-           spec.ply, spec.attributes_json
+           spec.ply, spec.attributes_json, spec.item_id, spec.item_name, spec.product_name,
+           NULL AS mapped_quantity, 0 AS is_additional
          FROM so_specification_mappings mapping
          INNER JOIN product_specification_records spec ON spec.id = mapping.product_specification_id
-         WHERE mapping.sales_order_line_item_id IN (${placeholders})`,
+         WHERE mapping.sales_order_line_item_id IN (${placeholders})
+         UNION ALL
+         SELECT child.sales_order_line_item_id || ':child:' || child.product_specification_id AS line_id,
+           child.sales_order_line_item_id AS source_line_id, child.product_specification_id,
+           spec.polar_canvas_item_code, spec.specification_type, spec.length_mm, spec.width_mm, spec.height_mm,
+           spec.ply, spec.attributes_json, spec.item_id, spec.item_name, spec.product_name,
+           child.quantity AS mapped_quantity, 1 AS is_additional
+         FROM so_line_child_specifications child
+         INNER JOIN product_specification_records spec ON spec.id = child.product_specification_id
+         WHERE child.sales_order_line_item_id IN (${placeholders}) AND child.is_active = 1`,
         )
-        .bind(...lineIds)
+        .bind(...lineIds, ...lineIds)
         .all<{
           line_id: string
+          source_line_id: string
           product_specification_id: number
           polar_canvas_item_code: string
           specification_type: string
@@ -109,6 +122,11 @@ export async function onRequestPost(context: Context): Promise<Response> {
           height_mm: number | null
           ply: number | null
           attributes_json: string
+          item_id: string
+          item_name: string
+          product_name: string
+          mapped_quantity: number | null
+          is_additional: number
         }>(),
     ])
     const planned = new Map(
@@ -117,9 +135,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
         Number(row.planned_quantity) || 0,
       ]),
     )
-    const mappings = new Map(
-      (mappingResult.results ?? []).map((row) => [row.line_id, row]),
-    )
+    const mappingRows = mappingResult.results ?? []
     const openStatuses = new Set(['open', 'partiallyinvoiced', 'overdue'])
 
     const lines = orders.flatMap((order) => {
@@ -127,12 +143,19 @@ export async function onRequestPost(context: Context): Promise<Response> {
         .toLowerCase()
         .replace(/[^a-z]/g, '')
       const orderOpen = !normalizedStatus || openStatuses.has(normalizedStatus)
-      return order.line_items.map((line) => {
-        const previouslyPlanned = planned.get(line.line_item_id) ?? 0
-        const invoicedQuantity = Math.min(line.quantity, Math.max(0, line.quantity_invoiced))
-        const remainingQuantity = Math.max(0, line.quantity - invoicedQuantity)
-        const balance = Math.max(0, remainingQuantity - previouslyPlanned)
-        const mapping = mappings.get(line.line_item_id)
+      return order.line_items.flatMap((line) => {
+        const lineMappings = mappingRows.filter((mapping) => mapping.source_line_id === line.line_item_id)
+        const primaryMapping = lineMappings.find((mapping) => !mapping.is_additional)
+        const rows = primaryMapping ? [primaryMapping, ...lineMappings.filter((mapping) => mapping.is_additional)] : []
+        if (!rows.length) rows.push(undefined as unknown as typeof primaryMapping)
+        return rows.map((mapping) => {
+        const planningLineId = mapping?.line_id ?? line.line_item_id
+        const additional = Boolean(mapping?.is_additional)
+        const orderedQuantity = additional ? Number(mapping?.mapped_quantity) || 0 : line.quantity
+        const invoicedQuantity = additional ? 0 : Math.min(line.quantity, Math.max(0, line.quantity_invoiced))
+        const remainingQuantity = Math.max(0, orderedQuantity - invoicedQuantity)
+        const childPreviouslyPlanned = planned.get(planningLineId) ?? 0
+        const balance = Math.max(0, remainingQuantity - childPreviouslyPlanned)
         let attributes: Record<string, unknown> = {}
         try {
           attributes = mapping?.attributes_json
@@ -150,14 +173,16 @@ export async function onRequestPost(context: Context): Promise<Response> {
           salesOrderDate: order.date ?? '',
           customerPoNumber: order.reference_number ?? '',
           deliveryDate: order.shipment_date ?? '',
-          lineItemId: line.line_item_id,
-          itemId: line.item_id,
-          itemName: line.name,
-          itemDescription: line.description,
-          orderedQuantity: line.quantity,
+          lineItemId: planningLineId,
+          sourceLineItemId: line.line_item_id,
+          isAdditionalProduct: additional,
+          itemId: additional ? mapping?.item_id ?? '' : line.item_id,
+          itemName: additional ? mapping?.product_name || mapping?.item_name || '' : line.name,
+          itemDescription: additional ? `Additional Product for ${line.name}` : line.description,
+          orderedQuantity,
           invoicedQuantity,
           remainingQuantity,
-          previouslyPlannedQuantity: previouslyPlanned,
+          previouslyPlannedQuantity: childPreviouslyPlanned,
           balanceQuantity: balance,
           productionQuantity: balance,
           uom: line.unit,
@@ -178,7 +203,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
                 ? 'FULLY_PLANNED'
                 : 'READY',
           included: ready,
-        }
+        }})
       })
     })
     return json({
