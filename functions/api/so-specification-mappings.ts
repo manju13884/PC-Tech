@@ -4,7 +4,8 @@ import { getAuthenticatedUser } from '../lib/authenticatedUser'
 
 interface Env extends ZohoEnv { DB?: D1Database }
 interface Context { request: Request; env: Env }
-interface MappingInput { lineItemId?: unknown; specificationId?: unknown }
+interface AdditionalSpecificationInput { specificationId?: unknown; quantity?: unknown }
+interface MappingInput { lineItemId?: unknown; specificationId?: unknown; additionalSpecifications?: unknown }
 interface SubmissionBody { customerId?: unknown; salesOrderId?: unknown; mappings?: unknown }
 
 const json = (payload: unknown, status = 200) => Response.json(payload, {
@@ -29,13 +30,21 @@ export async function onRequestGet(context: Context): Promise<Response> {
   const salesOrderId = new URL(context.request.url).searchParams.get('sales_order_id')?.trim() ?? ''
   if (!salesOrderId) return json({ error: 'Sales Order is required.' }, 400)
 
-  const result = await context.env.DB.prepare(
-    `SELECT sales_order_line_item_id, product_specification_id
-     FROM so_specification_mappings
-     WHERE sales_order_id = ?
-     ORDER BY id ASC`,
-  ).bind(salesOrderId).all()
-  return json({ mappings: result.results ?? [] })
+  const [result, childResult] = await Promise.all([
+    context.env.DB.prepare(
+      `SELECT sales_order_line_item_id, product_specification_id
+       FROM so_specification_mappings
+       WHERE sales_order_id = ?
+       ORDER BY id ASC`,
+    ).bind(salesOrderId).all(),
+    context.env.DB.prepare(
+      `SELECT sales_order_line_item_id, product_specification_id, quantity
+       FROM so_line_child_specifications
+       WHERE sales_order_id = ? AND is_active = 1
+       ORDER BY sales_order_line_item_id, display_order, id`,
+    ).bind(salesOrderId).all(),
+  ])
+  return json({ mappings: result.results ?? [], childMappings: childResult.results ?? [] })
 }
 
 export async function onRequestPost(context: Context): Promise<Response> {
@@ -56,22 +65,33 @@ export async function onRequestPost(context: Context): Promise<Response> {
   }
   const salesOrder = await getZohoSalesOrderById(salesOrderId, context.env)
   if (!salesOrder) return json({ error: 'Sales Order was not found.' }, 404)
+  const salesOrderStatus = ((salesOrder.status ?? '').trim().toLowerCase().match(/[a-z]+/g) ?? []).join('')
+  if (['closed', 'void', 'voided', 'invoiced'].includes(salesOrderStatus)) {
+    return json({ error: `Sales Order ${salesOrder.salesorder_number} is ${salesOrder.status} and cannot be mapped.` }, 409)
+  }
   if (salesOrder.line_items.length === 0) return json({ error: 'The Sales Order has no items to map.' }, 400)
 
-  const submittedByLine = new Map<string, number>()
+  const submittedByLine = new Map<string, { primary: number; additional: Array<{ specificationId: number; quantity: number }> }>()
   for (const mapping of mappings) {
     const lineItemId = typeof mapping.lineItemId === 'string' ? mapping.lineItemId.trim() : ''
     const specificationId = Number(mapping.specificationId)
+    const additionalInputs = Array.isArray(mapping.additionalSpecifications) ? mapping.additionalSpecifications as AdditionalSpecificationInput[] : []
+    const additional = additionalInputs.map((value) => ({ specificationId: Number(value.specificationId), quantity: Number(value.quantity) }))
+    const additionalIds = additional.map((value) => value.specificationId)
     if (!lineItemId || !Number.isInteger(specificationId) || specificationId <= 0 || submittedByLine.has(lineItemId)) {
       return json({ error: 'Every Sales Order item must have one valid Product Specification.' }, 400)
     }
-    submittedByLine.set(lineItemId, specificationId)
+    if (additional.some((value) => !Number.isInteger(value.specificationId) || value.specificationId <= 0 || value.specificationId === specificationId || !Number.isFinite(value.quantity) || value.quantity <= 0)
+      || new Set(additionalIds).size !== additionalIds.length) {
+      return json({ error: 'Every Additional Product must have a unique Product Specification and a quantity greater than zero.' }, 400)
+    }
+    submittedByLine.set(lineItemId, { primary: specificationId, additional })
   }
   if (submittedByLine.size !== salesOrder.line_items.length || salesOrder.line_items.some((line) => !submittedByLine.has(line.line_item_id))) {
     return json({ error: 'Product Specification mapping is mandatory for every Sales Order item.' }, 400)
   }
 
-  const specificationIds = [...new Set(submittedByLine.values())]
+  const specificationIds = [...new Set([...submittedByLine.values()].flatMap((mapping) => [mapping.primary, ...mapping.additional.map((value) => value.specificationId)]))]
   const placeholders = specificationIds.map(() => '?').join(', ')
   const specificationResult = await context.env.DB.prepare(
     `SELECT id, customer_name FROM product_specification_records WHERE customer_id = ? AND id IN (${placeholders})`,
@@ -99,9 +119,31 @@ export async function onRequestPost(context: Context): Promise<Response> {
        updated_at = CURRENT_TIMESTAMP`,
   ).bind(
     salesOrder.salesorder_id, salesOrder.salesorder_number, customerId, customerName,
-    line.line_item_id, line.item_id, line.name, submittedByLine.get(line.line_item_id),
+    line.line_item_id, line.item_id, line.name, submittedByLine.get(line.line_item_id)!.primary,
     user.id, user.id,
   ))
+  for (const line of salesOrder.line_items) {
+    statements.push(context.env.DB.prepare(
+      `UPDATE so_line_child_specifications
+       SET is_active = 0, updated_by_user_id = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE sales_order_id = ? AND sales_order_line_item_id = ? AND is_active = 1`,
+    ).bind(user.id, salesOrder.salesorder_id, line.line_item_id))
+    submittedByLine.get(line.line_item_id)!.additional.forEach((additional, index) => {
+      statements.push(context.env.DB!.prepare(
+        `INSERT INTO so_line_child_specifications (
+           sales_order_id, sales_order_line_item_id, product_specification_id,
+           display_order, is_active, created_by_user_id, updated_by_user_id, quantity
+         ) VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+         ON CONFLICT(sales_order_id, sales_order_line_item_id, product_specification_id) DO UPDATE SET
+           display_order = excluded.display_order,
+           quantity = excluded.quantity,
+           is_active = 1,
+           updated_by_user_id = excluded.updated_by_user_id,
+           updated_at = CURRENT_TIMESTAMP`,
+      ).bind(salesOrder.salesorder_id, line.line_item_id, additional.specificationId, index + 1, user.id, user.id, additional.quantity))
+    })
+  }
   await context.env.DB.batch(statements)
-  return json({ success: true, mappedItems: statements.length })
+  const additionalMapped = [...submittedByLine.values()].reduce((total, mapping) => total + mapping.additional.length, 0)
+  return json({ success: true, mappedItems: salesOrder.line_items.length, additionalMapped })
 }

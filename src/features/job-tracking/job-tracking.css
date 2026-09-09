@@ -37,11 +37,15 @@
 .job-tracking-status.is-completed { border-color: #86d6aa; background: #ecfdf5; color: #166534; }
 .job-tracking-status.is-cancelled { border-color: #f2a8a8; background: #fff1f2; color: #b42318; }
 .job-tracking-list td:first-child { text-align: center; vertical-align: middle; }
-.job-tracking-expand { display: grid; width: 20px; height: 20px; margin: 0 auto; place-items: center; border: 1px solid #d97706; border-radius: 3px; padding: 0; background: #f59e0b; color: #5f2b00; box-shadow: 0 1px 2px rgb(15 23 42 / 14%); cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, box-shadow 140ms ease; }
-.job-tracking-expand:hover { border-color: #b45309; background: #e88908; color: #4c2200; box-shadow: 0 2px 4px rgb(180 83 9 / 20%); }
+.job-tracking-expand { display: grid; width: 20px; height: 20px; margin: 0 auto; place-items: center; border: 1px solid #2563eb; border-radius: 3px; padding: 0; background: #3b82f6; color: #fff; box-shadow: 0 1px 2px rgb(15 23 42 / 14%); cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, box-shadow 140ms ease; }
+.job-tracking-expand.is-created { border-color:#2563eb; background:#3b82f6; color:#fff; }
+.job-tracking-expand.is-in_progress { border-color:#d97706; background:#f59e0b; color:#5f2b00; }
+.job-tracking-expand.is-completed { border-color:#15803d; background:#22a35a; color:#fff; }
+.job-tracking-expand.is-cancelled { border-color:#b91c1c; background:#ef4444; color:#fff; }
+.job-tracking-expand:hover { filter:brightness(.92); box-shadow:0 2px 4px rgb(15 23 42 / 20%); }
 .job-tracking-expand:focus-visible { outline: 2px solid #93c5fd; outline-offset: 1px; }
 .job-tracking-expand svg { transition: transform 140ms ease; }
-.job-tracking-list tr.is-expanded .job-tracking-expand { border-color: #1d4ed8; background: #2563eb; color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 16%); }
+.job-tracking-list tr.is-expanded .job-tracking-expand { filter:brightness(.84); box-shadow:inset 0 0 0 1px rgb(255 255 255 / 22%); }
 .job-tracking-list tr.is-expanded .job-tracking-expand svg { transform: rotate(90deg); }
 .job-tracking-list tr.is-expanded > td { background: #eef6ff; }
 .job-tracking-detail-row > td { padding: 8px !important; background: #e8edf3 !important; }

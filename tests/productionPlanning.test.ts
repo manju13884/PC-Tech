@@ -42,6 +42,24 @@ test('Production Planning reuses the existing menu and supports multi-order plan
   assert.match(component, /x\.salesOrderId === v\.salesOrderId && x\.lineItemId === v\.lineItemId/)
 })
 
+test('Additional SO products propagate through planning, planned, Job Cards and Job Tracking', async () => {
+  const [prepareApi, plansApi, plannedApi, jobCardsApi, trackingApi] = await Promise.all([
+    readFile('functions/api/production-planning/prepare.ts', 'utf8'),
+    readFile('functions/api/production-plans.ts', 'utf8'),
+    readFile('src/features/production-planned/ProductionPlanned.tsx', 'utf8'),
+    readFile('functions/api/job-cards.ts', 'utf8'),
+    readFile('functions/api/job-tracking.ts', 'utf8'),
+  ])
+  assert.match(prepareApi, /FROM so_line_child_specifications child/)
+  assert.match(prepareApi, /':child:' \|\| child\.product_specification_id/)
+  assert.match(prepareApi, /Additional Product for/)
+  assert.match(plansApi, /FROM so_line_child_specifications child/)
+  assert.match(plansApi, /mapping\.is_additional/)
+  assert.match(plannedApi, /production_quantity/)
+  assert.match(jobCardsApi, /(?:FROM|JOIN) production_plan_lines line/)
+  assert.match(trackingApi, /(?:FROM|JOIN) production_plan_lines line/)
+})
+
 test('2 Ply Qty scales with the number of corrugated two-ply webs', () => {
   assert.equal(calculateTwoPlyQuantity(1_000, 2), 1_000)
   assert.equal(calculateTwoPlyQuantity(1_000, 3), 1_000)
@@ -67,8 +85,8 @@ test('Production Plan persistence is additive, audited, and concurrency guarded'
   assert.match(migration, /production_quantity_exceeds_balance/)
   assert.doesNotMatch(migration, /\b(?:DELETE|DROP|TRUNCATE|REPLACE)\b/i)
   assert.match(prepareApi, /SUM\(line\.production_quantity\)/)
-  assert.match(prepareApi, /line\.quantity - invoicedQuantity/)
-  assert.match(prepareApi, /remainingQuantity - previouslyPlanned/)
+  assert.match(prepareApi, /orderedQuantity - invoicedQuantity/)
+  assert.match(prepareApi, /remainingQuantity - childPreviouslyPlanned/)
   assert.match(prepareApi, /\['open', 'partiallyinvoiced', 'overdue'\]/)
   assert.match(prepareApi, /SPECIFICATION_MISSING/)
   assert.match(saveApi, /getZohoSalesOrderById/)
