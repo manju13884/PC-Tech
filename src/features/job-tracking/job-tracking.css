@@ -54,13 +54,17 @@
 .job-tracking-expanded-card header > strong { margin-left: auto; font-size: 11px; }
 .job-tracking-expanded-card .job-card-sheet h2 { border-top: 1px solid #334155; border-bottom: 1px solid #334155; padding: 5px; background: #dbe5ef; }
 .job-tracking-expanded-card table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.job-tracking-expanded-card th,.job-tracking-expanded-card td { height: 29px; border: 1px solid #64748b; padding: 3px 5px; overflow-wrap: anywhere; vertical-align: middle; }
+.job-tracking-expanded-card th,.job-tracking-expanded-card td { height:29px; border:1px solid #4b5563; padding:3px 5px; overflow-wrap:anywhere; vertical-align:middle; }
 .job-tracking-expanded-card th { background: #edf1f5; font-size: 9px; font-weight: 800; text-transform: uppercase; }
-.job-tracking-expanded-card .job-card-items th,.job-tracking-expanded-card .job-card-process th { background: #263746; color: #fff; text-align: center; }
+.job-tracking-expanded-card .job-card-items th,.job-tracking-expanded-card .job-card-process th { background:#e5e7eb; color:#111827; text-align:center; }
 .job-tracking-expanded-card .job-card-items td,.job-tracking-expanded-card .job-card-process td { text-align: center; }
+.job-tracking-expanded-card .job-card-items .job-card-paper-total th,.job-tracking-expanded-card .job-card-items .job-card-paper-total td { background:#e5e7eb; color:#111827; font-weight:800; text-align:center; }
 .job-tracking-expanded-card .job-card-process input[type="datetime-local"] { display:block; width:100%; min-width:0; height:25px; box-sizing:border-box; border:1px solid #93a4b8; border-radius:3px; padding:1px 2px; background:#fff; color:#172033; font:700 8px Arial,"Segoe UI",sans-serif; font-variant-numeric:tabular-nums; }
 .job-tracking-expanded-card .job-card-process input[type="datetime-local"]:focus { border-color:#2563eb; outline:2px solid #bfdbfe; outline-offset:0; }
 .job-tracking-expanded-card .job-card-process input[type="datetime-local"]:disabled { background:#e8eef5; color:#64748b; cursor:progress; }
+.job-tracking-expanded-card .job-card-datetime-control { position:relative; display:flex; box-sizing:border-box; width:100%; height:25px; align-items:center; justify-content:center; overflow:hidden; border:1px solid #93a4b8; border-radius:3px; background:#fff; color:#172033; font:700 8px Arial,"Segoe UI",sans-serif; white-space:nowrap; cursor:pointer; }
+.job-tracking-expanded-card .job-card-datetime-control:focus-within { border-color:#2563eb; outline:2px solid #bfdbfe; }
+.job-tracking-expanded-card .job-card-datetime-control input[type="datetime-local"] { position:absolute; z-index:2; inset:0; width:100%; height:100%; opacity:.01; cursor:pointer; }
 .job-tracking-expanded-card .job-card-process-entry { display:block; width:100%; min-width:0; height:25px; box-sizing:border-box; border:1px solid #93a4b8; border-radius:3px; padding:2px 3px; background:#fff; color:#172033; font:700 9px Arial,"Segoe UI",sans-serif; text-align:center; }
 .job-tracking-expanded-card .job-card-process-entry:focus { border-color:#2563eb; outline:2px solid #bfdbfe; outline-offset:0; }
 .job-tracking-expanded-card .job-card-process-entry:disabled { background:#e8eef5; color:#64748b; cursor:progress; }
@@ -70,7 +74,7 @@
 .job-tracking-expanded-card .job-card-process-entry-stack > span { display: flex; min-width: 0; align-items: center; justify-content: center; }
 .job-tracking-expanded-card .job-card-master .job-card-creasing-row > td { height: auto; padding: 0; }
 .job-tracking-expanded-card .job-card-creasing-summary { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); margin: 0; }
-.job-tracking-expanded-card .job-card-creasing-summary > div { min-width: 0; min-height: 42px; box-sizing: border-box; padding: 5px 3px; border-right: 1px solid #64748b; text-align: center; }
+.job-tracking-expanded-card .job-card-creasing-summary > div { min-width:0; min-height:42px; box-sizing:border-box; padding:5px 3px; border-right:1px solid #4b5563; text-align:center; }
 .job-tracking-expanded-card .job-card-creasing-summary > div:last-child { border-right: 0; }
 .job-tracking-expanded-card .job-card-creasing-summary dt { font-size: 8px; font-weight: 800; line-height: 1.05; text-transform: uppercase; }
 .job-tracking-expanded-card .job-card-creasing-summary dd { margin: 4px 0 0; font-size: 10px; font-weight: 800; }
@@ -79,7 +83,7 @@
 .job-tracking-expanded-card .job-card-process td.job-card-split-reels { padding: 0; }
 .job-tracking-expanded-card .job-card-split-reels span { display: block; height: 50%; box-sizing: border-box; }
 .job-tracking-expanded-card .job-card-process td.job-card-split-reels,.job-tracking-expanded-card .job-card-process td.job-card-split-process-values { position: relative; }
-.job-tracking-expanded-card .job-card-process td.job-card-split-reels::after,.job-tracking-expanded-card .job-card-process td.job-card-split-process-values::after { position: absolute; z-index: 2; right: 0; left: 0; top: 50%; border-top: 1px solid #64748b; content: ''; pointer-events: none; }
+.job-tracking-expanded-card .job-card-process td.job-card-split-reels::after,.job-tracking-expanded-card .job-card-process td.job-card-split-process-values::after { position:absolute; z-index:2; right:0; left:0; top:50%; border-top:1px solid #4b5563; content:''; pointer-events:none; }
 .job-tracking-expanded-card footer { display: grid; grid-template-columns: repeat(5, 1fr); min-height: 52px; border: 1px solid #334155; border-top: 0; }
 .job-tracking-expanded-card footer label { display:grid; grid-template-rows:auto 1fr; gap:4px; padding:6px; border-right:1px solid #64748b; }
 .job-tracking-expanded-card footer label:last-child { border-right:0; }

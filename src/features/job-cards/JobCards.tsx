@@ -65,11 +65,11 @@ const readProcessEntries = (line: JobCardLine): ProcessEntry[] => {
 }
 const processDateTimeText = (value: string | null | undefined) => {
   if (!value) return ''
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T|\s)(\d{2}):(\d{2})/)
   if (!match) return value
   const [, year, month, day, hour, minute] = match
   const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(month) - 1]
-  return `${day}-${monthName}-${year} ${hour}:${minute}`
+  return `${day}-${monthName}-${year.slice(-2)} ${hour}:${minute}`
 }
 
 function ReelDetailCell({ stage, label, entry, field, secondField, numeric = false, processEditable, savingProcessKey, onChange }: { stage: string; label: string; entry?: ProcessEntry; field: ProcessField; secondField: ProcessField; numeric?: boolean; processEditable: boolean; savingProcessKey: string; onChange?: (processName: string, field: ProcessField, value: string) => void }) {
@@ -176,6 +176,10 @@ export function JobCard({ line, processEditable = false, savingProcessKey = '', 
   const size = [line.length_mm, line.width_mm, line.height_mm].filter((value) => value != null).join(' X ')
   const sizeCm = [line.length_mm, line.width_mm, line.height_mm].filter((value) => value != null).map((value) => numberText(Number(value) / 10)).join(' X ')
   const shades = [...new Set(layers.map((layer) => layer.shade).filter(Boolean))].join(' / ')
+  const requiredPaperByLayer = layers.map((layer) => calculateRequiredPaperQuantity(deckle, rotary, layer.gsm, line.production_quantity, layer.flute))
+  const totalRequiredPaperKg = requiredPaperByLayer.length > 0 && requiredPaperByLayer.every((value) => value != null)
+    ? requiredPaperByLayer.reduce<number>((total, value) => total + Number(value), 0)
+    : null
   return <article className="job-card-sheet">
     <header><img className="job-card-logo" src="/assets/PC-Bord-Logo-only-transparent.png" alt="Polarcanvas" /><h1 className="job-card-heading">PRODUCTION JOB CARD</h1><strong>Job Card: {line.job_number}</strong></header>
     <table className="job-card-master"><colgroup><col className="job-card-label-column" /><col className="job-card-value-column" /><col className="job-card-label-column" /><col className="job-card-value-column" /><col className="job-card-label-column" /><col className="job-card-value-column" /><col className="job-card-label-column" /><col className="job-card-value-column" /></colgroup><tbody>
@@ -183,7 +187,7 @@ export function JobCard({ line, processEditable = false, savingProcessKey = '', 
       <tr><th>Customer Name</th><td colSpan={3}>{line.customer_name}</td><th>Printing</th><td colSpan={3}>{line.print_required ? 'Printing Required' : 'No Printing'}</td></tr>
       <tr><th>Product Spec</th><td colSpan={3}>{line.item_description || line.item_name}</td><th>Joint</th><td colSpan={3}>{attributes.joint_type || ''}</td></tr>
       <tr><th>No. of Color</th><td>{line.print_colors || '0'}</td><th>Color</th><td>{line.print_colors || shades}</td><th colSpan={4}></th></tr>
-      <tr><th>No. of Ply</th><td>{line.ply ? `${line.ply} Ply` : ''}</td><th>Box Wt. (Kg)</th><td>{boxWeight ? numberText(boxWeight / 1000) : ''}</td><th>Lamination (Size)</th><td></td><th className="job-card-required-qty-label" rowSpan={3}>Req. Qty (Kg)</th><td className="job-card-required-qty-value" rowSpan={3}></td></tr>
+      <tr><th>No. of Ply</th><td>{line.ply ? `${line.ply} Ply` : ''}</td><th>Box Wt. (Kg)</th><td>{boxWeight ? numberText(boxWeight / 1000) : ''}</td><th>Lamination (Size)</th><td></td><th className="job-card-required-qty-label" rowSpan={3}>Req. Qty (Kg)</th><td className="job-card-required-qty-value" rowSpan={3}>{numberText(totalRequiredPaperKg)}</td></tr>
       <tr><th>Box Size (OD)</th><td colSpan={3}>{size ? `${size} mm | ${sizeCm} cm` : ''}</td><th>Metpad (Size)</th><td></td></tr>
       <tr><th>Sheet Size</th><td colSpan={3}>{deckle && rotary ? `${numberText(deckle)} X ${numberText(rotary)} mm | ${numberText(deckle / 10)} X ${numberText(rotary / 10)} cm` : ''}</td><th>Window (Size)</th><td></td></tr>
       <tr><th>Rotary Size</th><td colSpan={2}>{rotaryCalculation ? `${numberText(rotaryCalculation.topFlap)} + ${numberText(line.height_mm)} + ${numberText(rotaryCalculation.bottomFlap)} = ${numberText(rotary)} mm` : ''}</td><th>BS</th><td>{bs ? numberText(bs) : ''}</td><th>UV / Dripoff / Varnish</th><td colSpan={2}></td></tr>
@@ -203,14 +207,15 @@ export function JobCard({ line, processEditable = false, savingProcessKey = '', 
     <table className="job-card-items"><colgroup><col className="job-card-col-serial" /><col className="job-card-col-layer" /><col /><col /><col /><col className="job-card-col-small" /><col className="job-card-col-small" /><col /><col /></colgroup><thead><tr><th>S.N</th><th>Layers</th><th>Size (MM)</th><th>Req. Size (CM)</th><th>Color</th><th>GSM</th><th>BF</th><th>Qty (Kg)</th><th>Board Qty</th></tr></thead><tbody>
       {layers.map((layer, index) => <tr key={`${layer.layer_name}-${index}`}><td>{index + 1}</td><td>{layer.layer_name}</td><td>{deckle ? numberText(deckle) : ''}</td><td>{deckle ? numberText(deckle / 10) : ''}</td><td>{layer.shade}</td><td>{layer.gsm}</td><td>{layer.bf_rct}</td><td>{numberText(calculateRequiredPaperQuantity(deckle, rotary, layer.gsm, line.production_quantity, layer.flute))}</td><td>{!layer.flute ? numberText(line.production_quantity) : ''}</td></tr>)}
       {!layers.length && <tr><td colSpan={9}>Paper composition not available.</td></tr>}
+      {layers.length > 0 && <tr className="job-card-paper-total"><th colSpan={7}>Total Paper Required for {numberText(line.production_quantity)} Boxes</th><td>{numberText(totalRequiredPaperKg)}</td><td>Kg</td></tr>}
     </tbody></table>
     <h2 className="job-card-heading">PROCESS</h2>
     <table className="job-card-process"><colgroup><col className="job-card-col-serial" /><col className="job-card-col-process" /><col className="job-card-col-time" /><col className="job-card-col-time" /><col className="job-card-col-reel" /><col className="job-card-col-weight" /><col className="job-card-col-weight" /><col className="job-card-col-weight" /><col className="job-card-col-qty" /><col className="job-card-col-qty" /><col className="job-card-col-employee" /></colgroup><thead><tr><th>S.N</th><th>Process</th><th>Start Datetime</th><th>End Datetime</th><th>Reel No.</th><th>In Reel Weight</th><th>Out Reel Weight</th><th>Remaining Reel Weight</th><th>In Qty</th><th>Out Qty</th><th>Emp. Name</th></tr></thead><tbody>
       {(stages.length ? stages : ['Paper Cutting', 'Corrugation', 'Pasting', 'Quality Inspection']).map((stage, index) => {
         const entry = processEntries.find((value) => value.process_name === stage)
         return <tr key={stage} className={stage === 'Corrugation' ? 'job-card-corrugation-row' : ''}><td>{index + 1}</td><td className="job-card-process-name">{stage === 'Board / Sheet Cutting' ? <>Board / Sheet<br />Cutting</> : stage === 'Quality Inspection' ? <>Quality<br />Inspection</> : stage === 'Bundling / Packing' ? <>Bundling /<br />Packing</> : stage}</td>
-        <td>{processEditable ? <input aria-label={`${stage} Start Datetime`} type="datetime-local" value={entry?.start_datetime || ''} disabled={savingProcessKey === `${stage}:start_datetime`} onChange={(event) => onProcessValueChange?.(stage, 'start_datetime', event.target.value)} /> : processDateTimeText(entry?.start_datetime)}</td>
-        <td>{processEditable ? <input aria-label={`${stage} End Datetime`} type="datetime-local" value={entry?.end_datetime || ''} disabled={savingProcessKey === `${stage}:end_datetime`} onChange={(event) => onProcessValueChange?.(stage, 'end_datetime', event.target.value)} /> : processDateTimeText(entry?.end_datetime)}</td>
+        <td>{processEditable ? <label className="job-card-datetime-control"><span>{processDateTimeText(entry?.start_datetime) || 'Select'}</span><input aria-label={`${stage} Start Datetime`} type="datetime-local" value={entry?.start_datetime || ''} disabled={savingProcessKey === `${stage}:start_datetime`} onClick={(event) => event.currentTarget.showPicker?.()} onChange={(event) => onProcessValueChange?.(stage, 'start_datetime', event.target.value)} /></label> : processDateTimeText(entry?.start_datetime)}</td>
+        <td>{processEditable ? <label className="job-card-datetime-control"><span>{processDateTimeText(entry?.end_datetime) || 'Select'}</span><input aria-label={`${stage} End Datetime`} type="datetime-local" value={entry?.end_datetime || ''} disabled={savingProcessKey === `${stage}:end_datetime`} onClick={(event) => event.currentTarget.showPicker?.()} onChange={(event) => onProcessValueChange?.(stage, 'end_datetime', event.target.value)} /></label> : processDateTimeText(entry?.end_datetime)}</td>
         <ReelDetailCell stage={stage} label="Reel Number" entry={entry} field="reel_number" secondField="reel_number_2" processEditable={processEditable} savingProcessKey={savingProcessKey} onChange={onProcessValueChange} />
         <ReelDetailCell stage={stage} label="In Reel Weight" entry={entry} field="in_reel_weight" secondField="in_reel_weight_2" numeric processEditable={processEditable} savingProcessKey={savingProcessKey} onChange={onProcessValueChange} />
         <ReelDetailCell stage={stage} label="Out Reel Weight" entry={entry} field="out_reel_weight" secondField="out_reel_weight_2" numeric processEditable={processEditable} savingProcessKey={savingProcessKey} onChange={onProcessValueChange} />

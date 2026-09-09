@@ -113,7 +113,8 @@
     text-align: center;
     border: .35mm solid #1f2937;
     border-top: 0;
-    background: #dbe5ef !important;
+    background: #e5e7eb !important;
+    color: #111827 !important;
   }
   .job-card-sheet table { width: 100%; border-collapse: collapse; table-layout: fixed; }
   .job-card-sheet th,
@@ -121,7 +122,7 @@
     height: 5.7mm;
     box-sizing: border-box;
     padding: .65mm .9mm;
-    border: .25mm solid #374151;
+    border: .25mm solid #4b5563;
     overflow-wrap: anywhere;
     vertical-align: middle;
   }
@@ -138,7 +139,7 @@
   .job-card-master .job-card-required-qty-value { background: #fff !important; }
   .job-card-master .job-card-creasing-row > td { height: auto; padding: 0; }
   .job-card-creasing-summary { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); margin: 0; }
-  .job-card-creasing-summary > div { min-width: 0; min-height: 9mm; box-sizing: border-box; padding: .65mm .55mm; border-right: .25mm solid #374151; text-align: center; }
+  .job-card-creasing-summary > div { min-width:0; min-height:9mm; box-sizing:border-box; padding:.65mm .55mm; border-right:.25mm solid #4b5563; text-align:center; }
   .job-card-creasing-summary > div:last-child { border-right: 0; }
   .job-card-creasing-summary dt { font-size: 6.2pt; font-weight: 800; line-height: 1.05; text-transform: uppercase; }
   .job-card-creasing-summary dd { margin: .8mm 0 0; font-size: 7.5pt; font-weight: 800; }
@@ -147,12 +148,13 @@
   .job-card-items th,
   .job-card-process th {
     text-align: center;
-    background: #263746 !important;
-    color: #fff !important;
+    background: #e5e7eb !important;
+    color: #111827 !important;
   }
   .job-card-items td,
   .job-card-process td { text-align: center; }
   .job-card-items td { font-size: 7.5pt; font-weight: 700; }
+  .job-card-items .job-card-paper-total th,.job-card-items .job-card-paper-total td { background:#e5e7eb !important; color:#111827 !important; font-weight:800; text-align:center; }
   .job-card-process td { height: 6.5mm; font-size: 8pt; }
   .job-card-process .job-card-corrugation-row td { height: 13mm; }
   .job-card-process td.job-card-split-reels { padding: 0; }
@@ -161,7 +163,7 @@
   .job-card-process-entry-stack { display: grid; height: 13mm; grid-template-rows: repeat(2,minmax(0,1fr)); }
   .job-card-process-entry-stack > span { display: flex; box-sizing: border-box; align-items: center; justify-content: center; }
   .job-card-process td.job-card-split-reels,.job-card-process td.job-card-split-process-values { position: relative; }
-  .job-card-process td.job-card-split-reels::after,.job-card-process td.job-card-split-process-values::after { position: absolute; right: 0; left: 0; top: 50%; border-top: .25mm solid #374151; content: ''; pointer-events: none; }
+  .job-card-process td.job-card-split-reels::after,.job-card-process td.job-card-split-process-values::after { position:absolute; right:0; left:0; top:50%; border-top:.25mm solid #4b5563; content:''; pointer-events:none; }
   .job-card-process th { padding-right: .35mm; padding-left: .35mm; font-size: 6.3pt; }
   .job-card-process td.job-card-process-name { padding-right: .6mm; padding-left: .6mm; font-size: 7pt; font-weight: 800; line-height: 1.05; text-align: center; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
   .job-card-col-serial { width: 5%; }

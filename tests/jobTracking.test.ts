@@ -73,7 +73,7 @@ test('Job Tracking is a permission-controlled ERP workflow backed by Job Cards',
   assert.match(styles, /\.job-tracking-expanded-card \.job-card-process td\.job-card-split-reels \{ padding: 0; \}/)
   assert.match(styles, /\.job-tracking-expanded-card \.job-card-process td\.job-card-process-name \{[^}]*white-space: normal;[^}]*overflow-wrap: anywhere;/s)
   assert.match(styles, /\.job-tracking-expanded-card \.job-card-creasing-summary \{ display: grid; grid-template-columns: repeat\(6,minmax\(0,1fr\)\);/)
-  assert.match(styles, /td\.job-card-split-reels::after,\.job-tracking-expanded-card \.job-card-process td\.job-card-split-process-values::after \{[^}]*top: 50%;[^}]*border-top: 1px solid #64748b;/s)
+  assert.match(styles, /td\.job-card-split-reels::after,\.job-tracking-expanded-card \.job-card-process td\.job-card-split-process-values::after \{[^}]*top:50%;[^}]*border-top:1px solid #4b5563;/s)
   assert.match(styles, /\.job-tracking-expand:hover/)
   assert.match(styles, /\.job-tracking-list td:first-child \{ text-align: center; vertical-align: middle; \}/)
   assert.match(styles, /\.job-tracking-expand \{[^}]*width: 20px[^}]*height: 20px[^}]*margin: 0 auto[^}]*background: #f59e0b[^}]*color: #5f2b00/s)
