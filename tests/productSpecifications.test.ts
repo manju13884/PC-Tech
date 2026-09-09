@@ -158,11 +158,13 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.doesNotMatch(component, /Auto-generated on save/)
   assert.doesNotMatch(component, /Specification Exists/)
   assert.match(component, /Saved Specifications/)
+  assert.match(component, /editingId === specification\.id \? 'is-current-specification'/)
+  assert.match(styles, /tr\.is-current-specification/)
   assert.match(component, /specificationSize/)
   assert.match(component, /<th>#<\/th><th>PC Item Code<\/th><th>Product Name<\/th><th>Item<\/th><th>Size<\/th>/)
   assert.match(component, /Select a customer to display saved specifications/)
   assert.match(component, /All items/)
-  assert.match(component, /> Edit</)
+  assert.match(component, /'Locked' : 'Edit'/)
   assert.match(component, /> Clone</)
   assert.match(component, /editorRef\.current\?\.scrollIntoView\(\{ behavior: 'smooth', block: 'start' \}\)/)
   assert.doesNotMatch(component, /window\.scrollTo/)
@@ -177,6 +179,33 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(styles, /input\[readonly\]/)
   assert.match(styles, /background:#edf9f1/)
   assert.match(styles, /spec-dimension-input::-webkit-inner-spin-button/)
+})
+
+test('planned Sales Order specifications are locked against edits with traceable context', async () => {
+  const [component, api, styles] = await Promise.all([
+    readFile('src/features/product-specifications/ProductSpecifications.tsx', 'utf8'),
+    readFile('functions/api/product-specifications.ts', 'utf8'),
+    readFile('src/features/product-specifications/product-specifications.css', 'utf8'),
+  ])
+
+  assert.match(api, /FROM production_plan_lines line/)
+  assert.match(api, /line\.customer_product_specification_id = \?/)
+  assert.match(api, /line\.approved_specification_revision_id = \?/)
+  assert.match(api, /GROUP_CONCAT\(DISTINCT line\.sales_order_number\)/)
+  assert.match(api, /GROUP_CONCAT\(DISTINCT plan\.plan_number \|\| ' \(' \|\| plan\.status/)
+  assert.match(api, /This Product Specification cannot be edited because it is mapped to Sales Order/)
+  assert.match(api, /}, 409\)/)
+  assert.match(component, /locked_sales_orders/)
+  assert.match(component, /specificationLockMessage/)
+  assert.match(component, /Clone it to create a new specification\./)
+  assert.match(component, /is-locked/)
+  assert.match(component, /setReadOnlyMode\(Boolean\(lockMessage\)\)/)
+  assert.match(component, /View Specification · Read only/)
+  assert.match(component, /disabled=\{readOnlyMode\}/)
+  assert.match(component, /Product Specification Report/)
+  assert.match(component, /!readOnlyMode && <button type="submit"/)
+  assert.match(styles, /\.spec-edit-button\.is-locked/)
+  assert.match(styles, /\.product-spec-readonly-fields:disabled/)
 })
 
 test('product dimensions are explicitly identified as Outer Dimensions', async () => {

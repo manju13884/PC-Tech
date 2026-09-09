@@ -40,9 +40,12 @@
 .production-planned-grid-panel .production-planning-grid tbody tr:hover td { background: #edf4fb; }
 .production-planned-grid-panel > footer { min-height: 30px; padding: 3px 7px; background: #f4f6f8; font-size: .54rem; }
 .production-planned-print-heading { display: none; }
+@page production-planned-landscape { size: A4 landscape; margin: 5mm; }
 @media (max-width: 800px) { .production-planned-toolbar { align-items: stretch; flex-direction: column; padding: 5px; } .production-planned-controls { width: 100%; } .production-planned-controls input { min-width: 0; width: 100%; } }
 @media print {
   @page { size: A4 landscape; margin: 5mm; }
+  body.printing-production-planned .production-planned-workspace,
+  body.printing-production-planned .production-planned-grid-panel { page: production-planned-landscape; }
   html, body { width: auto !important; background: #fff !important; }
   .dashboard-header, .dashboard-menu, .dashboard-page-heading, .production-planned-toolbar, .production-planned-grid-panel > footer { display: none !important; }
   .dashboard-grid, .dashboard-content, .dashboard-card, .dashboard-details, .production-planned-workspace { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }

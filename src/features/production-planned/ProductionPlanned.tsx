@@ -262,7 +262,12 @@ export default function ProductionPlanned() {
     document.title = productionDates.length > 1
       ? `Production-Planned-${firstDate}-to-${lastDate}`
       : `Production-Planned-${firstDate}`;
-    window.addEventListener("afterprint", () => { document.title = previousTitle; }, { once: true });
+    document.body.classList.add("printing-production-planned");
+    const cleanup = () => {
+      document.body.classList.remove("printing-production-planned");
+      document.title = previousTitle;
+    };
+    window.addEventListener("afterprint", cleanup, { once: true });
     window.print();
   };
 

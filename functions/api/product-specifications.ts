@@ -28,6 +28,37 @@ async function hasPermission(db: D1Database, roleId: number, roleName: string, a
   return Boolean(row && (row.can_full === 1 || (action === 'view' ? row.can_view === 1 : row.can_create === 1 || row.can_edit === 1)))
 }
 
+interface SpecificationLock {
+  specification_id: number
+  sales_orders: string
+  production_plans: string
+}
+
+async function specificationLock(db: D1Database, specificationId: number): Promise<SpecificationLock | null> {
+  return db.prepare(
+    `SELECT line.customer_product_specification_id AS specification_id,
+       GROUP_CONCAT(DISTINCT line.sales_order_number) AS sales_orders,
+       GROUP_CONCAT(DISTINCT plan.plan_number || ' (' || plan.status || ')') AS production_plans
+     FROM production_plan_lines line
+     INNER JOIN production_plans plan ON plan.id = line.production_plan_id
+     WHERE line.customer_product_specification_id = ?
+        OR line.approved_specification_revision_id = ?
+     GROUP BY line.customer_product_specification_id`,
+  ).bind(specificationId, specificationId).first<SpecificationLock>()
+}
+
+async function attachSpecificationLocks(db: D1Database, rows: unknown[]): Promise<unknown[]> {
+  return Promise.all(rows.map(async (value) => {
+    const record = value as Record<string, unknown>
+    const lock = await specificationLock(db, Number(record.id))
+    return {
+      ...record,
+      locked_sales_orders: lock?.sales_orders ?? '',
+      locked_production_plans: lock?.production_plans ?? '',
+    }
+  }))
+}
+
 export async function onRequestGet(context: Context): Promise<Response> {
   if (!context.env.DB) return response({ error: 'Product specification database is unavailable.' }, 503)
   const user = await getAuthenticatedUser(context.request, context.env.DB)
@@ -45,7 +76,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
        WHERE customer_id = ?
        ORDER BY item_name ASC, polar_canvas_item_code ASC, updated_at DESC`,
     ).bind(customerId).all()
-    return response({ specifications: specifications.results ?? [] })
+    return response({ specifications: await attachSpecificationLocks(context.env.DB, specifications.results ?? []) })
   }
   if (!customerId || !itemId) {
     const specifications = await context.env.DB.prepare(
@@ -54,7 +85,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
        FROM product_specification_records
        ORDER BY updated_at DESC, customer_name ASC, item_name ASC`,
     ).all()
-    return response({ specifications: specifications.results ?? [] })
+    return response({ specifications: await attachSpecificationLocks(context.env.DB, specifications.results ?? []) })
   }
 
   const specification = await context.env.DB.prepare(
@@ -62,7 +93,9 @@ export async function onRequestGet(context: Context): Promise<Response> {
       length_mm, width_mm, height_mm, ply, gsm, bf, print_required, print_colors, notes, attributes_json, created_at, updated_at
      FROM product_specification_records WHERE customer_id = ? AND item_id = ? ORDER BY updated_at DESC LIMIT 1`,
   ).bind(customerId, itemId).first()
-  return response({ specification: specification ?? null })
+  if (!specification) return response({ specification: null })
+  const [record] = await attachSpecificationLocks(context.env.DB, [specification])
+  return response({ specification: record })
 }
 
 export async function onRequestPost(context: Context): Promise<Response> {
@@ -80,6 +113,16 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const itemName = text('item_name')
   const productName = text('product_name').slice(0, 200)
   const recordId = Number(body.id)
+  if (Number.isInteger(recordId) && recordId > 0) {
+    const lock = await specificationLock(context.env.DB, recordId)
+    if (lock) {
+      return response({
+        error: `This Product Specification cannot be edited because it is mapped to Sales Order ${lock.sales_orders} and is associated with Production Plan ${lock.production_plans}. Clone it to create a new specification.`,
+        salesOrders: lock.sales_orders,
+        productionPlans: lock.production_plans,
+      }, 409)
+    }
+  }
   if (!customerId || !customerName || !itemId || !itemName) {
     return response({ error: 'Customer and item are required.' }, 400)
   }

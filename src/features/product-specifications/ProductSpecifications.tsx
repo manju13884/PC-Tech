@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { CircleCheck, Copy, Pencil, Plus, Printer, Save, X } from 'lucide-react'
+import { CircleCheck, Copy, Eye, Pencil, Plus, Printer, Save, X } from 'lucide-react'
 import { getCustomers, type Customer } from '../../customerService'
 import { getItems, type Item } from '../../itemService'
 import { formatIstDateTime } from '../../utils/dateTimeFormatting'
@@ -28,7 +28,12 @@ const emptyForm: FormState = {
 type Specification = Omit<FormState, 'print_required'> & {
   id: number; customer_id: string; customer_name: string; item_id: string; item_name: string
   item_sku: string; print_required: boolean | number; created_at: string; updated_at: string; attributes_json?: string
+  locked_sales_orders?: string; locked_production_plans?: string
 }
+
+const specificationLockMessage = (specification: Specification) => specification.locked_sales_orders
+  ? `This Product Specification cannot be edited because it is mapped to Sales Order ${specification.locked_sales_orders} and is associated with Production Plan ${specification.locked_production_plans || 'previous production planning'}. Clone it to create a new specification.`
+  : ''
 
 const attributeKeys = ['flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type', 'board_creasing_allowance'] as const
 type AttributeFields = Pick<FormState, (typeof attributeKeys)[number]>
@@ -245,6 +250,7 @@ export default function ProductSpecifications() {
   const [listCustomerId, setListCustomerId] = useState('')
   const [listItemId, setListItemId] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [readOnlyMode, setReadOnlyMode] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const customer = customers.find((value) => value.customer_id === customerId)
   const item = items.find((value) => value.item_id === itemId)
@@ -327,21 +333,22 @@ export default function ProductSpecifications() {
   const startAdd = () => {
     if (!listCustomerId || !listItemId) { setError('Select a customer and item before adding a specification.'); return }
     const specificationType = detectType(items.find((value) => value.item_id === listItemId))
-    setEditingId(null); setCustomerId(listCustomerId); setItemId(listItemId); setForm({ ...emptyForm, polar_canvas_item_code: nextItemCode(), specification_type: specificationType, production_stages: defaultProductionStages(specificationType, false) }); setMessage(''); setError(''); setShowForm(true)
+    setEditingId(null); setReadOnlyMode(false); setCustomerId(listCustomerId); setItemId(listItemId); setForm({ ...emptyForm, polar_canvas_item_code: nextItemCode(), specification_type: specificationType, production_stages: defaultProductionStages(specificationType, false) }); setMessage(''); setError(''); setShowForm(true)
   }
   const edit = (specification: Specification) => {
-    setEditingId(specification.id); setListCustomerId(specification.customer_id); setListItemId(specification.item_id); setCustomerId(specification.customer_id); setItemId(specification.item_id); setShowForm(true); setMessage(''); setError('')
+    const lockMessage = specificationLockMessage(specification)
+    setEditingId(specification.id); setReadOnlyMode(Boolean(lockMessage)); setListCustomerId(specification.customer_id); setListItemId(specification.item_id); setCustomerId(specification.customer_id); setItemId(specification.item_id); setShowForm(true); setMessage(''); setError(lockMessage)
     setForm(formFromSpecification(specification))
     scrollToEditor()
   }
   const clone = (specification: Specification) => {
-    setEditingId(null); setListCustomerId(specification.customer_id); setListItemId(specification.item_id); setCustomerId(specification.customer_id); setItemId(specification.item_id); setShowForm(true); setError('')
+    setEditingId(null); setReadOnlyMode(false); setListCustomerId(specification.customer_id); setListItemId(specification.item_id); setCustomerId(specification.customer_id); setItemId(specification.item_id); setShowForm(true); setError('')
     setForm(formFromSpecification(specification, nextItemCode()))
     setMessage(`Cloned from ${specification.polar_canvas_item_code}. Review and save as a new specification.`)
     scrollToEditor()
   }
   async function save(event: FormEvent) {
-    event.preventDefault(); if (!customer || !item) return
+    event.preventDefault(); if (readOnlyMode || !customer || !item) return
     setSaving(true); setError(''); setMessage('')
     try {
       const response = await fetch('/api/product-specifications', {
@@ -382,11 +389,12 @@ export default function ProductSpecifications() {
     </section>
     {showForm && <>
     <section ref={editorRef} className="product-spec-panel product-spec-editor-heading">
-      <div className="product-spec-form-title"><strong>{editingId ? 'Edit Specification' : 'Add Specification'}</strong><button type="button" onClick={() => setShowForm(false)} aria-label="Close form"><X size={15} /></button></div>
+      <div className="product-spec-form-title"><strong>{readOnlyMode ? 'View Specification · Read only' : editingId ? 'Edit Specification' : 'Add Specification'}</strong><button type="button" onClick={() => setShowForm(false)} aria-label="Close form"><X size={15} /></button></div>
       <div className="product-spec-editor-context"><span>Customer<strong>{customer?.customer_name}</strong></span><span>Item<strong>{item?.item_name}{item?.sku ? ` (${item.sku})` : ''}</strong></span><button type="button" onClick={() => setReportOpen(true)}><Printer size={14} /> Product Specification Report</button></div>
     </section>
     {customer && item && <section className="product-spec-panel product-spec-technical">
       <header><div><h3>Technical Specification</h3><p>Length, Width and Height are captured as Outer Dimensions (OD).</p></div><span className="spec-type-badge">{form.specification_type}</span></header>
+      <fieldset className="product-spec-readonly-fields" disabled={readOnlyMode} aria-label={readOnlyMode ? 'Read-only product specification' : undefined}>
       <div className="product-spec-grid">
         <label>Product Name<input type="text" maxLength={200} value={form.product_name} onChange={(e) => update('product_name', e.target.value)} /></label>
         <label>Polar Canvas Item Code<input value={form.polar_canvas_item_code} readOnly aria-readonly="true" /></label>
@@ -443,14 +451,15 @@ export default function ProductSpecifications() {
         <div className="product-spec-box-preview-heading"><strong>Box Dimension Drawing (Isometric Projection)</strong><span>Generated from the Length, Width and Height above.</span></div>
         <IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} creasingAllowance={form.board_creasing_allowance} />
       </div>}
-      <footer><div>{error && <span className="spec-error">{error}</span>}{message && <span className="spec-success"><CircleCheck size={14} />{message}</span>}</div><button type="submit" disabled={saving}><Save size={15} />{saving ? 'Saving…' : 'Save Specification'}</button></footer>
+      </fieldset>
+      <footer><div>{error && <span className={readOnlyMode ? 'spec-lock-notice' : 'spec-error'}>{error}</span>}{message && <span className="spec-success"><CircleCheck size={14} />{message}</span>}</div>{!readOnlyMode && <button type="submit" disabled={saving}><Save size={15} />{saving ? 'Saving…' : 'Save Specification'}</button>}</footer>
     </section>}
     {error && !item && <p className="spec-error">{error}</p>}
     </>}
     <section className="product-spec-list product-spec-panel">
       <header><div><h3>Saved Specifications</h3><p>Customer-wise specifications. Items are available irrespective of the selected customer.</p></div></header>
       <div className="product-spec-table-wrap"><table><thead><tr><th>#</th><th>PC Item Code</th><th>Product Name</th><th>Item</th><th>Size</th><th>Type</th><th>Print</th><th>Specification Notes</th><th>Updated</th><th aria-label="Actions" /></tr></thead><tbody>
-        {displayedSpecifications.map((specification, index) => <tr key={specification.id}><td>{index + 1}</td><td><strong>{specification.polar_canvas_item_code}</strong></td><td>{specification.product_name || ''}</td><td><strong>{specification.item_name}</strong>{specification.item_sku && <small>{specification.item_sku}</small>}</td><td>{specificationSize(specification)}</td><td><span className="spec-type-badge">{specification.specification_type}</span></td><td>{specification.print_required ? 'Yes' : 'No'}</td><td className="specification-notes" title={specification.notes || undefined}>{specification.notes || '—'}</td><td>{formatIstDateTime(specification.updated_at)}</td><td><div className="spec-row-actions"><button type="button" className="spec-edit-button" onClick={() => edit(specification)}><Pencil size={13} /> Edit</button><button type="button" className="spec-clone-button" onClick={() => clone(specification)} title={`Clone ${specification.polar_canvas_item_code}`}><Copy size={13} /> Clone</button></div></td></tr>)}
+        {displayedSpecifications.map((specification, index) => <tr key={specification.id} className={showForm && editingId === specification.id ? 'is-current-specification' : undefined} aria-current={showForm && editingId === specification.id ? 'true' : undefined}><td>{index + 1}</td><td><strong>{specification.polar_canvas_item_code}</strong></td><td>{specification.product_name || ''}</td><td><strong>{specification.item_name}</strong>{specification.item_sku && <small>{specification.item_sku}</small>}</td><td>{specificationSize(specification)}</td><td><span className="spec-type-badge">{specification.specification_type}</span></td><td>{specification.print_required ? 'Yes' : 'No'}</td><td className="specification-notes" title={specification.notes || undefined}>{specification.notes || '—'}</td><td>{formatIstDateTime(specification.updated_at)}</td><td><div className="spec-row-actions"><button type="button" className={`spec-edit-button${specification.locked_sales_orders ? ' is-locked' : ''}`} title={specificationLockMessage(specification) || `Edit ${specification.polar_canvas_item_code}`} onClick={() => edit(specification)}>{specification.locked_sales_orders ? <Eye size={13} /> : <Pencil size={13} />} {specification.locked_sales_orders ? 'Locked' : 'Edit'}</button><button type="button" className="spec-clone-button" onClick={() => clone(specification)} title={`Clone ${specification.polar_canvas_item_code}`}><Copy size={13} /> Clone</button></div></td></tr>)}
         {!loading && !specificationsLoaded && <tr><td colSpan={10} className="product-spec-empty spec-error">Unable to load saved specifications. Refresh after checking the local backend.</td></tr>}
         {!loading && specificationsLoaded && !listCustomerId && <tr><td colSpan={10} className="product-spec-empty">Select a customer to display saved specifications.</td></tr>}
         {!loading && specificationsLoaded && listCustomerId && displayedSpecifications.length === 0 && <tr><td colSpan={10} className="product-spec-empty">No product specifications are saved for this customer.</td></tr>}

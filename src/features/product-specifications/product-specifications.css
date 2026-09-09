@@ -34,6 +34,9 @@
 .product-spec-panel footer button:disabled { opacity:.6; cursor:wait; }
 .spec-success,.spec-error { display:inline-flex; align-items:center; gap:.3rem; font-size:.67rem; }
 .spec-success { color:#047857; }.spec-error { color:#b91c1c; }
+.product-spec-readonly-fields { display:contents; min-width:0; margin:0; padding:0; border:0; }
+.product-spec-readonly-fields:disabled input,.product-spec-readonly-fields:disabled select,.product-spec-readonly-fields:disabled textarea { opacity:1; border-color:#d5dde8; background:#f3f6fa; color:#334155; cursor:default; }
+.spec-lock-notice { display:inline-flex; max-width:100%; align-items:center; color:#8a4b08; font-size:.67rem; font-weight:650; line-height:1.35; }
 .product-spec-guidance { margin:0; padding:.7rem .85rem; border:1px dashed #cbd5e1; border-radius:7px; color:#64748b; font-size:.69rem; }
 .paper-composition { margin-top:.5rem; border:1px solid #dbe3ee; border-radius:6px; overflow:hidden; background:#fff; }
 .paper-composition-heading { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.42rem .55rem; border-bottom:1px solid #dbe3ee; background:#f4f7fb; font-size:.62rem; }
@@ -60,12 +63,15 @@
 .product-spec-table-wrap { overflow:auto; }.product-spec-list table { width:100%; border-collapse:collapse; font-size:.66rem; }
 .product-spec-list th { padding:.48rem .58rem; background:#f4f7fb; color:#475569; text-align:left; text-transform:uppercase; letter-spacing:.025em; font-size:.58rem; white-space:nowrap; }
 .product-spec-list td { padding:.5rem .58rem; border-top:1px solid #e8edf4; vertical-align:middle; }.product-spec-list tbody tr:hover { background:#f8fafc; }
+.product-spec-list tbody tr.is-current-specification,.product-spec-list tbody tr.is-current-specification:hover { background:#fff4e5; box-shadow:inset 3px 0 #f59e0b; }
+.product-spec-list tbody tr.is-current-specification td { border-top-color:#fed7aa; color:#7c3f0c; }
 .product-spec-list td small { display:block; margin-top:.1rem; color:#64748b; }.product-spec-list .spec-type-badge { white-space:nowrap; }
 .spec-row-actions { display:flex; align-items:center; justify-content:flex-end; gap:.3rem; }
 .product-spec-table-wrap td.specification-notes { max-width:220px; overflow:hidden; color:#475569; text-overflow:ellipsis; white-space:nowrap; }
 .spec-edit-button,.spec-clone-button { display:inline-flex; align-items:center; gap:.25rem; border:1px solid #cbd5e1; border-radius:5px; padding:.3rem .45rem; background:#fff; color:#2563eb; font:inherit; font-size:.61rem; font-weight:700; white-space:nowrap; cursor:pointer; }
 .spec-clone-button { border-color:#a7d7c1; background:#f0fdf4; color:#17704b; }
 .spec-edit-button:hover { border-color:#93c5fd; background:#eff6ff; }
+.spec-edit-button.is-locked,.spec-edit-button.is-locked:hover { border-color:#f1b85b; background:#fff7e6; color:#8a4b08; }
 .spec-clone-button:hover { border-color:#6fc49b; background:#dcfce7; }
 .product-spec-empty { padding:1rem!important; color:#64748b; text-align:center; }
 .product-spec-technical { padding:.5rem .6rem; }
