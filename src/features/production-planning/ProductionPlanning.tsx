@@ -83,6 +83,9 @@ const preloadedDeckleSize = (line: PlanLine) => {
   return savedDeckle?.trim() || calculatedDeckleSize(line)
 }
 const todayIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+const customerDisplayName = (customer: Customer) => customer.gst_number
+  ? `${customer.customer_name} - ${customer.gst_number}`
+  : customer.customer_name
 const isProductionSalesOrder = (order: SalesOrder) => {
   const status = (order.status ?? '').toLowerCase().replace(/[^a-z]/g, '')
   return status === 'open' || status === 'partiallyinvoiced' || status === 'overdue'
@@ -337,7 +340,7 @@ export default function ProductionPlanning() {
                 <option value="">Select customer</option>
                 {customers.map((v) => (
                   <option key={v.customer_id} value={v.customer_id}>
-                    {v.customer_name}
+                    {customerDisplayName(v)}
                   </option>
                 ))}
               </select>

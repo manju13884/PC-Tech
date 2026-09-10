@@ -14,6 +14,8 @@ test('SO Specification Mapping follows customer, Sales Order, display flow', asy
 
   assert.match(component, /getCustomers\(\)/)
   assert.match(component, /getSalesOrdersByCustomer\(customerId\)/)
+  assert.match(component, /customer\.customer_name} - \$\{customer\.gst_number}/)
+  assert.match(component, />\{customerDisplayName\(customer\)}<\/option>/)
   assert.match(component, /orders\.filter\(isMappableSalesOrder\)/)
   assert.match(component, /new Set\(\['closed', 'void', 'voided', 'invoiced'\]\)/)
   assert.match(component, /match\(\/\[a-z\]\+\/g\)/)

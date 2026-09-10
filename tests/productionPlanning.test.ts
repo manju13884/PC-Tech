@@ -11,6 +11,8 @@ test('Production Planning reuses the existing menu and supports multi-order plan
   assert.equal((dashboard.match(/key: 'production-planning'/g) ?? []).length, 1)
   assert.match(dashboard, /<ProductionPlanning \/>/)
   assert.match(component, /nextSelected\.map/)
+  assert.match(component, /customer\.customer_name} - \$\{customer\.gst_number}/)
+  assert.match(component, /\{customerDisplayName\(v\)\}/)
   assert.match(component, /salesOrderIds: nextSelected\.map/)
   assert.match(component, /lines\.map\(renderPlanningRow\)/)
   assert.match(component, /busy \? 'Pushing…' : 'Push to Production'/)
