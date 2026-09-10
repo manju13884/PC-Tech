@@ -41,6 +41,9 @@ async function readApiPayload<T>(response: Response): Promise<T> {
 const excludedSalesOrderStatuses = new Set(['closed', 'void', 'voided', 'invoiced'])
 const normalizedSalesOrderStatus = (status?: string) => ((status ?? '').trim().toLowerCase().match(/[a-z]+/g) ?? []).join('')
 const isMappableSalesOrder = (order: SalesOrder) => !excludedSalesOrderStatuses.has(normalizedSalesOrderStatus(order.status))
+const customerDisplayName = (customer: Customer) => customer.gst_number
+  ? `${customer.customer_name} - ${customer.gst_number}`
+  : customer.customer_name
 interface AdditionalLineSpecification { specificationId: string; quantity: string }
 
 export default function SoSpecificationMapping() {
@@ -262,7 +265,7 @@ export default function SoSpecificationMapping() {
     <div className="coc-form product-spec-form so-mapping-workspace">
       <div className="product-spec-toolbar"><div><strong>SO Specification Mapping</strong>{detail && <span>{detail.line_items.length} item{detail.line_items.length === 1 ? '' : 's'}</span>}</div></div>
       <section className="product-spec-filterbar so-mapping-filterbar">
-        <label><span>Customer</span><select value={customerId} disabled={customersLoading} onChange={(event) => setCustomerId(event.target.value)}><option value="">{customersLoading ? 'Loading customers…' : 'Select customer'}</option>{customers.map((customer) => <option key={customer.customer_id} value={customer.customer_id}>{customer.customer_name}</option>)}</select></label>
+        <label><span>Customer</span><select value={customerId} disabled={customersLoading} onChange={(event) => setCustomerId(event.target.value)}><option value="">{customersLoading ? 'Loading customers…' : 'Select customer'}</option>{customers.map((customer) => <option key={customer.customer_id} value={customer.customer_id}>{customerDisplayName(customer)}</option>)}</select></label>
         <label><span>Sales Order</span><select value={salesOrderId} disabled={!customerId || salesOrdersLoading} onChange={(event) => setSalesOrderId(event.target.value)}><option value="">{!customerId ? 'Select a customer first' : salesOrdersLoading ? 'Loading Sales Orders…' : 'Select Sales Order'}</option>{salesOrders.map((order) => <option key={order.salesorder_id} value={order.salesorder_id}>{order.salesorder_number}</option>)}</select></label>
         {customerError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{customerError}</p>}
         {salesOrderError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{salesOrderError}</p>}

@@ -31,6 +31,10 @@ type Specification = Omit<FormState, 'print_required'> & {
   locked_sales_orders?: string; locked_production_plans?: string
 }
 
+const customerDisplayName = (customer: Customer) => customer.gst_number
+  ? `${customer.customer_name} - ${customer.gst_number}`
+  : customer.customer_name
+
 const specificationLockMessage = (specification: Specification) => specification.locked_sales_orders
   ? `This Product Specification cannot be edited because it is mapped to Sales Order ${specification.locked_sales_orders} and is associated with Production Plan ${specification.locked_production_plans || 'previous production planning'}. Clone it to create a new specification.`
   : ''
@@ -383,7 +387,7 @@ export default function ProductSpecifications() {
   return <form className="coc-form product-spec-form" onSubmit={save}>
     <div className="product-spec-toolbar"><div><strong>Product Specification Master</strong>{listCustomerId && <span>{displayedSpecifications.length} record{displayedSpecifications.length === 1 ? '' : 's'}</span>}</div></div>
     <section className="product-spec-filterbar">
-      <label><span className="spec-field-label">Customer <b className="spec-required-mark" aria-label="required">*</b></span><select value={listCustomerId} onChange={(event) => { setListCustomerId(event.target.value); setListItemId(''); setShowForm(false) }}><option value="">Select customer</option>{customers.map((value) => <option key={value.customer_id} value={value.customer_id}>{value.customer_name}</option>)}</select></label>
+      <label><span className="spec-field-label">Customer <b className="spec-required-mark" aria-label="required">*</b></span><select value={listCustomerId} onChange={(event) => { setListCustomerId(event.target.value); setListItemId(''); setShowForm(false) }}><option value="">Select customer</option>{customers.map((value) => <option key={value.customer_id} value={value.customer_id}>{customerDisplayName(value)}</option>)}</select></label>
       <label><span className="spec-field-label">Item <b className="spec-required-mark" aria-label="required">*</b></span><select value={listItemId} onChange={(event) => { setListItemId(event.target.value); setShowForm(false) }}><option value="">All items</option>{items.map((value) => <option key={value.item_id} value={value.item_id}>{value.item_name}{value.sku ? ` (${value.sku})` : ''}</option>)}</select></label>
       <button type="button" onClick={startAdd}><Plus size={15} /> Add Specification</button>
     </section>

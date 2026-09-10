@@ -9,6 +9,8 @@ test('product specifications use cached customers and cached Zoho items', async 
     readFile('lib/items.ts', 'utf8'),
   ])
   assert.match(component, /getCustomers\(\)/)
+  assert.match(component, /customer\.customer_name} - \$\{customer\.gst_number}/)
+  assert.match(component, />\{customerDisplayName\(value\)}<\/option>/)
   assert.match(component, /getItems\(\)/)
   assert.match(component, /Promise\.allSettled/)
   assert.match(component, /specification\.customer_id === listCustomerId\)/)
