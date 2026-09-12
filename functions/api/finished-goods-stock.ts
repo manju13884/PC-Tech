@@ -10,6 +10,7 @@ async function canView(db:D1Database,roleId:number,roleName:string){
 }
 
 export async function onRequestGet(context:Context):Promise<Response>{
+ try{
   const db=context.env.DB
   if(!db)return json({error:'Finished Goods Stock database is unavailable.'},503)
   const user=await getAuthenticatedUser(context.request,db)
@@ -30,7 +31,7 @@ export async function onRequestGet(context:Context):Promise<Response>{
   const filters:[string,string][]=[['customer_id','line.zoho_customer_id=?'],['sales_order','line.sales_order_number LIKE ?'],['job_card','card.job_number LIKE ?'],['item','(line.item_name LIKE ? OR line.item_description LIKE ? OR spec.polar_canvas_item_code LIKE ?)']]
   for(const[key,clause]of filters){const value=url.searchParams.get(key)?.trim();if(!value)continue;clauses.push(clause);const bound=key==='customer_id'?value:`%${value}%`;values.push(...(key==='item'?[bound,bound,bound]:[bound]))}
 
-  const rows=await db.prepare(`SELECT card.id AS job_card_id,line.id AS production_plan_line_id,line.zoho_sales_order_id,
+  const reportSql=`SELECT card.id AS job_card_id,line.id AS production_plan_line_id,line.zoho_sales_order_id,
     line.sales_order_number,line.zoho_customer_id,line.customer_name,line.zoho_item_id,line.item_name,
     line.item_description,spec.polar_canvas_item_code,card.job_number,${manufacturedAt} AS manufactured_date,
     card.manufactured_quantity,line.uom
@@ -39,10 +40,16 @@ export async function onRequestGet(context:Context):Promise<Response>{
     INNER JOIN production_plans plan ON plan.id=line.production_plan_id
     LEFT JOIN product_specification_records spec ON spec.id=line.approved_specification_revision_id
     WHERE ${clauses.join(' AND ')}
-    ORDER BY manufactured_date DESC,card.id DESC LIMIT 5000`).bind(...values).all()
+    ORDER BY manufactured_date DESC,card.id DESC LIMIT 5000`
+  const reportStatement=db.prepare(reportSql)
+  const rows=values.length?await reportStatement.bind(...values).all():await reportStatement.all()
   const customers=await db.prepare(`SELECT DISTINCT line.zoho_customer_id AS customer_id,line.customer_name
     FROM job_cards card INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
     INNER JOIN production_plans plan ON plan.id=line.production_plan_id
     WHERE card.manufactured_quantity>0 AND plan.deleted_at IS NULL ORDER BY line.customer_name`).all()
   return json({rows:rows.results??[],customers:customers.results??[]})
+ }catch(error){
+  console.error('[finished-goods-stock] load failed',error)
+  return json({error:'Unable to load Finished Goods Stock. Please retry.'},500)
+ }
 }

@@ -18,6 +18,8 @@ test('Finished Goods Stock is a read-only Job Card projection with stable linkag
   assert.match(api,/line\.id AS production_plan_line_id/)
   assert.match(api,/MAX\(entry\.completed_at\)/)
   assert.match(api,/ORDER BY manufactured_date DESC,card\.id DESC/)
+  assert.match(api,/values\.length\?await reportStatement\.bind\(\.\.\.values\)\.all\(\):await reportStatement\.all\(\)/)
+  assert.match(api,/\[finished-goods-stock\] load failed/)
   assert.doesNotMatch(api,/\b(?:INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b/i)
   assert.match(component,/Finished Goods Stock/)
   for(const label of ['SO','Customer','Item & Description','Job Card No.','Manufactured Date','Manufactured Qty'])assert.ok(component.includes(label))
