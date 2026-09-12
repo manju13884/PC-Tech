@@ -60,6 +60,9 @@ if (applied.some((result) => Array.isArray(result.results) && result.results.som
   process.exit(0)
 }
 
-for (const statement of statements) await query(statement)
+for (const [index, statement] of statements.entries()) {
+  console.log(`Applying reviewed statement ${index + 1} of ${statements.length}...`)
+  await query(statement)
+}
 await query('INSERT OR IGNORE INTO d1_migrations (name) VALUES (?)', [allowedMigration])
 console.log(`${allowedMigration} applied statement-by-statement and recorded successfully.`)
