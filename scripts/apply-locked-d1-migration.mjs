@@ -28,6 +28,20 @@ function splitSql(sql) {
 }
 
 const statements = splitSql(readFileSync(resolve(migrationPath), 'utf8'))
+const cloudflareCompatibleValidationTrigger = `CREATE TRIGGER IF NOT EXISTS trg_stock_adjustment_ledger_validate
+BEFORE INSERT ON inventory_stock_ledger
+FOR EACH ROW WHEN NEW.reference_type = 'STOCK_ADJUSTMENT'
+BEGIN
+  SELECT RAISE(ABORT, 'stock_adjustment_not_pending')
+  WHERE COALESCE((SELECT status FROM inventory_stock_adjustments WHERE id = NEW.reference_id), '') <> 'PENDING_APPROVAL';
+  SELECT RAISE(ABORT, 'stock_balance_changed')
+  WHERE ABS(COALESCE((SELECT reel_weight_kg FROM material_inventory_records WHERE id = NEW.inventory_stock_id), -1) - NEW.previous_stock) > 0.000001;
+  SELECT RAISE(ABORT, 'negative_stock_not_allowed') WHERE NEW.revised_stock < 0;
+  SELECT RAISE(ABORT, 'invalid_stock_calculation')
+  WHERE NEW.movement = 'IN' AND ABS((NEW.previous_stock + NEW.quantity) - NEW.revised_stock) > 0.000001;
+  SELECT RAISE(ABORT, 'invalid_stock_calculation')
+  WHERE NEW.movement = 'OUT' AND ABS((NEW.previous_stock - NEW.quantity) - NEW.revised_stock) > 0.000001;
+END;`
 if (checkOnly) {
   console.log(`${allowedMigration}: ${statements.length} complete SQL statements validated.`)
   process.exit(0)
@@ -62,7 +76,7 @@ if (applied.some((result) => Array.isArray(result.results) && result.results.som
 
 for (const [index, statement] of statements.entries()) {
   console.log(`Applying reviewed statement ${index + 1} of ${statements.length}...`)
-  await query(statement)
+  await query(index === 7 ? cloudflareCompatibleValidationTrigger : statement)
 }
 await query('INSERT OR IGNORE INTO d1_migrations (name) VALUES (?)', [allowedMigration])
 console.log(`${allowedMigration} applied statement-by-statement and recorded successfully.`)
