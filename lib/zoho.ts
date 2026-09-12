@@ -23,6 +23,23 @@ const ZOHO_REGION_URLS: Record<string, { tokenUrl: string; booksUrl: string }> =
   },
 }
 
+const ZOHO_REQUEST_TIMEOUT_MS = 20_000
+
+async function zohoFetch(input: string | URL, init: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timeout = globalThis.setTimeout(() => controller.abort(), ZOHO_REQUEST_TIMEOUT_MS)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ZohoRequestError('Zoho request timed out.', { status: 504, code: 'request_timeout', message: 'Zoho did not respond before the request timeout' })
+    }
+    throw error
+  } finally {
+    globalThis.clearTimeout(timeout)
+  }
+}
+
 export type ZohoEnv = Record<string, string | undefined>
 
 interface ZohoErrorDetails {
@@ -150,7 +167,7 @@ export async function getAccessToken(env?: ZohoEnv): Promise<string> {
 
   logTokenRequestDiagnostic(tokenUrl, body, env)
 
-  const response = await fetch(tokenUrl, {
+  const response = await zohoFetch(tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -231,7 +248,7 @@ async function zohoRequest(endpoint: string, env?: ZohoEnv): Promise<unknown> {
     zohoOrgIdNumericOnly: /^\d+$/.test(organizationId),
   })
 
-  const response = await fetch(url, {
+  const response = await zohoFetch(url, {
     method: 'GET',
     headers: {
       Authorization: `Zoho-oauthtoken ${accessToken}`,

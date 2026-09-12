@@ -40,10 +40,13 @@ interface ZohoLineItem {
 export interface InvoiceSummary {
   invoice_id: string
   invoice_number: string
+  customer_id: string
+  date: string
+  total: number
+  status: string
 }
 
 export interface InvoiceDetail extends InvoiceSummary {
-  date: string
   customer_name: string
   po_number: string
   sales_order_number: string
@@ -221,6 +224,10 @@ function mapInvoice(invoice: ZohoInvoice): InvoiceSummary | null {
   return {
     invoice_id: invoiceId,
     invoice_number: invoiceNumber,
+    customer_id: invoice.customer_id != null ? String(invoice.customer_id) : '',
+    date: normalizeText(invoice.date),
+    total: Number(invoice.total) || 0,
+    status: normalizeText(invoice.status),
   }
 }
 
@@ -245,7 +252,6 @@ function mapInvoiceDetail(invoice: ZohoInvoice): InvoiceDetail | null {
 
   return {
     ...summary,
-    date: normalizeText(invoice.date),
     customer_name: normalizeText(invoice.customer_name),
     po_number:
       getCustomPoNumber(invoice) ||
@@ -313,6 +319,7 @@ export async function getZohoInvoicesByCustomer(customerId: string, env?: ZohoEn
 
   return invoices
     .filter((item): item is ZohoInvoice => Boolean(item) && typeof item === 'object')
+    .filter((invoice) => !['void', 'deleted'].includes(normalizeText(invoice.status).toLowerCase()))
     .map(mapInvoice)
     .filter((item): item is InvoiceSummary => item !== null)
 }
