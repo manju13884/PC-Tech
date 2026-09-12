@@ -58,12 +58,15 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations list pc-tech-production-db --remote --env production
 
-      - name: Apply locked stock migration safely when pending
+      - name: Apply locked Inventory migrations safely when pending
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_D1_DATABASE_ID: e863e5c3-b60f-48a5-8fdd-862f1ac52eaf
-        run: node scripts/apply-locked-d1-migration.mjs migrations/0038_create_stock_adjustments.sql
+        run: |
+          for migration in migrations/0038_create_stock_adjustments.sql migrations/0039_add_job_tracking_reel_consumption.sql migrations/0040_create_inventory_reel_reservations.sql migrations/0041_add_job_process_completion.sql migrations/0042_add_job_card_supervisor_user.sql migrations/0043_create_material_issues.sql migrations/0044_add_material_issue_invoice_mapping.sql migrations/0045_add_finished_goods_stock_permission.sql; do
+            node scripts/apply-locked-d1-migration.mjs "$migration"
+          done
 
       - name: Apply production D1 migrations
         uses: cloudflare/wrangler-action@v4
