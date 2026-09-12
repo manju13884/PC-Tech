@@ -1224,6 +1224,60 @@ main.app-shell::after {
   font-size: 0.612rem;
 }
 
+.admin-access-groups {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.admin-access-group {
+  overflow: hidden;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.admin-access-group > summary {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.7rem;
+  color: #27364b;
+  background: #f5f8fc;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style-position: inside;
+  user-select: none;
+}
+
+.admin-access-group > summary:hover {
+  background: #edf4fd;
+}
+
+.admin-access-group > summary small {
+  margin-left: auto;
+  color: #718096;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.admin-access-group[open] > summary {
+  border-bottom: 1px solid #dbe4ef;
+  color: #1d4f91;
+  background: #edf5ff;
+}
+
+.admin-access-group .admin-users-table-wrap {
+  border: 0;
+  border-radius: 0;
+}
+
+.admin-access-group .admin-access-table {
+  border: 0;
+  border-radius: 0;
+}
+
 .admin-roles-table td:nth-child(3) {
   max-width: 420px;
   white-space: normal;

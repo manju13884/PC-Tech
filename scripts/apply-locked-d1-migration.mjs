@@ -38,6 +38,7 @@ function splitSql(sql) {
 }
 
 const statements = splitSql(readFileSync(resolve(migrationPath), 'utf8'))
+
 function makeCloudflareCompatible(statement) {
   if (!statement.includes('SELECT CASE')) return statement
   const lines = statement.split('\n')
@@ -51,6 +52,7 @@ function makeCloudflareCompatible(statement) {
   if (!replacements.length) throw new Error(`${migrationName} validation trigger could not be translated safely.`)
   return [...lines.slice(0, caseStart), ...replacements, ...lines.slice(caseEnd + 1)].join('\n')
 }
+
 if (checkOnly) {
   statements.forEach(makeCloudflareCompatible)
   console.log(`${migrationName}: ${statements.length} complete SQL statements validated.`)
@@ -60,7 +62,7 @@ if (checkOnly) {
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
 const apiToken = process.env.CLOUDFLARE_API_TOKEN
 const databaseId = process.env.CLOUDFLARE_D1_DATABASE_ID
-if (!accountId || !apiToken || !databaseId) throw new Error('Cloudflare production migration credentials are unavailable.')
+if (!accountId || !apiToken || !databaseId) throw new Error('Cloudflare migration credentials are unavailable.')
 const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`
 
 async function query(sql, params = []) {

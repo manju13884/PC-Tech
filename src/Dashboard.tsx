@@ -3116,55 +3116,70 @@ export default function Dashboard({
                           <p className="admin-user-message">{adminAccessError}</p>
                         )}
                         {!adminAccessLoading && !adminAccessError && (
-                          <div className="admin-users-table-wrap">
-                            <table className="admin-users-table admin-access-table">
-                              <thead>
-                                <tr>
-                                  <th>Particulars</th>
-                                  {accessRoles.map((role) => (
-                                    <th key={role.id}>{role.name}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {accessMatrix.map((accessItem) => (
-                                  <tr
-                                    key={accessItem.key}
-                                    className={accessItem.key === 'admin-configurations' ? 'admin-access-row-locked' : undefined}
-                                  >
-                                    <td>
-                                      <span className="admin-access-module">{accessItem.module}</span>
-                                      <strong>{accessItem.subMenu}</strong>
-                                    </td>
-                                    {accessRoles.map((role) => {
-                                      const checkboxKey = `${role.id}:${accessItem.key}`
-                                      const isAccessManagementRow = accessItem.key === 'admin-configurations'
-                                      const hasRoleMenuAccess = getRoleMenuAccess(role.id, accessItem.key)
-                                      const isProtectedSuperadminAccess = role.name === 'SUPERADMIN'
-                                      const isRestrictedAccessGrant = isAccessManagementRow && role.name !== 'SUPERADMIN' && !hasRoleMenuAccess
+                          <div className="admin-access-groups">
+                            {menuGroups.map((group) => (
+                              <details className="admin-access-group" key={group.title}>
+                                <summary>
+                                  <span>{group.title}</span>
+                                  <small>{group.items.length} {group.items.length === 1 ? 'menu' : 'menus'}</small>
+                                </summary>
+                                <div className="admin-users-table-wrap">
+                                  <table className="admin-users-table admin-access-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Submenu</th>
+                                        {accessRoles.map((role) => (
+                                          <th key={role.id}>{role.name}</th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {group.items.map((item) => {
+                                        const accessItem: AccessMatrixItem = {
+                                          key: item.key,
+                                          module: group.title,
+                                          subMenu: item.menuTitle ?? item.title,
+                                        }
 
-                                      return (
-                                        <td key={role.id}>
-                                          <input
-                                            className="admin-access-checkbox"
-                                            type="checkbox"
-                                            checked={hasRoleMenuAccess}
-                                            onChange={(event) => (
-                                              toggleRoleMenuAccess(role.id, accessItem.key, event.target.checked)
-                                            )}
-                                            disabled={isProtectedSuperadminAccess || isRestrictedAccessGrant || savingAccessKey === checkboxKey}
-                                            aria-label={`${role.name} access for ${accessItem.subMenu}`}
-                                            title={isProtectedSuperadminAccess
-                                              ? 'SUPERADMIN automatically has access to all menus.'
-                                              : undefined}
-                                          />
-                                        </td>
-                                      )
-                                    })}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                        return (
+                                          <tr
+                                            key={accessItem.key}
+                                            className={accessItem.key === 'admin-configurations' ? 'admin-access-row-locked' : undefined}
+                                          >
+                                            <td><strong>{accessItem.subMenu}</strong></td>
+                                            {accessRoles.map((role) => {
+                                              const checkboxKey = `${role.id}:${accessItem.key}`
+                                              const isAccessManagementRow = accessItem.key === 'admin-configurations'
+                                              const hasRoleMenuAccess = getRoleMenuAccess(role.id, accessItem.key)
+                                              const isProtectedSuperadminAccess = role.name === 'SUPERADMIN'
+                                              const isRestrictedAccessGrant = isAccessManagementRow && role.name !== 'SUPERADMIN' && !hasRoleMenuAccess
+
+                                              return (
+                                                <td key={role.id}>
+                                                  <input
+                                                    className="admin-access-checkbox"
+                                                    type="checkbox"
+                                                    checked={hasRoleMenuAccess}
+                                                    onChange={(event) => (
+                                                      toggleRoleMenuAccess(role.id, accessItem.key, event.target.checked)
+                                                    )}
+                                                    disabled={isProtectedSuperadminAccess || isRestrictedAccessGrant || savingAccessKey === checkboxKey}
+                                                    aria-label={`${role.name} access for ${accessItem.subMenu}`}
+                                                    title={isProtectedSuperadminAccess
+                                                      ? 'SUPERADMIN automatically has access to all menus.'
+                                                      : undefined}
+                                                  />
+                                                </td>
+                                              )
+                                            })}
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </details>
+                            ))}
                           </div>
                         )}
                       </section>
