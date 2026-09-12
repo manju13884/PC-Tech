@@ -1,6 +1,10 @@
 export interface Invoice {
   invoice_id: string
   invoice_number: string
+  customer_id?: string
+  date?: string
+  total?: number
+  status?: string
 }
 
 export interface InvoiceDetail extends Invoice {
@@ -51,7 +55,11 @@ function isInvoice(value: unknown): value is Invoice {
 
   return (
     typeof invoice.invoice_id === 'string' &&
-    typeof invoice.invoice_number === 'string'
+    typeof invoice.invoice_number === 'string' &&
+    (invoice.customer_id === undefined || typeof invoice.customer_id === 'string') &&
+    (invoice.date === undefined || typeof invoice.date === 'string') &&
+    (invoice.total === undefined || typeof invoice.total === 'number') &&
+    (invoice.status === undefined || typeof invoice.status === 'string')
   )
 }
 
@@ -70,7 +78,7 @@ function isInvoiceDetail(value: unknown): value is InvoiceDetail {
 
 export async function getInvoiceById(invoiceId: string): Promise<InvoiceDetail> {
   const params = new URLSearchParams({ invoice_id: invoiceId })
-  const response = await fetch(`/api/invoices?${params.toString()}`)
+  const response = await fetch(`/api/invoices?${params.toString()}`, { credentials: 'include' })
 
   if (!response.ok) {
     throw new Error(await getResponseError(response, `Unable to load invoice (${response.status})`))
@@ -99,7 +107,7 @@ export async function getInvoicesByCustomer(customerId: string): Promise<Invoice
 
   try {
     const params = new URLSearchParams({ customer_id: customerId })
-    const response = await fetch(`/api/invoices?${params.toString()}`)
+    const response = await fetch(`/api/invoices?${params.toString()}`, { credentials: 'include' })
 
     if (!response.ok) {
       throw new Error(await getResponseError(response, `Unable to load invoices (${response.status})`))

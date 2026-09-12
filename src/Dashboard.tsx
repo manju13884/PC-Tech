@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
-import { Ban, BarChart3, Calculator, ChevronRight, CircleCheck, ClipboardList, Database, FileCheck2, FileDown, FlaskConical, Home, KeyRound, PackageCheck, Pencil, Printer, RefreshCw, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
+import { ArrowLeftRight, Ban, BarChart3, Calculator, ChevronRight, CircleCheck, ClipboardList, Database, FileCheck2, FileDown, FlaskConical, Home, KeyRound, Package, PackageCheck, Pencil, Printer, RefreshCw, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
 import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
 import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
@@ -30,6 +30,12 @@ import ProductionPlanned from './features/production-planned/ProductionPlanned'
 import ProductSpecifications from './features/product-specifications/ProductSpecifications'
 import JobCards from './features/job-cards/JobCards'
 import JobTracking from './features/job-tracking/JobTracking'
+import { MaterialInventory, StockAdjustment } from './features/inventory/InventoryPages'
+import MaterialIssue from './features/inventory/MaterialIssue'
+import StockLedger from './features/inventory/StockLedger'
+import FinishedGoodsStock from './features/inventory/FinishedGoodsStock'
+import StockReport from './features/inventory/StockReport'
+import { getInventoryVendors, getInventoryVendorsRefreshedAt, refreshInventoryVendors } from './features/inventory/inventoryZohoService'
 import SoSpecificationMapping from './features/so-specification-mapping/SoSpecificationMapping'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
 import type { CoaAnalysisItem, CoaInvoiceValues } from './lib/coaGenerator'
@@ -154,6 +160,54 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    title: 'Inventory',
+    items: [
+      {
+        key: 'material-inventory',
+        title: 'Material Receipt',
+        description: 'Receive materials into PC-Tech Inventory.',
+        icon: PackageCheck,
+      },
+      {
+        key: 'material-stock',
+        title: 'Material Stock',
+        description: 'View current material and reel stock.',
+        icon: Package,
+      },
+      {
+        key: 'material-issue-return',
+        title: 'Material Issue',
+        description: 'Issue available inventory materials directly to customers.',
+        icon: ArrowLeftRight,
+      },
+      {
+        key: 'stock-adjustment',
+        title: 'Stock Adjustment',
+        description: 'Material stock adjustments will be managed here.',
+        icon: SlidersHorizontal,
+      },
+      {
+        key: 'stock-report',
+        title: 'Stock Report',
+        description: 'View current and historical inventory stock positions.',
+        icon: BarChart3,
+      },
+      {
+        key: 'inventory-transactions',
+        title: 'Stock Ledger',
+        description: 'View the complete material movement history.',
+        icon: ClipboardList,
+      },
+      {
+        key: 'finished-goods-stock',
+        title: 'Finished Goods Stock (FG Stock Report)',
+        menuTitle: 'Finished Goods Stock',
+        description: 'View finished goods manufactured from Production Job Cards.',
+        icon: PackageCheck,
+      },
+    ],
+  },
+  {
     title: 'Documents',
     items: [
       {
@@ -217,6 +271,15 @@ const PANEL_HEADING_MENU_KEYS = new Set([
 ])
 const NEW_MODULE_MENU_KEYS = new Set([
   'production-specifications',
+])
+const INVENTORY_MENU_KEYS = new Set([
+  'material-inventory',
+  'material-stock',
+  'material-issue-return',
+  'stock-adjustment',
+  'stock-report',
+  'inventory-transactions',
+  'finished-goods-stock',
 ])
 const MOBILE_NO_PATTERN = /^\d{10}$/
 const coaAnalysisHeadings = ['Board GSM', 'GSM', 'Bursting Strength', 'Moisture', 'Ply'] as const
@@ -569,9 +632,10 @@ export default function Dashboard({
   menuAccess: string[]
   onLogout: () => void
 }) {
-  const [selectedKey, setSelectedKey] = useState(() => getInitialMenuKey(menuAccess))
+  const effectiveMenuAccess = userRole === 'SUPERADMIN' ? menuItems.map((item) => item.key) : menuAccess
+  const [selectedKey, setSelectedKey] = useState(() => getInitialMenuKey(effectiveMenuAccess))
   const [expandedMenuGroups, setExpandedMenuGroups] = useState<Set<string>>(() => {
-    const activeGroupTitle = getMenuGroupTitleForKey(getInitialMenuKey(menuAccess))
+    const activeGroupTitle = getMenuGroupTitleForKey(getInitialMenuKey(effectiveMenuAccess))
     return new Set(activeGroupTitle ? [activeGroupTitle] : [])
   })
   const [customerId, setCustomerId] = useState('')
@@ -680,8 +744,11 @@ export default function Dashboard({
   const [itemRefreshLoading, setItemRefreshLoading] = useState(false)
   const [itemRefreshError, setItemRefreshError] = useState('')
   const [itemsRefreshedAt, setItemsRefreshedAt] = useState<Date | null>(null)
+  const [vendorRefreshLoading, setVendorRefreshLoading] = useState(false)
+  const [vendorRefreshError, setVendorRefreshError] = useState('')
+  const [vendorsRefreshedAt, setVendorsRefreshedAt] = useState<Date | null>(null)
 
-  const visibleMenuGroups = getVisibleMenuGroups(menuAccess)
+  const visibleMenuGroups = getVisibleMenuGroups(effectiveMenuAccess)
   const moduleMenuItems = visibleMenuGroups.flatMap((group) => group.items)
   const visibleMenuItems = [homeMenuItem, ...moduleMenuItems]
   const visibleMenuKeys = new Set(visibleMenuItems.map((item) => item.key))
@@ -707,6 +774,15 @@ export default function Dashboard({
     window.history.replaceState(null, '', `#${nextKey}`)
     setSelectedKey(nextKey)
   }, [selectedKey, visibleMenuKeyList])
+
+  useEffect(() => {
+    if (selectedKey !== 'data-management' || userRole !== 'SUPERADMIN') return
+    let active = true
+    void getInventoryVendors()
+      .then(() => { if (active) setVendorsRefreshedAt(getInventoryVendorsRefreshedAt()) })
+      .catch((error: unknown) => { if (active) setVendorRefreshError(error instanceof Error ? error.message : 'Unable to load vendor cache details.') })
+    return () => { active = false }
+  }, [selectedKey, userRole])
 
   useEffect(() => {
     if (selectedKey !== 'coc') {
@@ -1505,19 +1581,13 @@ export default function Dashboard({
     setSelectedKey(key)
     const groupTitle = getMenuGroupTitleForKey(key)
     if (groupTitle) {
-      setExpandedMenuGroups((current) => new Set(current).add(groupTitle))
+      setExpandedMenuGroups(new Set([groupTitle]))
     }
   }
 
   function toggleMenuGroup(groupTitle: string) {
     setExpandedMenuGroups((current) => {
-      const next = new Set(current)
-      if (next.has(groupTitle)) {
-        next.delete(groupTitle)
-      } else {
-        next.add(groupTitle)
-      }
-      return next
+      return current.has(groupTitle) ? new Set() : new Set([groupTitle])
     })
   }
 
@@ -1582,6 +1652,20 @@ export default function Dashboard({
       setItemRefreshError(getItemsError() ?? 'Unable to refresh item details. Please try again.')
     } finally {
       setItemRefreshLoading(false)
+    }
+  }
+
+  async function refreshVendorDetails() {
+    if (vendorRefreshLoading || userRole !== 'SUPERADMIN') return
+    setVendorRefreshLoading(true)
+    setVendorRefreshError('')
+    try {
+      const result = await refreshInventoryVendors()
+      setVendorsRefreshedAt(result.refreshedAt)
+    } catch (error) {
+      setVendorRefreshError(error instanceof Error ? error.message : 'Unable to refresh vendor details. Please try again.')
+    } finally {
+      setVendorRefreshLoading(false)
     }
   }
 
@@ -2040,7 +2124,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' || selectedItem.key === 'job-tracking' ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' || selectedItem.key === 'job-tracking' ? ' document-form-page' : ''}${INVENTORY_MENU_KEYS.has(selectedItem.key) ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
             {selectedItem.key !== 'home' && (
               <header className="dashboard-page-heading">
                 <h2>
@@ -2104,6 +2188,27 @@ export default function Dashboard({
               )}
               {selectedItem.key === 'job-tracking' && (
                 <JobTracking />
+              )}
+              {selectedItem.key === 'material-inventory' && (
+                <MaterialInventory />
+              )}
+              {selectedItem.key === 'stock-adjustment' && (
+                <StockAdjustment userRole={userRole} />
+              )}
+              {selectedItem.key === 'stock-report' && (
+                <StockReport username={username} />
+              )}
+              {selectedItem.key === 'material-stock' && (
+                <StockReport username={username} />
+              )}
+              {selectedItem.key === 'material-issue-return' && (
+                <MaterialIssue />
+              )}
+              {selectedItem.key === 'inventory-transactions' && (
+                <StockLedger />
+              )}
+              {selectedItem.key === 'finished-goods-stock' && (
+                <FinishedGoodsStock username={username} />
               )}
               {NEW_MODULE_MENU_KEYS.has(selectedItem.key) && (
                 <section className="paper-request-section pc-module-placeholder">
@@ -2172,7 +2277,33 @@ export default function Dashboard({
                   )}
                   <div className="data-management-utility">
                     <div>
-                      <strong>Refresh Dashboard Data</strong>
+                      <strong>Vendor Details</strong>
+                      <p>Refresh the shared active-vendor cache from Zoho Books.</p>
+                    </div>
+                    {userRole === 'SUPERADMIN' ? (
+                      <div className="data-management-actions">
+                        {vendorsRefreshedAt && (
+                          <span className="data-management-refreshed-at">
+                            Refreshed on {formatIstDateTime(vendorsRefreshedAt)}
+                          </span>
+                        )}
+                        <button type="button" onClick={() => void refreshVendorDetails()} disabled={vendorRefreshLoading}>
+                          <RefreshCw size={14} className={vendorRefreshLoading ? 'is-spinning' : ''} />
+                          {vendorRefreshLoading ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="data-management-restricted">SUPERADMIN only</span>
+                    )}
+                  </div>
+                  {vendorRefreshError && (
+                    <p className="data-management-message is-error" role="alert">
+                      {vendorRefreshError}
+                    </p>
+                  )}
+                  <div className="data-management-utility">
+                    <div>
+                      <strong>Dashboard Data</strong>
                       <p>Refresh the cached sales and finance dashboard data from Zoho.</p>
                     </div>
                     {userRole === 'SUPERADMIN' ? (

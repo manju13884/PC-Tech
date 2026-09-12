@@ -33,5 +33,15 @@
   "0032_add_job_card_process_reel_details.sql": "154a1589a6ff196464312b7973c0568090fb5bd2c51815fc766a99ccee237fc7",
   "0033_add_job_card_completion_details.sql": "c4ea9e4411fd32ec489d0f7dcacbe1e93e582c9c908a80b1022f267ba1cd624c",
   "0034_add_so_line_child_specifications.sql": "c9992e0118702b5dc332fab415f3e4ee6f9961fc9bf38c3b6ed8c9d58f7e9881",
-  "0035_add_so_line_child_quantity.sql": "d197746a27f53a84e8c4efc0872012b1782e35c06e2676f78f673a3b44467893"
+  "0035_add_so_line_child_quantity.sql": "d197746a27f53a84e8c4efc0872012b1782e35c06e2676f78f673a3b44467893",
+  "0036_create_material_inventory_records.sql": "07cbe7cc2a81af7293aab3d384daf6c8fb0bb66b6508e4f5a9eb8bc234df908d",
+  "0037_create_vendor_cache.sql": "2a29643743d47a7bb79a409d85920d7499c2745d9ff9903021e9c98c5f618af3",
+  "0038_create_stock_adjustments.sql": "d0e6be4c54262ad53e34c91dafeb70ce32499a856a54c745a35dfff50c3f3a5d",
+  "0039_add_job_tracking_reel_consumption.sql": "7c305f2e89aecb24f0c75b36547969cc713f71abd3109645663464e52d7a0faf",
+  "0040_create_inventory_reel_reservations.sql": "ff1ceead1237fcd61426c928859b025d957c68a1eae0d4124527b1cd70bc0003",
+  "0041_add_job_process_completion.sql": "50ca19dd8f689aeba0373dcb07e5dd07f163445e6497ff56582ce0b2dde7ba40",
+  "0042_add_job_card_supervisor_user.sql": "c1448b337af18678e5e60a538ad98748067760666fb5d50e521a4bead261ad1d",
+  "0043_create_material_issues.sql": "d6b1166bd010b566e474f16b3de8def37b3cee9f1141b69bee678fbfb81fc962",
+  "0044_add_material_issue_invoice_mapping.sql": "e089918b21dc11bbd6db201dc8183c274e6d55b5ebd4dfa1bcb66ede5b2906c2",
+  "0045_add_finished_goods_stock_permission.sql": "dd70708cfeed57326433a479bf1156583e00c83515d09046aed3996bd345e406"
 }

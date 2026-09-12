@@ -19,7 +19,7 @@ async function permission(db: D1Database, roleId: number, roleName: string, crea
 
 const selectJobCardLines = `
   SELECT line.id AS production_plan_line_id, card.id AS job_card_id, card.job_number, card.status AS job_status,
-    card.created_at AS job_created_at, card.supervisor_name, card.quality_name, card.dispatch_name,
+    card.created_at AS job_created_at, card.supervisor_user_id, card.supervisor_name, card.quality_name, card.dispatch_name,
     card.box_weight_kg, card.manufactured_quantity, plan.plan_number, plan.plan_date, plan.status AS plan_status,
     plan.remarks AS plan_remarks, line.customer_name, line.sales_order_number, line.delivery_date,
     line.item_name, line.item_description, line.customer_po_number, line.production_quantity,
@@ -33,7 +33,8 @@ const selectJobCardLines = `
       'reel_number', entry.reel_number, 'in_reel_weight', entry.in_reel_weight, 'out_reel_weight', entry.out_reel_weight,
       'remaining_reel_weight', entry.remaining_reel_weight, 'reel_number_2', entry.reel_number_2,
       'in_reel_weight_2', entry.in_reel_weight_2, 'out_reel_weight_2', entry.out_reel_weight_2,
-      'remaining_reel_weight_2', entry.remaining_reel_weight_2
+      'remaining_reel_weight_2', entry.remaining_reel_weight_2,
+      'process_entry_id', entry.id, 'process_status', entry.process_status, 'completed_at', entry.completed_at
     )) FROM job_card_process_entries entry WHERE entry.job_card_id = card.id), '[]') AS process_entries_json
   FROM production_plan_lines line
   INNER JOIN production_plans plan ON plan.id = line.production_plan_id
@@ -66,14 +67,15 @@ export async function onRequestPost(context: Context): Promise<Response> {
 
   const statements = lineIds.map((lineId) => db.prepare(
     `INSERT OR IGNORE INTO job_cards (
-       job_number, production_plan_line_id, created_by_user_id, created_by_name
+       job_number, production_plan_line_id, created_by_user_id, created_by_name,
+       supervisor_user_id, supervisor_name
      )
-     SELECT 'JC-' || printf('%06d', line.id), line.id, ?, ?
+     SELECT 'JC-' || printf('%06d', line.id), line.id, ?, ?, ?, ?
      FROM production_plan_lines line
      INNER JOIN production_plans plan ON plan.id = line.production_plan_id
      WHERE line.id = ? AND plan.deleted_at IS NULL
        AND plan.status <> 'DRAFT' AND plan.status <> 'CANCELLED'`,
-  ).bind(user.id, user.fullName, lineId))
+  ).bind(user.id, user.fullName, user.id, user.fullName, lineId))
   await db.batch(statements)
   const result = await db.prepare(selectJobCardLines).all()
   return json({ success: true, lines: result.results ?? [] })

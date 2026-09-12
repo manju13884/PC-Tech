@@ -2,6 +2,7 @@ import { getZohoOpenSalesOrderSummary } from '../../lib/salesOrders'
 import { getZohoInvoiceDashboardSummary } from '../../lib/invoices'
 import { ZohoRequestError, type ZohoEnv } from '../../lib/zoho'
 import { getAuthenticatedUser } from '../lib/authenticatedUser'
+import { getCachedVendors } from '../../lib/vendorCache'
 
 interface PagesFunctionContext {
   request: Request
@@ -98,6 +99,11 @@ async function refreshDashboardSnapshot(context: PagesFunctionContext, businessD
 
 export async function onRequestGet(context: PagesFunctionContext): Promise<Response> {
   try {
+    await getCachedVendors(context.env).catch((error) => {
+      console.error('[home-sales-orders] scheduled vendor cache refresh failed', {
+        message: error instanceof Error ? error.message : String(error),
+      })
+    })
     const businessDate = getDashboardBusinessDate()
     const snapshotKey = `home:${businessDate}`
     const existing = await context.env.DB.prepare(
