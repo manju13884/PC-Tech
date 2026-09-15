@@ -163,8 +163,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
     })) : []
   attributes.paper_layers = paperLayers
   const allowedProductionStages = [
-    'Paper Cutting', 'Corrugation', 'Pasting', 'Board / Sheet Cutting', 'Printing', 'RS4',
-    'Creasing', 'Slotting', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing',
+    'Paper Cutting', 'Corrugation', 'Pasting', 'Rotary / Creasing', 'Slotting', 'Printing',
+    'RS4', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing',
+    'Board / Sheet Cutting', 'Creasing',
   ]
   attributes.production_stages = Array.isArray(body.production_stages)
     ? body.production_stages.filter((stage): stage is string => typeof stage === 'string' && allowedProductionStages.includes(stage))

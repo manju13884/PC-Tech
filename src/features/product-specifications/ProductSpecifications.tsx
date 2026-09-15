@@ -43,13 +43,22 @@ const attributeKeys = ['flute_type', 'paper_type', 'material', 'shade_color', 'f
 type AttributeFields = Pick<FormState, (typeof attributeKeys)[number]>
 const emptyAttributes = Object.fromEntries(attributeKeys.map((key) => [key, ''])) as AttributeFields
 const productionStageOptions = [
-  'Paper Cutting', 'Corrugation', 'Pasting', 'Board / Sheet Cutting', 'Printing', 'Creasing',
-  'RS4', 'Slotting', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing',
+  'Paper Cutting', 'Corrugation', 'Pasting', 'Rotary / Creasing', 'Slotting', 'Printing',
+  'RS4', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing',
 ] as const
+
+function normalizeProductionStages(stages: unknown[]): string[] {
+  const selectedStages = new Set(stages.flatMap((stage) => {
+    if (stage === 'Board / Sheet Cutting' || stage === 'Creasing') return ['Rotary / Creasing']
+    return typeof stage === 'string' ? [stage] : []
+  }))
+
+  return productionStageOptions.filter((stage) => selectedStages.has(stage))
+}
 
 function defaultProductionStages(type: string, printRequired: boolean): string[] {
   if (type === 'BOX') return productionStageOptions.filter((stage) => stage !== 'Die Cutting' && (stage !== 'Printing' || printRequired))
-  if (type === 'BOARD / SHEET') return ['Paper Cutting', 'Corrugation', 'Pasting', 'Board / Sheet Cutting', 'Quality Inspection', 'Bundling / Packing']
+  if (type === 'BOARD / SHEET') return ['Paper Cutting', 'Corrugation', 'Pasting', 'Rotary / Creasing', 'Quality Inspection', 'Bundling / Packing']
   if (type === 'PAPER / ROLL') return ['Paper Cutting', 'Quality Inspection', 'Bundling / Packing']
   return [...(printRequired ? ['Printing'] : []), 'Quality Inspection', 'Bundling / Packing']
 }
@@ -71,7 +80,7 @@ function readAttributes(value?: string): AttributeFields & { paper_layers: Paper
         flute: String(layer.flute ?? ''),
       })) : []
     const productionStages = Array.isArray(record.production_stages)
-      ? record.production_stages.filter((stage): stage is string => typeof stage === 'string' && productionStageOptions.includes(stage as typeof productionStageOptions[number]))
+      ? normalizeProductionStages(record.production_stages)
       : []
     return { ...Object.fromEntries(attributeKeys.map((key) => [key, String(record[key] ?? '')])) as AttributeFields, paper_layers: paperLayers, production_stages: productionStages }
   } catch { return { ...emptyAttributes, paper_layers: [], production_stages: [] } }
