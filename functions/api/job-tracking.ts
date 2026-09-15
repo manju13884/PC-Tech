@@ -7,7 +7,7 @@ interface Context {
   request: Request;
   env: Env;
 }
-const allowedProcesses = ['Paper Cutting', 'Corrugation', 'Pasting', 'Board / Sheet Cutting', 'Printing', 'Creasing', 'RS4', 'Slotting', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing'];
+const allowedProcesses = ['Paper Cutting', 'Corrugation', 'Pasting', 'Rotary / Creasing', 'Slotting', 'Printing', 'RS4', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing', 'Board / Sheet Cutting', 'Creasing'];
 const reelProcesses = ['Paper Cutting', 'Corrugation'];
 
 const json = (payload: unknown, status = 200) =>
