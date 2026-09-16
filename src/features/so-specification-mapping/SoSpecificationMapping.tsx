@@ -15,6 +15,7 @@ interface ProductSpecificationOption {
   polar_canvas_item_code: string
   item_id: string
   item_name: string
+  product_name: string
   specification_type: string
   length_mm: number | null
   width_mm: number | null
@@ -198,9 +199,10 @@ export default function SoSpecificationMapping() {
     const dimensions = [specification.length_mm, specification.width_mm, specification.height_mm]
       .filter((value) => value != null)
       .join(' × ')
-    return [specification.polar_canvas_item_code, specification.item_name, dimensions ? `${dimensions} mm` : '']
+    const existingDisplay = [specification.polar_canvas_item_code, specification.item_name, dimensions ? `${dimensions} mm` : '']
       .filter(Boolean)
       .join(' · ')
+    return [specification.product_name?.trim(), existingDisplay].filter(Boolean).join(' - ')
   }
   const allItemsMapped = Boolean(detail?.line_items.length)
     && detail!.line_items.every((line) => Boolean(lineSpecifications[line.line_item_id]))
