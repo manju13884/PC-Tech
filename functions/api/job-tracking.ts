@@ -736,19 +736,43 @@ export async function onRequestPatch(context: Context): Promise<Response> {
     return json({ success: true, ...(await trackedJobsAndReels(db)) });
   }
   if (status === 'CANCELLED') {
+    const cancellation = await db.prepare(
+      `SELECT card.job_number, card.status, line.production_plan_id,
+        CASE WHEN COALESCE(card.manufactured_quantity, 0) > 0
+          OR EXISTS (SELECT 1 FROM job_card_process_entries entry WHERE entry.job_card_id=card.id
+            AND (entry.process_status='COMPLETED' OR COALESCE(entry.out_quantity,0)>0 OR COALESCE(entry.out_quantity_2,0)>0))
+          OR EXISTS (SELECT 1 FROM job_tracking_reel_consumptions consumption WHERE consumption.job_card_id=card.id)
+        THEN 1 ELSE 0 END AS has_production_transactions
+       FROM job_cards card
+       INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
+       WHERE card.id=?`,
+    ).bind(jobCardId).first<{ job_number: string; status: string; production_plan_id: number; has_production_transactions: number }>();
+    if (!cancellation) return json({ error: 'Job Card was not found.' }, 404);
+    if (cancellation.has_production_transactions)
+      return json({ error: `Job Card ${cancellation.job_number} contains production/inventory transactions and cannot be cancelled until the related transactions are reversed.` }, 409);
     const results = await db.batch([
-      db
-        .prepare(
-          `UPDATE inventory_reel_reservations SET status='RELEASED', released_by_user_id=?, released_at=CURRENT_TIMESTAMP,
-        release_reason='JOB_CANCELLED', updated_at=CURRENT_TIMESTAMP WHERE job_card_id=? AND status='ACTIVE'`,
-        )
-        .bind(user.id, jobCardId),
-      db.prepare("UPDATE job_cards SET status='CANCELLED', updated_at=CURRENT_TIMESTAMP WHERE id=? AND status<>'COMPLETED'").bind(jobCardId),
+      db.prepare('DELETE FROM inventory_reel_reservations WHERE job_card_id=?').bind(jobCardId),
+      db.prepare('DELETE FROM job_card_process_entries WHERE job_card_id=?').bind(jobCardId),
+      db.prepare(
+        `INSERT INTO job_card_status_history (job_card_id,job_number,previous_status,new_status,reason,changed_by_user_id,changed_by_name)
+         VALUES (?,?,?,'CANCELLED','Job Tracking cancelled and returned to Job Cards',?,?)`,
+      ).bind(jobCardId, cancellation.job_number, cancellation.status, user.id, user.fullName),
+      db.prepare("UPDATE job_cards SET status='CREATED', updated_at=CURRENT_TIMESTAMP WHERE id=? AND status<>'COMPLETED'").bind(jobCardId),
+      db.prepare(
+        `UPDATE production_plans SET closure_status='OPEN',closed_at=NULL,updated_at=CURRENT_TIMESTAMP
+         WHERE id=? AND closure_status='CLOSED' AND (NOT EXISTS (
+           SELECT 1 FROM job_cards card INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
+           WHERE line.production_plan_id=production_plans.id
+         ) OR EXISTS (
+           SELECT 1 FROM job_cards card INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
+           WHERE line.production_plan_id=production_plans.id AND card.status<>'COMPLETED'
+         ))`,
+      ).bind(cancellation.production_plan_id),
     ]);
-    if (!results[1].meta.changes) return json({ error: 'Job Card status could not be changed.' }, 409);
+    if (!results[3].meta.changes) return json({ error: 'Job Card status could not be changed.' }, 409);
     return json({
       success: true,
-      reservationMessage: 'Job cancelled. Reel reservation released.',
+      reservationMessage: `Job Tracking cancelled for ${cancellation.job_number}. The Job Card is available again at the Job Cards stage.`,
       ...(await trackedJobsAndReels(db)),
     });
   }

@@ -191,6 +191,7 @@ export default function ProductionPlanned() {
   const [unplanTarget, setUnplanTarget] = useState<SavedPlanLine | null>(null);
   const [unplanning, setUnplanning] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [linkedJobCards, setLinkedJobCards] = useState<Array<{ id:number; jobNumber:string }>>([]);
   const load = async () => {
     setLoading(true);
     setError("");
@@ -226,7 +227,7 @@ export default function ProductionPlanned() {
     setError("");
     setSuccessMessage("");
     try {
-      const response = await fetch(`/api/production-plans?line_id=${unplanTarget.id}`, {
+      const response = await fetch(`/api/production-plans?line_id=${unplanTarget.id}${linkedJobCards.length ? "&remove_job_cards=true" : ""}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -234,6 +235,7 @@ export default function ProductionPlanned() {
       if (response.status === 401) window.dispatchEvent(new Event("pc-tech-session-expired"));
       if (!response.ok) throw new Error(data.error || "Unable to unplan the Production activity.");
       setUnplanTarget(null);
+      setLinkedJobCards([]);
       setSuccessMessage(data.message || "Production activity unplanned successfully.");
       await load();
     } catch (reason) {
@@ -241,6 +243,18 @@ export default function ProductionPlanned() {
     } finally {
       setUnplanning(false);
     }
+  };
+  const prepareUnplan = async (line: SavedPlanLine) => {
+    setError("");
+    const response = await fetch(`/api/production-plans?view=unplan&line_id=${line.id}`, { credentials:"include" });
+    const data = (await response.json().catch(() => ({}))) as { error?:string; jobCards?:Array<{ id:number;jobNumber:string;status:string;hasTransactions:boolean }> };
+    if (!response.ok) { setError(data.error || "Unable to inspect the Production activity."); return; }
+    const active = data.jobCards?.find((card) => card.status === "IN_PROGRESS");
+    if (active) { setError(`Job Card ${active.jobNumber} has active Job Tracking. Cancel Job Tracking before unplanning this production activity.`); return; }
+    const protectedCard = data.jobCards?.find((card) => card.status === "COMPLETED" || card.hasTransactions);
+    if (protectedCard) { setError(`This production activity cannot be unplanned because Job Card ${protectedCard.jobNumber} contains production/inventory transactions. Reverse the related production activity before unplanning.`); return; }
+    setLinkedJobCards((data.jobCards ?? []).map(({ id,jobNumber }) => ({ id,jobNumber })));
+    setUnplanTarget(line);
   };
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -498,7 +512,7 @@ export default function ProductionPlanned() {
                     <td>{cell(cLiner, "gsm")}</td>
                     <td className="production-plan-actions-cell">
                       {(line.plan_status === "PLANNED" || line.plan_status === "DRAFT") && (
-                        <button type="button" onClick={() => setUnplanTarget(line)}>
+                        <button type="button" onClick={() => void prepareUnplan(line)}>
                           <Undo2 size={12} /> Unplan
                         </button>
                       )}
@@ -533,11 +547,11 @@ export default function ProductionPlanned() {
       {unplanTarget && (
         <div className="production-unplan-backdrop" role="presentation">
           <section className="production-unplan-dialog" role="dialog" aria-modal="true" aria-labelledby="production-unplan-title">
-            <h2 id="production-unplan-title">Unplan this production activity?</h2>
-            <p>The item will become available again for Production Planning.</p>
+            <h2 id="production-unplan-title">{linkedJobCards.length ? `${linkedJobCards.length} Job Card${linkedJobCards.length === 1 ? " is" : "s are"} linked to this production activity.` : "Unplan this production activity?"}</h2>
+            {linkedJobCards.length ? <><p>{linkedJobCards.map((card) => card.jobNumber).join(", ")}</p><p>Continuing will remove {linkedJobCards.length === 1 ? "this Job Card" : "these Job Cards"}, release the linkage, and unplan the production activity.</p></> : <p>The activity will be removed from Production Planned and the corresponding SO/item will become available again for Production Planning.</p>}
             <div>
-              <button type="button" disabled={unplanning} onClick={() => setUnplanTarget(null)}>Cancel</button>
-              <button type="button" disabled={unplanning} onClick={() => void unplan()}>{unplanning ? "Unplanning..." : "Unplan"}</button>
+              <button type="button" disabled={unplanning} onClick={() => { setUnplanTarget(null); setLinkedJobCards([]); }}>Cancel</button>
+              <button type="button" disabled={unplanning} onClick={() => void unplan()}>{unplanning ? "Unplanning..." : linkedJobCards.length === 1 ? "Remove Job Card & Unplan" : linkedJobCards.length > 1 ? "Remove Job Cards & Unplan" : "Unplan"}</button>
             </div>
           </section>
         </div>
