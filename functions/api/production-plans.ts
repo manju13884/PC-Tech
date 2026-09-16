@@ -70,7 +70,7 @@ export async function onRequestDelete(context: Context): Promise<Response> {
   const line = await db.prepare(
     `SELECT line.id, line.production_plan_id,
       CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS effective_status,
-      EXISTS (SELECT 1 FROM job_cards card WHERE card.production_plan_line_id = line.id) AS has_job_card
+      (SELECT COUNT(*) FROM job_cards card WHERE card.production_plan_line_id = line.id) AS job_card_count
      FROM production_plan_lines line
      INNER JOIN production_plans plan ON plan.id = line.production_plan_id
      WHERE line.id = ? AND plan.deleted_at IS NULL`,
@@ -78,15 +78,38 @@ export async function onRequestDelete(context: Context): Promise<Response> {
     id: number
     production_plan_id: number
     effective_status: string
-    has_job_card: number
+    job_card_count: number
   }>()
   if (!line) return json({ error: 'Production activity was not found.' }, 404)
   if (!['PLANNED', 'DRAFT'].includes(line.effective_status))
     return json({ error: `${line.effective_status} Production activities cannot be unplanned.` }, 409)
-  if (line.has_job_card)
-    return json({ error: 'This Production activity cannot be unplanned because a Job Card is already linked to it.' }, 409)
+  const cards = await db.prepare(
+    `SELECT card.id,card.job_number,card.status,
+      CASE WHEN COALESCE(card.manufactured_quantity,0)>0
+        OR EXISTS(SELECT 1 FROM job_card_process_entries entry WHERE entry.job_card_id=card.id
+          AND (entry.process_status='COMPLETED' OR COALESCE(entry.out_quantity,0)>0 OR COALESCE(entry.out_quantity_2,0)>0))
+        OR EXISTS(SELECT 1 FROM job_tracking_reel_consumptions consumption WHERE consumption.job_card_id=card.id)
+      THEN 1 ELSE 0 END AS has_transactions
+     FROM job_cards card WHERE card.production_plan_line_id=? ORDER BY card.id`,
+  ).bind(lineId).all<{ id:number; job_number:string; status:string; has_transactions:number }>()
+  const linkedCards = cards.results ?? []
+  const active = linkedCards.find((card) => card.status === 'IN_PROGRESS')
+  if (active) return json({ error:`Job Card ${active.job_number} has active Job Tracking. Cancel Job Tracking before unplanning this production activity.` },409)
+  const protectedCard = linkedCards.find((card) => card.status === 'COMPLETED' || card.has_transactions)
+  if (protectedCard) return json({ error:`This production activity cannot be unplanned because Job Card ${protectedCard.job_number} contains production/inventory transactions. Reverse the related production activity before unplanning.` },409)
+  const removeJobCards = new URL(context.request.url).searchParams.get('remove_job_cards') === 'true'
+  if (linkedCards.length && !removeJobCards)
+    return json({ error:'Linked unused Job Cards must be removed before unplanning.', code:'JOB_CARDS_REMOVAL_REQUIRED', jobCards:linkedCards.map((card) => ({ id:card.id, jobNumber:card.job_number })) },409)
 
-  const results = await db.batch([
+  const jobIds = linkedCards.map((card) => card.id)
+  const placeholders = jobIds.map(() => '?').join(',')
+  const statements: D1PreparedStatement[] = []
+  if (jobIds.length) {
+    statements.push(db.prepare(`DELETE FROM inventory_reel_reservations WHERE job_card_id IN (${placeholders})`).bind(...jobIds))
+    statements.push(db.prepare(`DELETE FROM job_card_process_entries WHERE job_card_id IN (${placeholders})`).bind(...jobIds))
+    statements.push(db.prepare(`DELETE FROM job_cards WHERE id IN (${placeholders}) AND status IN ('CREATED','CANCELLED') AND COALESCE(manufactured_quantity,0)<=0 AND NOT EXISTS(SELECT 1 FROM job_tracking_reel_consumptions WHERE job_card_id=job_cards.id)`).bind(...jobIds))
+  }
+  statements.push(
     db.prepare(
       `DELETE FROM production_plan_lines
        WHERE id = ? AND production_plan_id = ?
@@ -122,10 +145,13 @@ export async function onRequestDelete(context: Context): Promise<Response> {
       user.email,
       line.production_plan_id,
     ),
-  ])
-  if (!results[0].meta.changes)
+  )
+  const results = await db.batch(statements)
+  const lineDeleteIndex = jobIds.length ? 3 : 0
+  if (!results[lineDeleteIndex].meta.changes)
     return json({ error: 'The Production activity could not be unplanned because its workflow changed.' }, 409)
-  return json({ success: true, message: 'Production activity unplanned successfully.' })
+  if (linkedCards.length) await db.batch(linkedCards.map((card) => db.prepare(`INSERT INTO job_card_status_history (job_card_id,job_number,previous_status,new_status,reason,changed_by_user_id,changed_by_name) VALUES (NULL,?,?, 'REMOVED','Job Card removed during Production activity unplan',?,?)`).bind(card.job_number,card.status,user.id,user.fullName)))
+  return json({ success: true, message: jobIds.length ? 'Job Card removed and production activity unplanned successfully.' : 'Production activity unplanned successfully.' })
 }
 
 function financialYear(date = new Date()) {
@@ -155,6 +181,19 @@ export async function onRequestGet(context: Context): Promise<Response> {
     return json({ error: 'Production Planned view access is required.' }, 403)
   const requestedId = new URL(context.request.url).searchParams.get('id')
   const view = new URL(context.request.url).searchParams.get('view')
+  if (view === 'unplan') {
+    const lineId = Number(new URL(context.request.url).searchParams.get('line_id'))
+    if (!Number.isInteger(lineId) || lineId <= 0) return json({ error:'A valid Production activity is required.' },400)
+    const cards = await db.prepare(
+      `SELECT card.id,card.job_number,card.status,
+        CASE WHEN COALESCE(card.manufactured_quantity,0)>0
+          OR EXISTS(SELECT 1 FROM job_card_process_entries entry WHERE entry.job_card_id=card.id AND (entry.process_status='COMPLETED' OR COALESCE(entry.out_quantity,0)>0 OR COALESCE(entry.out_quantity_2,0)>0))
+          OR EXISTS(SELECT 1 FROM job_tracking_reel_consumptions consumption WHERE consumption.job_card_id=card.id)
+        THEN 1 ELSE 0 END AS has_transactions
+       FROM job_cards card WHERE card.production_plan_line_id=? ORDER BY card.id`,
+    ).bind(lineId).all<{ id:number; job_number:string; status:string; has_transactions:number }>()
+    return json({ jobCards:(cards.results ?? []).map((card) => ({ id:card.id,jobNumber:card.job_number,status:card.status,hasTransactions:Boolean(card.has_transactions) })) })
+  }
   if (view === 'lines') {
     const lines = await db.prepare(
       `SELECT line.id, plan.id AS plan_id, plan.plan_number, plan.plan_date,

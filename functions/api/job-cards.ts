@@ -8,13 +8,13 @@ const json = (payload: unknown, status = 200) => Response.json(payload, {
   headers: { 'Cache-Control': 'no-store' },
 })
 
-async function permission(db: D1Database, roleId: number, roleName: string, create = false) {
+async function permission(db: D1Database, roleId: number, roleName: string, create = false, remove = false) {
   if (roleName === 'SUPERADMIN') return true
   const row = await db.prepare(
-    `SELECT can_full, can_view, can_create FROM role_menu_permissions
+    `SELECT can_full, can_view, can_create, can_delete FROM role_menu_permissions
      WHERE role_id = ? AND menu_key = 'job-cards'`,
-  ).bind(roleId).first<{ can_full: number; can_view: number; can_create: number }>()
-  return Boolean(row && (row.can_full === 1 || (create ? row.can_create === 1 : row.can_view === 1)))
+  ).bind(roleId).first<{ can_full: number; can_view: number; can_create: number; can_delete: number }>()
+  return Boolean(row && (row.can_full === 1 || (remove ? row.can_delete === 1 : create ? row.can_create === 1 : row.can_view === 1)))
 }
 
 const selectJobCardLines = `
@@ -79,4 +79,40 @@ export async function onRequestPost(context: Context): Promise<Response> {
   await db.batch(statements)
   const result = await db.prepare(selectJobCardLines).all()
   return json({ success: true, lines: result.results ?? [] })
+}
+
+export async function onRequestDelete(context: Context): Promise<Response> {
+  const db = context.env.DB
+  if (!db) return json({ error: 'Job Card database is unavailable.' }, 503)
+  const user = await getAuthenticatedUser(context.request, db)
+  if (!user) return json({ error: 'Authentication required.' }, 401)
+  if (!await permission(db, user.roleId, user.roleName, false, true)) return json({ error: 'Delete access is required to remove Job Cards.' }, 403)
+  const jobCardId = Number(new URL(context.request.url).searchParams.get('id'))
+  if (!Number.isInteger(jobCardId) || jobCardId <= 0) return json({ error: 'A valid Job Card is required.' }, 400)
+  const card = await db.prepare(
+    `SELECT card.id,card.job_number,card.status,line.production_plan_id,
+      CASE WHEN COALESCE(card.manufactured_quantity,0)>0
+        OR EXISTS(SELECT 1 FROM job_card_process_entries entry WHERE entry.job_card_id=card.id
+          AND (entry.process_status='COMPLETED' OR COALESCE(entry.out_quantity,0)>0 OR COALESCE(entry.out_quantity_2,0)>0))
+        OR EXISTS(SELECT 1 FROM job_tracking_reel_consumptions consumption WHERE consumption.job_card_id=card.id)
+      THEN 1 ELSE 0 END AS has_transactions
+     FROM job_cards card INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id WHERE card.id=?`,
+  ).bind(jobCardId).first<{ id:number; job_number:string; status:string; production_plan_id:number; has_transactions:number }>()
+  if (!card) return json({ error: 'Job Card was not found.' }, 404)
+  if (card.status === 'IN_PROGRESS') return json({ error: `Job Card ${card.job_number} has active Job Tracking. Cancel Job Tracking before removing this Job Card.` }, 409)
+  if (card.status === 'COMPLETED' || card.has_transactions) return json({ error: `Job Card ${card.job_number} contains production transactions and cannot be removed.` }, 409)
+  const safeCard = `EXISTS(SELECT 1 FROM job_cards guarded WHERE guarded.id=? AND guarded.status IN ('CREATED','CANCELLED')
+    AND COALESCE(guarded.manufactured_quantity,0)<=0
+    AND NOT EXISTS(SELECT 1 FROM job_card_process_entries entry WHERE entry.job_card_id=guarded.id AND (entry.process_status='COMPLETED' OR COALESCE(entry.out_quantity,0)>0 OR COALESCE(entry.out_quantity_2,0)>0))
+    AND NOT EXISTS(SELECT 1 FROM job_tracking_reel_consumptions consumption WHERE consumption.job_card_id=guarded.id))`
+  const results = await db.batch([
+    db.prepare(`DELETE FROM inventory_reel_reservations WHERE job_card_id=? AND ${safeCard}`).bind(jobCardId,jobCardId),
+    db.prepare(`DELETE FROM job_card_process_entries WHERE job_card_id=? AND ${safeCard}`).bind(jobCardId,jobCardId),
+    db.prepare("DELETE FROM job_cards WHERE id=? AND status IN ('CREATED','CANCELLED') AND COALESCE(manufactured_quantity,0)<=0 AND NOT EXISTS(SELECT 1 FROM job_tracking_reel_consumptions WHERE job_card_id=job_cards.id)").bind(jobCardId),
+    db.prepare(`UPDATE production_plans SET closure_status='OPEN',closed_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND closure_status='CLOSED'`).bind(card.production_plan_id),
+  ])
+  if (!results[2].meta.changes) return json({ error: 'The Job Card could not be removed because its workflow changed.' }, 409)
+  await db.prepare(`INSERT INTO job_card_status_history (job_card_id,job_number,previous_status,new_status,reason,changed_by_user_id,changed_by_name) VALUES (NULL,?,?, 'REMOVED','Unused Job Card removed',?,?)`).bind(card.job_number,card.status,user.id,user.fullName).run()
+  const result = await db.prepare(selectJobCardLines).all()
+  return json({ success:true, message:'Job Card removed successfully.', lines:result.results ?? [] })
 }

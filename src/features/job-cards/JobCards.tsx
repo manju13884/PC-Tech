@@ -1,5 +1,5 @@
-import { ClipboardPlus, FilterX, Printer, RefreshCw, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ClipboardPlus, FilterX, Printer, RefreshCw, Trash2, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatIstDate } from '../../utils/dateTimeFormatting';
 import { calculateRotarySize, calculateSlottingSize } from '../product-specifications/rotarySizeCalculations';
 import { calculateRequiredPaperQuantity } from './jobCardCalculations';
@@ -215,7 +215,10 @@ export default function JobCards() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [viewingSpecification, setViewingSpecification] = useState<JobCardLine | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<JobCardLine | null>(null);
+  const removalInFlight = useRef(false);
   const load = async () => {
     setLoading(true);
     setError('');
@@ -268,6 +271,30 @@ export default function JobCards() {
     }
   };
   const toggle = (id: number) => setSelected((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
+  const removeJobCard = async () => {
+    if (!removeTarget?.job_card_id || busy || removalInFlight.current) return;
+    const jobCardNumber = removeTarget.job_number;
+    removalInFlight.current = true;
+    setBusy(true);
+    setError('');
+    setSuccessMessage('');
+    try {
+      const response = await fetch(`/api/job-cards?id=${removeTarget.job_card_id}`, { method:'DELETE', credentials:'include' });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?:string };
+        throw new Error(data.error || 'Unable to remove Job Card.');
+      }
+      setRemoveTarget(null);
+      setSelected((current) => current.filter((id) => id !== removeTarget.production_plan_line_id));
+      await load();
+      setSuccessMessage(`Job Card ${jobCardNumber} removed successfully.`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to remove Job Card.');
+    } finally {
+      removalInFlight.current = false;
+      setBusy(false);
+    }
+  };
   const printSelected = () => {
     const previousTitle = document.title;
     document.title = selectedLines.length === 1 && selectedLines[0].job_number ? selectedLines[0].job_number : `Production-Job-Cards-${selectedLines.length}`;
@@ -352,6 +379,7 @@ export default function JobCards() {
               <col className="job-grid-product-name" />
               <col className="job-grid-product-description" />
               <col className="job-grid-qty" />
+              <col className="job-grid-actions" />
             </colgroup>
             <thead>
               <tr className="job-cards-groups">
@@ -372,6 +400,7 @@ export default function JobCards() {
                   Product
                 </th>
                 <th className="group-production">Production</th>
+                <th className="group-actions" rowSpan={2}>Actions</th>
               </tr>
               <tr>
                 <th>Job ID</th>
@@ -412,18 +441,21 @@ export default function JobCards() {
                   <td className="job-cards-product">{line.product_name}</td>
                   <td className="job-cards-product">{line.item_description || line.item_name}</td>
                   <td className="numeric job-cards-box-qty">{numberText(line.production_quantity)}</td>
+                  <td className="job-card-actions-cell">
+                    {line.job_card_id && <button type="button" onClick={() => setRemoveTarget(line)}><Trash2 size={12} /> Remove</button>}
+                  </td>
                 </tr>
               ))}
               {!loading && !filtered.length && (
                 <tr>
-                  <td colSpan={11} className="job-cards-empty">
+                  <td colSpan={12} className="job-cards-empty">
                     {view === 'ready' ? 'No Production Planned items are waiting for Job Cards.' : 'No Job Cards have been created.'}
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={11} className="job-cards-empty">
+                  <td colSpan={12} className="job-cards-empty">
                     Loading Production Planned items...
                   </td>
                 </tr>
@@ -437,6 +469,18 @@ export default function JobCards() {
         </footer>
       </section>
       {viewingSpecification && <ProductSpecificationDialog line={viewingSpecification} onClose={() => setViewingSpecification(null)} />}
+      {removeTarget && (
+        <div className="job-card-remove-backdrop" role="presentation" onMouseDown={() => { if (!removalInFlight.current) setRemoveTarget(null); }}>
+          <section className="job-card-remove-dialog" role="dialog" aria-modal="true" aria-labelledby="remove-job-card-title" onMouseDown={(event) => event.stopPropagation()}>
+            <h2 id="remove-job-card-title">Remove Job Card {removeTarget.job_number}?</h2>
+            <p>The Job Card will be removed and its linkage to the Production Planned activity will be released.</p>
+            <p>The Production Planned activity will remain available for Job Card creation or Unplanning.</p>
+            {error && <p role="alert">{error}</p>}
+            <div><button type="button" disabled={busy} onClick={() => setRemoveTarget(null)}>Cancel</button><button className="danger" type="button" disabled={busy} onClick={() => void removeJobCard()}>{busy ? 'Removing...' : 'Remove Job Card'}</button></div>
+          </section>
+        </div>
+      )}
+      {successMessage && <p className="production-planning-message is-success job-cards-message" role="status">{successMessage}</p>}
       <div className="job-card-print-area">
         {selectedLines
           .filter((line) => line.job_card_id)

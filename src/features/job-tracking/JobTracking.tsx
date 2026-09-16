@@ -85,6 +85,7 @@ export default function JobTracking() {
     processName: string;
     processEntryId?: number;
   } | null>(null);
+  const [trackingCancellation, setTrackingCancellation] = useState<TrackedJob | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -171,6 +172,11 @@ export default function JobTracking() {
     }
   };
   const updateStatus = (jobCardId: number, nextStatus: JobStatus) => {
+    if (nextStatus === 'CANCELLED') {
+      const job = jobs.find((value) => value.job_card_id === jobCardId);
+      if (job) setTrackingCancellation(job);
+      return;
+    }
     void saveStatus(jobCardId, nextStatus);
   };
   const saveProcessStatus = async (jobCardId: number, processName: string, processStatus: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED', processEntryId?: number) => {
@@ -482,6 +488,22 @@ export default function JobTracking() {
               >
                 Complete Process
               </button>
+            </footer>
+          </section>
+        </div>
+      )}
+      {trackingCancellation && (
+        <div className="job-tracking-confirm-backdrop" role="presentation" onMouseDown={() => setTrackingCancellation(null)}>
+          <section className="job-tracking-confirm" role="dialog" aria-modal="true" aria-labelledby="cancel-tracking-title" onMouseDown={(event) => event.stopPropagation()}>
+            <header><strong id="cancel-tracking-title">Cancel Job Tracking for Job Card {trackingCancellation.job_number}?</strong></header>
+            <div><p>The Job Tracking activity will be cancelled and the Job Card will be returned to the Job Card stage.</p></div>
+            <footer>
+              <button type="button" onClick={() => setTrackingCancellation(null)}>Cancel</button>
+              <button className="primary" type="button" disabled={updatingId === trackingCancellation.job_card_id} onClick={() => {
+                const jobCardId = trackingCancellation.job_card_id;
+                setTrackingCancellation(null);
+                void saveStatus(jobCardId, 'CANCELLED');
+              }}>Confirm Cancellation</button>
             </footer>
           </section>
         </div>
