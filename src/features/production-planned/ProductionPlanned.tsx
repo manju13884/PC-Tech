@@ -1,4 +1,4 @@
-import { Factory, FilterX, Printer, RefreshCw } from "lucide-react";
+import { Factory, FilterX, Printer, RefreshCw, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { formatIstDate } from "../../utils/dateTimeFormatting";
 import { calculateTwoPlyQuantity } from "../production-planning/productionPlanningCalculations";
@@ -72,10 +72,12 @@ const relativeDateIso = (days: number) => {
   return date.toISOString().slice(0, 10);
 };
 type ProductionView =
-  "all" | "draft" | "yesterday" | "today" | "tomorrow" | "custom";
+  "all" | "planned" | "draft" | "closed" | "yesterday" | "today" | "tomorrow" | "custom";
 const productionViewLabels: Record<ProductionView, string> = {
   all: "All Statuses",
+  planned: "PLANNED",
   draft: "DRAFT",
+  closed: "CLOSED",
   yesterday: "Yesterday's Production",
   today: "Today's Production",
   tomorrow: "Tomorrow's Production",
@@ -93,6 +95,7 @@ const GridColumns = () => (
     <col className="col-quantity" />
     <col className="col-quantity" />
     <col className="col-quantity" />
+    <col className="col-status" />
     <col className="col-description" />
     <col className="col-dimension" />
     <col className="col-dimension" />
@@ -105,6 +108,7 @@ const GridColumns = () => (
     {Array.from({ length: 12 }, (_, index) => (
       <col className="col-paper" key={index} />
     ))}
+    <col className="production-plan-actions-column" />
   </colgroup>
 );
 const GridHeader = () => (
@@ -118,7 +122,7 @@ const GridHeader = () => (
       <th className="group-production" colSpan={2}>
         Schedule
       </th>
-      <th className="group-production" colSpan={3}>
+      <th className="group-production" colSpan={4}>
         Production
       </th>
       <th className="group-product">Product</th>
@@ -131,6 +135,7 @@ const GridHeader = () => (
       <th className="group-paper" colSpan={12}>
         Paper Composition
       </th>
+      <th className="production-plan-actions-column" rowSpan={2}>Actions</th>
     </tr>
     <tr className="production-grid-columns">
       <th>Sales Order</th>
@@ -141,6 +146,7 @@ const GridHeader = () => (
       <th>Box Qty</th>
       <th>Top Sheet</th>
       <th>2 Ply Qty</th>
+      <th>Status</th>
       <th>Product Description</th>
       <th>L</th>
       <th>W</th>
@@ -182,6 +188,9 @@ export default function ProductionPlanned() {
   const [productionView, setProductionView] = useState<ProductionView>("all");
   const [customFromDate, setCustomFromDate] = useState("");
   const [customToDate, setCustomToDate] = useState("");
+  const [unplanTarget, setUnplanTarget] = useState<SavedPlanLine | null>(null);
+  const [unplanning, setUnplanning] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const load = async () => {
     setLoading(true);
     setError("");
@@ -211,12 +220,36 @@ export default function ProductionPlanned() {
   useEffect(() => {
     void load();
   }, []);
+  const unplan = async () => {
+    if (!unplanTarget) return;
+    setUnplanning(true);
+    setError("");
+    setSuccessMessage("");
+    try {
+      const response = await fetch(`/api/production-plans?line_id=${unplanTarget.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (response.status === 401) window.dispatchEvent(new Event("pc-tech-session-expired"));
+      if (!response.ok) throw new Error(data.error || "Unable to unplan the Production activity.");
+      setUnplanTarget(null);
+      setSuccessMessage(data.message || "Production activity unplanned successfully.");
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to unplan the Production activity.");
+    } finally {
+      setUnplanning(false);
+    }
+  };
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return lines.filter((line) => {
       const matchesView =
         productionView === "all" ||
+        (productionView === "planned" && line.plan_status === "PLANNED") ||
         (productionView === "draft" && line.plan_status === "DRAFT") ||
+        (productionView === "closed" && line.plan_status === "CLOSED") ||
         (productionView === "yesterday" &&
           line.plan_date === relativeDateIso(-1)) ||
         (productionView === "today" && line.plan_date === todayIso()) ||
@@ -281,6 +314,9 @@ export default function ProductionPlanned() {
           </button>
         </p>
       )}
+      {successMessage && (
+        <p className="production-planning-message is-success" role="status">{successMessage}</p>
+      )}
       <div className="production-planned-toolbar">
         <div className="production-planned-title">
           <Factory size={15} />
@@ -305,7 +341,9 @@ export default function ProductionPlanned() {
             }
           >
             <option value="all">All Statuses</option>
+            <option value="planned">PLANNED</option>
             <option value="draft">DRAFT</option>
+            <option value="closed">CLOSED</option>
             <option value="yesterday">Yesterday's Production</option>
             <option value="today">Today's Production</option>
             <option value="tomorrow">Tomorrow's Production</option>
@@ -372,7 +410,7 @@ export default function ProductionPlanned() {
           </button>
         </div>
       </div>
-      <section className="production-selection-panel production-planned-grid-panel">
+      <section className="production-selection-panel production-planned-grid-panel production-planned-print-area">
         <header className="production-planned-print-heading">
           <img src="/assets/PC-Bord-Logo-only-transparent.png" alt="PolarCanvas" />
           <h1>Production Planned</h1>
@@ -430,6 +468,11 @@ export default function ProductionPlanned() {
                       {numberText(line.production_quantity)}
                     </td>
                     <td className="numeric">{numberText(twoPly)}</td>
+                    <td>
+                      <span className={`production-status is-${line.plan_status.toLowerCase().replace(/_/g, "-")}`}>
+                        {line.plan_status.replace(/_/g, " ")}
+                      </span>
+                    </td>
                     <td className="production-description">
                       {line.item_description || line.item_name}
                     </td>
@@ -453,19 +496,26 @@ export default function ProductionPlanned() {
                     <td>{cell(cFlute, "gsm")}</td>
                     <td>{cell(cFlute, "bf_rct")}</td>
                     <td>{cell(cLiner, "gsm")}</td>
+                    <td className="production-plan-actions-cell">
+                      {(line.plan_status === "PLANNED" || line.plan_status === "DRAFT") && (
+                        <button type="button" onClick={() => setUnplanTarget(line)}>
+                          <Undo2 size={12} /> Unplan
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={30} className="production-planning-empty">
+                  <td colSpan={32} className="production-planning-empty">
                     No saved Production Plans found.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={30} className="production-planning-empty">
+                  <td colSpan={32} className="production-planning-empty">
                     Loading saved Production Plans...
                   </td>
                 </tr>
@@ -480,6 +530,18 @@ export default function ProductionPlanned() {
           </span>
         </footer>
       </section>
+      {unplanTarget && (
+        <div className="production-unplan-backdrop" role="presentation">
+          <section className="production-unplan-dialog" role="dialog" aria-modal="true" aria-labelledby="production-unplan-title">
+            <h2 id="production-unplan-title">Unplan this production activity?</h2>
+            <p>The item will become available again for Production Planning.</p>
+            <div>
+              <button type="button" disabled={unplanning} onClick={() => setUnplanTarget(null)}>Cancel</button>
+              <button type="button" disabled={unplanning} onClick={() => void unplan()}>{unplanning ? "Unplanning..." : "Unplan"}</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

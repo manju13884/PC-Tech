@@ -30,13 +30,13 @@ const json = (payload: unknown, status = 200) =>
 async function permission(
   db: D1Database,
   user: AuthenticatedUser,
-  action: 'view' | 'draft' | 'generate',
+  action: 'view' | 'draft' | 'generate' | 'unplan',
 ) {
   if (user.roleName === 'SUPERADMIN') return true
-  const menuKey = action === 'view' ? 'production-planned' : 'production-planning'
+  const menuKey = action === 'view' || action === 'unplan' ? 'production-planned' : 'production-planning'
   const row = await db
     .prepare(
-      `SELECT can_full, can_view, can_create, can_edit FROM role_menu_permissions
+      `SELECT can_full, can_view, can_create, can_edit, can_delete FROM role_menu_permissions
      WHERE role_id = ? AND menu_key = ?`,
     )
     .bind(user.roleId, menuKey)
@@ -45,12 +45,87 @@ async function permission(
       can_view: number
       can_create: number
       can_edit: number
+      can_delete: number
     }>()
   if (!row) return false
   if (row.can_full === 1) return true
   if (action === 'view') return row.can_view === 1
+  if (action === 'unplan') return row.can_delete === 1
   if (action === 'draft') return row.can_create === 1 || row.can_edit === 1
   return false
+}
+
+export async function onRequestDelete(context: Context): Promise<Response> {
+  const db = context.env.DB
+  if (!db) return json({ error: 'Production Planning database is unavailable.' }, 503)
+  const user = await getAuthenticatedUser(context.request, db)
+  if (!user) return json({ error: 'Authentication required.' }, 401)
+  if (!(await permission(db, user, 'unplan')))
+    return json({ error: 'Delete access is required to unplan Production activities.' }, 403)
+
+  const lineId = Number(new URL(context.request.url).searchParams.get('line_id'))
+  if (!Number.isInteger(lineId) || lineId <= 0)
+    return json({ error: 'A valid Production activity is required.' }, 400)
+
+  const line = await db.prepare(
+    `SELECT line.id, line.production_plan_id,
+      CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS effective_status,
+      EXISTS (SELECT 1 FROM job_cards card WHERE card.production_plan_line_id = line.id) AS has_job_card
+     FROM production_plan_lines line
+     INNER JOIN production_plans plan ON plan.id = line.production_plan_id
+     WHERE line.id = ? AND plan.deleted_at IS NULL`,
+  ).bind(lineId).first<{
+    id: number
+    production_plan_id: number
+    effective_status: string
+    has_job_card: number
+  }>()
+  if (!line) return json({ error: 'Production activity was not found.' }, 404)
+  if (!['PLANNED', 'DRAFT'].includes(line.effective_status))
+    return json({ error: `${line.effective_status} Production activities cannot be unplanned.` }, 409)
+  if (line.has_job_card)
+    return json({ error: 'This Production activity cannot be unplanned because a Job Card is already linked to it.' }, 409)
+
+  const results = await db.batch([
+    db.prepare(
+      `DELETE FROM production_plan_lines
+       WHERE id = ? AND production_plan_id = ?
+         AND NOT EXISTS (SELECT 1 FROM job_cards card WHERE card.production_plan_line_id = production_plan_lines.id)
+         AND EXISTS (
+           SELECT 1 FROM production_plans plan
+           WHERE plan.id = production_plan_lines.production_plan_id
+             AND plan.deleted_at IS NULL
+             AND plan.status IN ('PLANNED', 'DRAFT')
+             AND plan.closure_status <> 'CLOSED'
+         )`,
+    ).bind(line.id, line.production_plan_id),
+    db.prepare(
+      `UPDATE production_plans
+       SET total_sales_orders = (
+         SELECT COUNT(DISTINCT zoho_sales_order_id) FROM production_plan_lines WHERE production_plan_id = ?
+       ), total_customers = (
+         SELECT COUNT(DISTINCT zoho_customer_id) FROM production_plan_lines WHERE production_plan_id = ?
+       ), total_line_items = (
+         SELECT COUNT(*) FROM production_plan_lines WHERE production_plan_id = ?
+       ), deleted_at = CASE WHEN NOT EXISTS (
+         SELECT 1 FROM production_plan_lines WHERE production_plan_id = ?
+       ) THEN CURRENT_TIMESTAMP ELSE deleted_at END,
+       updated_by_user_id = ?, updated_by_name = ?, updated_by_email = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND status IN ('PLANNED', 'DRAFT') AND closure_status <> 'CLOSED'`,
+    ).bind(
+      line.production_plan_id,
+      line.production_plan_id,
+      line.production_plan_id,
+      line.production_plan_id,
+      user.id,
+      user.fullName,
+      user.email,
+      line.production_plan_id,
+    ),
+  ])
+  if (!results[0].meta.changes)
+    return json({ error: 'The Production activity could not be unplanned because its workflow changed.' }, 409)
+  return json({ success: true, message: 'Production activity unplanned successfully.' })
 }
 
 function financialYear(date = new Date()) {
@@ -82,7 +157,8 @@ export async function onRequestGet(context: Context): Promise<Response> {
   const view = new URL(context.request.url).searchParams.get('view')
   if (view === 'lines') {
     const lines = await db.prepare(
-      `SELECT line.id, plan.id AS plan_id, plan.plan_number, plan.plan_date, plan.status AS plan_status,
+      `SELECT line.id, plan.id AS plan_id, plan.plan_number, plan.plan_date,
+       CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS plan_status,
        line.customer_name, line.sales_order_number, line.delivery_date, line.item_name, line.item_description,
        line.production_quantity, line.two_ply_quantity, line.deckle_size, line.uom, line.product_type, line.ply,
        spec.polar_canvas_item_code AS specification_code, spec.length_mm, spec.width_mm, spec.height_mm, spec.attributes_json
@@ -97,7 +173,9 @@ export async function onRequestGet(context: Context): Promise<Response> {
     const planId = Number(requestedId)
     if (!Number.isInteger(planId) || planId <= 0) return json({ error: 'A valid Production Plan is required.' }, 400)
     const plan = await db.prepare(
-      `SELECT id, plan_number, plan_date, status, priority, remarks, total_sales_orders, total_customers,
+      `SELECT id, plan_number, plan_date,
+       CASE WHEN closure_status = 'CLOSED' THEN 'CLOSED' ELSE status END AS status,
+       priority, remarks, total_sales_orders, total_customers,
        total_line_items, created_by_name, created_at, updated_at
        FROM production_plans WHERE id = ? AND deleted_at IS NULL`,
     ).bind(planId).first()
@@ -116,7 +194,9 @@ export async function onRequestGet(context: Context): Promise<Response> {
   }
   const result = await db
     .prepare(
-      `SELECT plan.id, plan.plan_number, plan.plan_date, plan.status, plan.priority, plan.remarks,
+      `SELECT plan.id, plan.plan_number, plan.plan_date,
+       CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS status,
+       plan.priority, plan.remarks,
        plan.total_sales_orders, plan.total_customers, plan.total_line_items,
        plan.created_by_name, plan.created_at, plan.updated_at,
        COALESCE(SUM(line.production_quantity), 0) AS total_production_quantity

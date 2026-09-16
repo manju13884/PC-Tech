@@ -43,5 +43,6 @@
   "0042_add_job_card_supervisor_user.sql": "c1448b337af18678e5e60a538ad98748067760666fb5d50e521a4bead261ad1d",
   "0043_create_material_issues.sql": "d6b1166bd010b566e474f16b3de8def37b3cee9f1141b69bee678fbfb81fc962",
   "0044_add_material_issue_invoice_mapping.sql": "e089918b21dc11bbd6db201dc8183c274e6d55b5ebd4dfa1bcb66ede5b2906c2",
-  "0045_add_finished_goods_stock_permission.sql": "dd70708cfeed57326433a479bf1156583e00c83515d09046aed3996bd345e406"
+  "0045_add_finished_goods_stock_permission.sql": "dd70708cfeed57326433a479bf1156583e00c83515d09046aed3996bd345e406",
+  "0046_add_production_plan_closure.sql": "4c0fab946675970ec04078a8d2fb9fb79e1626ca4e1b4adcb6ced20d0f2fe12a"
 }

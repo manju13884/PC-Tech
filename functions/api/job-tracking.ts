@@ -32,7 +32,8 @@ const selectTrackedJobs = `
   SELECT card.id AS job_card_id, card.job_number, card.status AS job_status, card.created_at AS job_created_at,
     card.updated_at AS job_updated_at, card.supervisor_user_id, card.supervisor_name, card.quality_name, card.dispatch_name,
     card.box_weight_kg, card.manufactured_quantity, line.id AS production_plan_line_id, plan.plan_number, plan.plan_date,
-    plan.status AS plan_status, plan.remarks AS plan_remarks, line.customer_name, line.sales_order_number,
+    CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS plan_status,
+    plan.remarks AS plan_remarks, line.customer_name, line.sales_order_number,
     line.delivery_date, line.item_name, line.item_description, line.customer_po_number, line.production_quantity,
     line.two_ply_quantity, line.deckle_size, line.uom, line.product_type, line.ply,
     spec.polar_canvas_item_code AS specification_code, spec.product_name, spec.length_mm, spec.width_mm,
@@ -694,7 +695,44 @@ export async function onRequestPatch(context: Context): Promise<Response> {
         },
         409,
       );
-    await db.prepare("UPDATE job_cards SET status='COMPLETED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status<>'COMPLETED'").bind(jobCardId).run();
+    const planForJob = `(SELECT line.production_plan_id FROM job_cards card
+      INNER JOIN production_plan_lines line ON line.id = card.production_plan_line_id
+      WHERE card.id = ?)`;
+    const allPlanJobsCompleted = `EXISTS (
+        SELECT 1 FROM job_cards plan_card
+        INNER JOIN production_plan_lines plan_line ON plan_line.id = plan_card.production_plan_line_id
+        WHERE plan_line.production_plan_id = ${planForJob}
+      ) AND NOT EXISTS (
+        SELECT 1 FROM job_cards plan_card
+        INNER JOIN production_plan_lines plan_line ON plan_line.id = plan_card.production_plan_line_id
+        WHERE plan_line.production_plan_id = ${planForJob} AND plan_card.status <> 'COMPLETED'
+      )`;
+    await db.batch([
+      db.prepare("UPDATE job_cards SET status='COMPLETED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status<>'COMPLETED'").bind(jobCardId),
+      db
+        .prepare(
+          `INSERT INTO production_plan_status_history (
+            production_plan_id, previous_status, new_status, reason, changed_by_user_id,
+            changed_by_name, changed_by_email, source_context
+          )
+          SELECT plan.id, plan.status, 'CLOSED', 'All Job Cards completed', ?, ?, ?, 'JOB_TRACKING_AUTO_CLOSE'
+          FROM production_plans plan
+          WHERE plan.id = ${planForJob}
+            AND plan.closure_status <> 'CLOSED'
+            AND ${allPlanJobsCompleted}`,
+        )
+        .bind(user.id, user.fullName, user.email, jobCardId, jobCardId, jobCardId),
+      db
+        .prepare(
+          `UPDATE production_plans
+          SET closure_status = 'CLOSED', closed_at = CURRENT_TIMESTAMP,
+            updated_by_user_id = ?, updated_by_name = ?, updated_by_email = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ${planForJob}
+            AND closure_status <> 'CLOSED'
+            AND ${allPlanJobsCompleted}`,
+        )
+        .bind(user.id, user.fullName, user.email, jobCardId, jobCardId, jobCardId),
+    ]);
     return json({ success: true, ...(await trackedJobsAndReels(db)) });
   }
   if (status === 'CANCELLED') {
