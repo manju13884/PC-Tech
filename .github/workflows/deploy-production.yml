@@ -5,14 +5,29 @@ on:
     branches:
       - production
 
+  workflow_dispatch:
+    inputs:
+      maintenance_previous_owner:
+        description: 'Failed release owner to recover (leave empty for a normal deployment)'
+        required: false
+        type: string
+
 permissions:
   contents: read
   deployments: write
+
+concurrency:
+  group: pc-tech-deployment-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DEPLOYMENT_SHA: ${{ github.sha }}
 
     steps:
       - name: Checkout production branch
@@ -24,11 +39,33 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Enable production maintenance
+        env:
+          MAINTENANCE_PREVIOUS_OWNER: ${{ inputs.maintenance_previous_owner }}
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs on production
+
+      - name: Prepare independent maintenance page
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs shell production
+
+      - name: Publish maintenance gate
+        uses: cloudflare/wrangler-action@v4
+        with:
+          wranglerVersion: "4.107.1"
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy .wrangler/maintenance-site --project-name=pc-tech-production --branch=production --commit-dirty=true
+
+      - name: Verify maintenance before build and migrations
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs confirm production
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build application
         run: npm run build
+
+      - name: Stamp release and asset checksums
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs stamp production
 
       - name: Audit immutable additive D1 migrations
         run: npm run db:migrations:audit
@@ -39,6 +76,7 @@ jobs:
       - name: Export production D1 backup
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 export pc-tech-production-db --remote --env production --output=.wrangler/backups/pc-tech-production-db-pre-dashboard-deploy.sql
@@ -54,6 +92,7 @@ jobs:
       - name: List pending production D1 migrations
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations list pc-tech-production-db --remote --env production
@@ -71,6 +110,7 @@ jobs:
       - name: Apply production D1 migrations
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations apply pc-tech-production-db --remote --env production
@@ -78,6 +118,7 @@ jobs:
       - name: Verify production D1 migrations
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations list pc-tech-production-db --remote --env production
@@ -88,7 +129,18 @@ jobs:
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=pc-tech-production --branch=production --commit-dirty=true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate deployed release and disable maintenance
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs off production
+
+      - name: Verify public application
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs normal production
+
+      - name: Keep maintenance enabled on failure
+        if: ${{ failure() || cancelled() }}
+        run: echo "Deployment failed. Maintenance mode remains enabled if activation succeeded. Use the documented recovery procedure."
