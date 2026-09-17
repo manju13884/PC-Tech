@@ -255,7 +255,22 @@ export default function JobTracking() {
         text: payload.action === 'selectReel' ? data.reservationMessage || 'Reel Weight has been refreshed from Inventory. Stock will be updated only when the Job is completed.' : 'Process saved. Reel consumption is provisional. Inventory will be updated when the Process is completed.',
       });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to save reel consumption.');
+      const message = reason instanceof Error ? reason.message : 'Unable to save reel consumption.';
+      setError(message);
+      if (payload.action === 'selectReel') {
+        // Refresh display data after a rejected assignment; retain the existing server validations.
+        let refreshMessage = '';
+        try {
+          const refreshed = await fetch('/api/job-tracking', { credentials: 'include', cache: 'no-store' });
+          if (!refreshed.ok) throw new Error('Refresh failed');
+          const latest = await refreshed.json() as JobTrackingResponse;
+          if (!Array.isArray(latest.reels)) throw new Error('Invalid reel list');
+          setInventoryReels(latest.reels);
+        } catch {
+          refreshMessage = ' The reel list could not be refreshed. Please try again.';
+        }
+        throw new Error(message + refreshMessage);
+      }
     } finally {
       setSavingProcessKey('');
     }
@@ -419,7 +434,7 @@ export default function JobTracking() {
                     <tr className="job-tracking-detail-row">
                       <td colSpan={13}>
                         <div className="job-tracking-expanded-card">
-                          <JobCard line={job} processEditable supervisorReadOnly defaultSupervisorName={currentUser.fullName} reelEditable={job.job_status !== 'COMPLETED' && job.job_status !== 'CANCELLED'} savingProcessKey={savingProcessKey.replace(`${job.job_card_id}:`, '')} savingFooterKey={savingFooterKey.replace(`${job.job_card_id}:`, '')} inventoryReels={inventoryReels.filter((reel) => !reel.reserved_job_card_id || reel.reserved_job_card_id === job.job_card_id)} onReelSelect={(processName, reelSlot, inventoryStockId) => void updateReel(job.job_card_id, processName, reelSlot, { action: 'selectReel', inventoryStockId })} onReelConsume={(processName, reelSlot, outReelWeight) => void updateReel(job.job_card_id, processName, reelSlot, { action: 'saveReelWeight', outReelWeight })} onProcessValueChange={(processName, field, value) => void updateProcessValue(job.job_card_id, processName, field, value)} onProcessStatusChange={(processName, nextStatus, processEntryId) => updateProcessStatus(job.job_card_id, processName, nextStatus, processEntryId)} onFooterValueChange={(field, value) => void updateFooterValue(job.job_card_id, field, value)} />
+                          <JobCard line={job} processEditable supervisorReadOnly defaultSupervisorName={currentUser.fullName} reelEditable={job.job_status !== 'COMPLETED' && job.job_status !== 'CANCELLED'} savingProcessKey={savingProcessKey.replace(`${job.job_card_id}:`, '')} savingFooterKey={savingFooterKey.replace(`${job.job_card_id}:`, '')} inventoryReels={inventoryReels.filter((reel) => !reel.reserved_job_card_id || reel.reserved_job_card_id === job.job_card_id)} onReelSelect={(processName, reelSlot, inventoryStockId) => updateReel(job.job_card_id, processName, reelSlot, { action: 'selectReel', inventoryStockId })} onReelConsume={(processName, reelSlot, outReelWeight) => void updateReel(job.job_card_id, processName, reelSlot, { action: 'saveReelWeight', outReelWeight })} onProcessValueChange={(processName, field, value) => void updateProcessValue(job.job_card_id, processName, field, value)} onProcessStatusChange={(processName, nextStatus, processEntryId) => updateProcessStatus(job.job_card_id, processName, nextStatus, processEntryId)} onFooterValueChange={(field, value) => void updateFooterValue(job.job_card_id, field, value)} />
                         </div>
                       </td>
                     </tr>

@@ -1,3 +1,4 @@
+import { formatLayerGsm } from '../production-planning/paperLayerDisplay';
 import { Factory, FilterX, Printer, RefreshCw, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { formatIstDate } from "../../utils/dateTimeFormatting";
@@ -8,6 +9,7 @@ import "./production-planned.css";
 interface PaperLayer {
   layer_name?: string;
   gsm?: string;
+  shade?: string;
   bf_rct?: string;
   deckle_size?: string;
   flute?: string;
@@ -106,7 +108,7 @@ const GridColumns = () => (
     <col className="col-machine" />
     <col className="col-machine" />
     {Array.from({ length: 12 }, (_, index) => (
-      <col className="col-paper" key={index} />
+      <col className={`col-paper ${[0, 2, 4, 6, 8, 9, 11].includes(index) ? 'col-paper-gsm' : 'col-paper-bf'}`} key={index} />
     ))}
     <col className="production-plan-actions-column" />
   </colgroup>
@@ -164,18 +166,18 @@ const GridHeader = () => (
       </th>
       <th>Deckle Size</th>
       <th>Cut Length</th>
-      <th>Top GSM</th>
+      <th>Top GSM (G/N)</th>
       <th>Top BF</th>
-      <th>B Flute GSM</th>
+      <th>B Flute GSM (G/N)</th>
       <th>B Flute BF</th>
-      <th>B Liner GSM</th>
+      <th>B Liner GSM (G/N)</th>
       <th>B Liner BF</th>
-      <th>A Flute GSM</th>
+      <th>A Flute GSM (G/N)</th>
       <th>A Flute BF</th>
-      <th>A Liner GSM</th>
-      <th>C Flute GSM</th>
+      <th>A Liner GSM (G/N)</th>
+      <th>C Flute GSM (G/N)</th>
       <th>C Flute BF</th>
-      <th>C Liner GSM</th>
+      <th>C Liner GSM (G/N)</th>
     </tr>
   </thead>
 );
@@ -310,12 +312,24 @@ export default function ProductionPlanned() {
       ? `Production-Planned-${firstDate}-to-${lastDate}`
       : `Production-Planned-${firstDate}`;
     document.body.classList.add("printing-production-planned");
+    // Override other reports' default portrait rules for this print dialog only.
+    const printPageStyle = document.createElement("style");
+    printPageStyle.media = "print";
+    printPageStyle.textContent = "@page { size: A4 landscape; margin: 0; } @page production-planned-landscape { size: A4 landscape; margin: 0; }";
+    document.head.appendChild(printPageStyle);
     const cleanup = () => {
+      printPageStyle.remove();
       document.body.classList.remove("printing-production-planned");
       document.title = previousTitle;
     };
     window.addEventListener("afterprint", cleanup, { once: true });
-    window.print();
+    try {
+      window.print();
+    } catch (error) {
+      window.removeEventListener("afterprint", cleanup);
+      cleanup();
+      throw error;
+    }
   };
 
   return (
@@ -424,7 +438,7 @@ export default function ProductionPlanned() {
           </button>
         </div>
       </div>
-      <section className="production-selection-panel production-planned-grid-panel production-planned-print-area">
+      <section className="production-selection-panel production-planned-grid-panel production-planned-print-area production-planned-print-page">
         <header className="production-planned-print-heading">
           <img src="/assets/PC-Bord-Logo-only-transparent.png" alt="PolarCanvas" />
           <h1>Production Planned</h1>
@@ -498,18 +512,18 @@ export default function ProductionPlanned() {
                     <td>{fluteRun}</td>
                     <td>{deckle}</td>
                     <td className="numeric">{numberText(cutLength)}</td>
-                    <td>{cell(top, "gsm")}</td>
+                    <td>{formatLayerGsm(top)}</td>
                     <td>{cell(top, "bf_rct")}</td>
-                    <td>{cell(bFlute, "gsm")}</td>
+                    <td>{formatLayerGsm(bFlute)}</td>
                     <td>{cell(bFlute, "bf_rct")}</td>
-                    <td>{cell(bLiner, "gsm")}</td>
+                    <td>{formatLayerGsm(bLiner)}</td>
                     <td>{cell(bLiner, "bf_rct")}</td>
-                    <td>{cell(aFlute, "gsm")}</td>
+                    <td>{formatLayerGsm(aFlute)}</td>
                     <td>{cell(aFlute, "bf_rct")}</td>
-                    <td>{cell(aLiner, "gsm")}</td>
-                    <td>{cell(cFlute, "gsm")}</td>
+                    <td>{formatLayerGsm(aLiner)}</td>
+                    <td>{formatLayerGsm(cFlute)}</td>
                     <td>{cell(cFlute, "bf_rct")}</td>
-                    <td>{cell(cLiner, "gsm")}</td>
+                    <td>{formatLayerGsm(cLiner)}</td>
                     <td className="production-plan-actions-cell">
                       {(line.plan_status === "PLANNED" || line.plan_status === "DRAFT") && (
                         <button type="button" onClick={() => void prepareUnplan(line)}>

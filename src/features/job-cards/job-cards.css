@@ -54,7 +54,28 @@
 .job-card-print-area { display:none; }
 @media(max-width:800px){.job-cards-actions{width:100%}.job-cards-actions>input{min-width:0;width:100%}.job-cards-actions select{width:150px}}
 @media print {
-  @page { size: A4 portrait; margin: 0; }
+  /* The page wrapper owns the physical margins, independently of print-dialog margins. */
+  @page job-card-a4 { size: A4 portrait; margin: 0; }
+  /* Override shared dashboard print dimensions only while Job Cards is present. */
+  body:has(.job-cards-workspace) { page: job-card-a4; }
+  html:has(.job-cards-workspace),
+  body:has(.job-cards-workspace),
+  body:has(.job-cards-workspace) :is(#root, .dashboard-shell, .dashboard-grid, .dashboard-main, .dashboard-content, .dashboard-card, .dashboard-details, .job-cards-workspace) {
+    display: block !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+  }
   html,
   body { margin: 0 !important; padding: 0 !important; }
   .dashboard-sidebar,
@@ -66,27 +87,42 @@
   .dashboard-main,
   .dashboard-content,
   .job-cards-workspace { display: block !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
-  .job-card-print-area { display: block; }
-  .job-card-sheet {
+  .job-card-print-area { display: block; page: job-card-a4; width: 210mm; max-width: 210mm; margin: 0; padding: 0; }
+  .job-card-print-page {
+    page: job-card-a4;
     box-sizing: border-box;
     width: 210mm;
-    height: 297mm;
-    margin: 0 auto;
-    padding: 10mm;
+    min-height: 297mm;
+    margin: 0;
+    padding: 12mm 10mm 12mm 20mm;
+    /* Repeat the safe area when a long card continues on another physical page. */
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    break-inside: auto;
+    page-break-after: always;
     break-after: page;
-    break-inside: avoid;
+  }
+  .job-card-print-page:last-child { page-break-after: auto; break-after: auto; }
+  .job-card-print-page > .job-card-sheet { width: 100%; max-width: 180mm; min-width: 0; }
+  .job-card-sheet {
+    box-sizing: border-box;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    break-inside: auto;
     color: #111827;
     font-family: Arial, "Segoe UI", sans-serif;
-    font-size: 7.5pt;
-    line-height: 1.12;
+    font-size: 10pt;
+    line-height: 1.2;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .job-card-sheet:last-child { break-after: auto; }
   .job-card-sheet header {
     position: relative;
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 11mm minmax(0, 1fr);
+    column-gap: 2mm;
     align-items: center;
     min-height: 10mm;
     box-sizing: border-box;
@@ -96,19 +132,23 @@
     background: #e8eef5 !important;
   }
   .job-card-logo {
-    position: absolute;
-    left: 2mm;
+    grid-row: 1 / 3;
     width: 9mm;
     height: 8mm;
     object-fit: contain;
   }
-  .job-card-sheet header strong { position: absolute; right: 2mm; font-size: 10pt; }
+  .job-card-sheet header strong { grid-column: 2; text-align: center; font-size: 10pt; overflow-wrap: anywhere; }
   .job-card-sheet .job-card-heading {
     font-family: Arial, "Segoe UI", sans-serif;
-    font: 800 13pt/1.1 Arial, "Segoe UI", sans-serif !important;
+    font: 800 11pt/1.2 Arial, "Segoe UI", sans-serif !important;
     letter-spacing: 0 !important;
   }
   .job-card-sheet h1 { width: 100%; margin: 0; text-align: center; }
+  .job-card-sheet h1.job-card-heading { font-size: 17pt !important; }
+  .job-card-sheet :is(header, h2) { break-inside: avoid; break-after: avoid; }
+  .job-card-sheet thead { display: table-header-group; break-inside: avoid; break-after: avoid; }
+  .job-card-sheet tr, .job-card-sheet footer { break-inside: avoid; }
+  .job-card-sheet :is(td, th, dd, footer label) { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
   .job-card-sheet h2 {
     margin: 0;
     padding: 1mm;
@@ -118,33 +158,33 @@
     background: #e5e7eb !important;
     color: #111827 !important;
   }
-  .job-card-sheet table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .job-card-sheet table { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; font-family: inherit; line-height: 1.1; }
   .job-card-sheet th,
   .job-card-sheet td {
-    height: 5.7mm;
+    height: auto;
     box-sizing: border-box;
-    padding: .65mm .9mm;
+    padding: .65mm .8mm;
     border: .25mm solid #4b5563;
     overflow-wrap: anywhere;
     vertical-align: middle;
   }
   .job-card-sheet th {
-    font-size: 7pt;
-    font-weight: 800;
-    line-height: 1.05;
+    font-size: 8pt;
+    font-weight: 700;
+    line-height: 1.1;
     text-align: left;
-    text-transform: uppercase;
+    text-transform: none;
     background: #edf1f5 !important;
   }
-  .job-card-master td { font-size: 7.5pt; font-weight: 700; }
+  .job-card-master td { font-size: 9.5pt; font-weight: 700; }
   .job-card-master .job-card-required-qty-label { text-align: center; }
   .job-card-master .job-card-required-qty-value { background: #fff !important; }
   .job-card-master .job-card-creasing-row > td { height: auto; padding: 0; }
   .job-card-creasing-summary { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); margin: 0; }
   .job-card-creasing-summary > div { min-width:0; min-height:9mm; box-sizing:border-box; padding:.65mm .55mm; border-right:.25mm solid #4b5563; text-align:center; }
   .job-card-creasing-summary > div:last-child { border-right: 0; }
-  .job-card-creasing-summary dt { font-size: 6.2pt; font-weight: 800; line-height: 1.05; text-transform: uppercase; }
-  .job-card-creasing-summary dd { margin: .8mm 0 0; font-size: 7.5pt; font-weight: 800; }
+  .job-card-creasing-summary dt { font-size: 8pt; font-weight: 800; line-height: 1.2; text-transform: uppercase; }
+  .job-card-creasing-summary dd { margin: .8mm 0 0; font-size: 10pt; font-weight: 800; }
   .job-card-label-column { width: 11.5%; }
   .job-card-value-column { width: 13.5%; }
   .job-card-items th,
@@ -155,32 +195,35 @@
   }
   .job-card-items td,
   .job-card-process td { text-align: center; }
-  .job-card-items td { font-size: 7.5pt; font-weight: 700; }
+  .job-card-items td { font-size: 9.5pt; font-weight: 700; }
   .job-card-items .job-card-paper-total th,.job-card-items .job-card-paper-total td { background:#e5e7eb !important; color:#111827 !important; font-weight:800; text-align:center; }
-  .job-card-process td { height: 6.5mm; font-size: 8pt; }
+  .job-card-process td { height: 7mm; font-size: 8.5pt; }
   .job-card-process .job-card-corrugation-row td { height: 13mm; }
   .job-card-process td.job-card-split-reels { padding: 0; }
   .job-card-split-reels span { display: block; height: 50%; box-sizing: border-box; }
   .job-card-process td.job-card-split-process-values { padding: 0; }
-  .job-card-process-entry-stack { display: grid; height: 13mm; grid-template-rows: repeat(2,minmax(0,1fr)); }
+  .job-card-process-entry-stack { display: grid; min-height: 13mm; grid-template-rows: repeat(2,minmax(min-content,1fr)); }
   .job-card-process-entry-stack > span { display: flex; box-sizing: border-box; align-items: center; justify-content: center; }
   .job-card-process td.job-card-split-reels,.job-card-process td.job-card-split-process-values { position: relative; }
   .job-card-process td.job-card-split-reels::after,.job-card-process td.job-card-split-process-values::after { position:absolute; right:0; left:0; top:50%; border-top:.25mm solid #4b5563; content:''; pointer-events:none; }
-  .job-card-process th { padding-right: .35mm; padding-left: .35mm; font-size: 6.3pt; }
-  .job-card-process td.job-card-process-name { padding-right: .6mm; padding-left: .6mm; font-size: 7pt; font-weight: 800; line-height: 1.05; text-align: center; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+  .job-card-process th { padding-right: .35mm; padding-left: .35mm; font-size: 8pt; }
+  .job-card-process td.job-card-process-name { padding-right: .6mm; padding-left: .6mm; font-size: 8.5pt; font-weight: 800; line-height: 1.1; text-align: center; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
   .job-card-col-serial { width: 5%; }
   .job-card-col-layer { width: 15%; }
   .job-card-col-small { width: 7%; }
-  .job-card-col-process { width: 14%; }
+  /* Process columns total 100%, including the previously unallocated status column. */
+  .job-card-process .job-card-col-serial { width: 3%; }
+  .job-card-col-process { width: 12%; }
+  .job-card-process .job-card-col-status { width: 9%; }
   .job-card-col-time { width: 8%; }
   .job-card-col-reel { width: 7%; }
-  .job-card-col-weight { width: 10%; }
-  .job-card-col-qty { width: 7%; }
-  .job-card-col-employee { width: 10%; }
+  .job-card-col-weight { width: 7%; }
+  .job-card-col-qty { width: 6%; }
+  .job-card-col-employee { width: 13%; }
   .job-card-sheet footer {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    height: 13mm;
+    min-height: 13mm;
     border: .35mm solid #1f2937;
     border-top: 0;
   }
@@ -193,9 +236,9 @@
   .job-card-sheet footer span {
     padding: 1mm 1.2mm .5mm;
     text-align: center;
-    font-size: 8pt;
+    font-size: 9pt;
     font-weight: 800;
     text-transform: uppercase;
   }
-  .job-card-sheet footer strong { padding: .5mm 1.2mm 1mm; text-align: center; font-size: 8pt; }
+  .job-card-sheet footer strong { padding: .5mm 1.2mm 1mm; text-align: center; font-size: 10pt; }
 }

@@ -4,6 +4,7 @@ import { formatIstDate } from '../../utils/dateTimeFormatting';
 import { calculateRotarySize, calculateSlottingSize } from '../product-specifications/rotarySizeCalculations';
 import { calculateRequiredPaperQuantity } from './jobCardCalculations';
 import './job-cards.css';
+import ReelSelector from '../job-tracking/ReelSelector';
 
 interface PaperLayer {
   layer_name?: string;
@@ -65,6 +66,12 @@ export interface InventoryReel {
   reel_status?: 'Available' | 'Reserved';
   reserved_job_card_id?: number | null;
   reserved_job_number?: string | null;
+  paper_type?: string | null;
+  shade?: string | null;
+  vendor_name?: string | null;
+  purchase_order_number?: string | null;
+  reserved_process_name?: string | null;
+  reserved_reel_slot?: number | null;
 }
 
 type ProcessField = 'start_datetime' | 'end_datetime' | 'in_quantity' | 'out_quantity' | 'employee_name' | 'in_quantity_2' | 'out_quantity_2' | 'employee_name_2' | 'reel_number' | 'in_reel_weight' | 'out_reel_weight' | 'remaining_reel_weight' | 'reel_number_2' | 'in_reel_weight_2' | 'out_reel_weight_2' | 'remaining_reel_weight_2';
@@ -152,7 +159,7 @@ const processDateTimeText = (value: string | null | undefined) => {
   return `${day}-${monthName}-${year.slice(-2)} ${hour}:${minute}`;
 };
 
-function ReelDetailCell({ stage, label, entry, field, secondField, numeric = false, processEditable, reelEditable, savingProcessKey, onChange, inventoryReels = [], onReelSelect, onReelConsume }: { stage: string; label: string; entry?: ProcessEntry; field: ProcessField; secondField: ProcessField; numeric?: boolean; processEditable: boolean; reelEditable: boolean; savingProcessKey: string; onChange?: (processName: string, field: ProcessField, value: string) => void; inventoryReels?: InventoryReel[]; onReelSelect?: (processName: string, reelSlot: 1 | 2, inventoryStockId: number) => void; onReelConsume?: (processName: string, reelSlot: 1 | 2, outReelWeight: string) => void }) {
+function ReelDetailCell({ stage, label, entry, field, secondField, numeric = false, processEditable, reelEditable, savingProcessKey, onChange, inventoryReels = [], onReelSelect, onReelConsume }: { stage: string; label: string; entry?: ProcessEntry; field: ProcessField; secondField: ProcessField; numeric?: boolean; processEditable: boolean; reelEditable: boolean; savingProcessKey: string; onChange?: (processName: string, field: ProcessField, value: string) => void; inventoryReels?: InventoryReel[]; onReelSelect?: (processName: string, reelSlot: 1 | 2, inventoryStockId: number) => void | Promise<void>; onReelConsume?: (processName: string, reelSlot: 1 | 2, outReelWeight: string) => void }) {
   if (stage !== 'Paper Cutting' && stage !== 'Corrugation') return <td></td>;
   reelEditable = reelEditable && entry?.process_status !== 'COMPLETED';
   const hasSecondReel = stage === 'Corrugation';
@@ -163,17 +170,11 @@ function ReelDetailCell({ stage, label, entry, field, secondField, numeric = fal
     const outWeightField = slot === 2 ? 'out_reel_weight_2' : 'out_reel_weight';
     const selectedId = Number(entry?.[inventoryIdField] ?? 0);
     if (label === 'Reel Number') {
-      const selectedStillAvailable = inventoryReels.some((reel) => reel.inventory_stock_id === selectedId);
       return (
-        <select key={`${stage}:${inputField}:${selectedId}`} className="job-card-process-entry job-card-reel-select" aria-label={`${stage} Reel No.${suffix}`} value={selectedId || ''} disabled={!reelEditable || savingProcessKey === `${stage}:reel_${slot}`} onChange={(event) => onReelSelect?.(stage, slot, Number(event.target.value))}>
-          <option value="">Select Reel</option>
-          {selectedId > 0 && !selectedStillAvailable && <option value={selectedId}>{entry?.[inputField]} | Unavailable</option>}
-          {inventoryReels.map((reel) => (
-            <option key={reel.inventory_stock_id} value={reel.inventory_stock_id}>
-              {reel.reel_number} | {reel.material_no} | {reel.gsm} GSM | {reel.bf ?? '-'} BF | {reel.reel_size_cm} cm | {numberText(reel.available_weight)} KG
-            </option>
-          ))}
-        </select>
+        <ReelSelector key={`${stage}:${inputField}`} reels={inventoryReels} selectedId={selectedId}
+          selectedNumber={String(entry?.[inputField] || '')} processName={stage} slot={slot}
+          label={`${stage} Select Reel${suffix}`} disabled={!reelEditable} busy={savingProcessKey === `${stage}:reel_${slot}`}
+          onSelect={(inventoryStockId) => onReelSelect?.(stage, slot, inventoryStockId)} />
       );
     }
     if (label === 'Consumed Reel Weight') {
@@ -485,7 +486,9 @@ export default function JobCards() {
         {selectedLines
           .filter((line) => line.job_card_id)
           .map((line) => (
-            <JobCard key={line.production_plan_line_id} line={line} />
+            <div className="job-card-print-page" key={line.production_plan_line_id}>
+              <JobCard line={line} />
+            </div>
           ))}
       </div>
     </div>
@@ -615,7 +618,7 @@ function ProductSpecificationDialog({ line, onClose }: { line: JobCardLine; onCl
   );
 }
 
-export function JobCard({ line, processEditable = false, reelEditable = processEditable, supervisorReadOnly = false, defaultSupervisorName = '', savingProcessKey = '', savingFooterKey = '', onProcessValueChange, onProcessStatusChange, onFooterValueChange, inventoryReels = [], onReelSelect, onReelConsume }: { line: JobCardLine; processEditable?: boolean; reelEditable?: boolean; supervisorReadOnly?: boolean; defaultSupervisorName?: string; savingProcessKey?: string; savingFooterKey?: string; onProcessValueChange?: (processName: string, field: ProcessField, value: string) => void; onProcessStatusChange?: (processName: string, status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED', processEntryId?: number) => void; onFooterValueChange?: (field: FooterField, value: string) => void; inventoryReels?: InventoryReel[]; onReelSelect?: (processName: string, reelSlot: 1 | 2, inventoryStockId: number) => void; onReelConsume?: (processName: string, reelSlot: 1 | 2, outReelWeight: string) => void }) {
+export function JobCard({ line, processEditable = false, reelEditable = processEditable, supervisorReadOnly = false, defaultSupervisorName = '', savingProcessKey = '', savingFooterKey = '', onProcessValueChange, onProcessStatusChange, onFooterValueChange, inventoryReels = [], onReelSelect, onReelConsume }: { line: JobCardLine; processEditable?: boolean; reelEditable?: boolean; supervisorReadOnly?: boolean; defaultSupervisorName?: string; savingProcessKey?: string; savingFooterKey?: string; onProcessValueChange?: (processName: string, field: ProcessField, value: string) => void; onProcessStatusChange?: (processName: string, status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED', processEntryId?: number) => void; onFooterValueChange?: (field: FooterField, value: string) => void; inventoryReels?: InventoryReel[]; onReelSelect?: (processName: string, reelSlot: 1 | 2, inventoryStockId: number) => void | Promise<void>; onReelConsume?: (processName: string, reelSlot: 1 | 2, outReelWeight: string) => void }) {
   const attributes = readAttributes(line);
   const { layers, deckle, rotary, rotaryCalculation, slottingSize, boxWeight, bs } = calculated(line);
   const stages = attributes.production_stages ?? [];
@@ -849,7 +852,7 @@ export function JobCard({ line, processEditable = false, reelEditable = processE
             <th>Status</th>
             <th>Start Datetime</th>
             <th>End Datetime</th>
-            <th>Reel No.</th>
+            <th>{processEditable ? 'Select Reel' : 'Reel No.'}</th>
             <th>Reel Weight</th>
             <th>Out Reel Weight</th>
             <th>Consumed Weight</th>

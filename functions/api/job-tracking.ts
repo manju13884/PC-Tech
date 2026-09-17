@@ -59,7 +59,9 @@ const selectTrackedJobs = `
 
 const availableReels = `SELECT stock.id AS inventory_stock_id, stock.material_no, stock.reel_number, stock.gsm, stock.bf,
   stock.reel_size_cm, stock.reel_weight_kg AS available_weight,
+  stock.paper_type, stock.color AS shade, stock.vendor_name, stock.purchase_order_number,
   reservation.job_card_id AS reserved_job_card_id, reservation.job_number AS reserved_job_number,
+  reservation.process_name AS reserved_process_name, reservation.reel_slot AS reserved_reel_slot,
   CASE WHEN reservation.id IS NOT NULL THEN 'Reserved' ELSE 'Available' END AS reel_status
   FROM material_inventory_records stock
   LEFT JOIN inventory_reel_reservations reservation

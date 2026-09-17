@@ -1,3 +1,4 @@
+import { formatLayerGsm } from './paperLayerDisplay'
 import {
   AlertCircle,
   ArrowLeft,
@@ -135,10 +136,10 @@ const PlanningGridHeader = () => (
       <th>Production Date <span className="production-required-mark" aria-label="required">*</span></th><th>Delivery Date <span className="production-required-mark" aria-label="required">*</span></th><th>Box Qty <span className="production-required-mark" aria-label="required">*</span></th><th>Top Sheet</th><th>2 Ply Qty</th>
       <th>Product Description</th>
       <th>L</th><th>W</th><th>H</th><th>Product<br />Type</th><th>Ply</th>
-      <th>Flute<br />Run</th><th>Deckle Size</th><th>Cut Length</th><th>Top GSM</th><th>Top BF</th>
-      <th>B Flute GSM</th><th>B Flute BF</th><th>B Liner GSM</th><th>B Liner BF</th>
-      <th>A Flute GSM</th><th>A Flute BF</th><th>A Liner GSM</th>
-      <th>C Flute GSM</th><th>C Flute BF</th><th>C Liner GSM</th>
+      <th>Flute<br />Run</th><th>Deckle Size</th><th>Cut Length</th><th>Top GSM (G/N)</th><th>Top BF</th>
+      <th>B Flute GSM (G/N)</th><th>B Flute BF</th><th>B Liner GSM (G/N)</th><th>B Liner BF</th>
+      <th>A Flute GSM (G/N)</th><th>A Flute BF</th><th>A Liner GSM (G/N)</th>
+      <th>C Flute GSM (G/N)</th><th>C Flute BF</th><th>C Liner GSM (G/N)</th>
     </tr>
   </thead>
 )
@@ -303,10 +304,10 @@ export default function ProductionPlanning() {
       <td className="production-description" title={v.itemDescription}>{v.itemDescription || v.itemName}</td>
       <td className="numeric">{numberText(v.lengthMm)}</td><td className="numeric">{numberText(v.widthMm)}</td><td className="numeric">{numberText(v.heightMm)}</td>
       <td>{v.productType || '—'}</td><td>{v.ply ? `${v.ply} Ply` : '—'}</td><td>{fluteRun}</td><td><input aria-label="Deckle Size" className="production-quantity" type="text" value={v.deckleSize ?? preloadedDeckleSize(v)} disabled={!v.included} onChange={(e) => { const deckleSize = e.target.value; setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deckleSize } : x)) }} /></td><td className="numeric">{numberText(cutLength)}</td>
-      <td className="numeric">{cell(top, 'gsm')}</td><td className="numeric">{cell(top, 'bf_rct')}</td>
-      <td className="numeric">{cell(bFlute, 'gsm')}</td><td className="numeric">{cell(bFlute, 'bf_rct')}</td><td className="numeric">{cell(bLiner, 'gsm')}</td><td className="numeric">{cell(bLiner, 'bf_rct')}</td>
-      <td className="numeric">{cell(aFlute, 'gsm')}</td><td className="numeric">{cell(aFlute, 'bf_rct')}</td><td className="numeric">{cell(aLiner, 'gsm')}</td>
-      <td className="numeric">{cell(cFlute, 'gsm')}</td><td className="numeric">{cell(cFlute, 'bf_rct')}</td><td className="numeric">{cell(cLiner, 'gsm')}</td>
+      <td className="numeric">{formatLayerGsm(top)}</td><td className="numeric">{cell(top, 'bf_rct')}</td>
+      <td className="numeric">{formatLayerGsm(bFlute)}</td><td className="numeric">{cell(bFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(bLiner)}</td><td className="numeric">{cell(bLiner, 'bf_rct')}</td>
+      <td className="numeric">{formatLayerGsm(aFlute)}</td><td className="numeric">{cell(aFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(aLiner)}</td>
+      <td className="numeric">{formatLayerGsm(cFlute)}</td><td className="numeric">{cell(cFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(cLiner)}</td>
     </tr>
   }
   return (
