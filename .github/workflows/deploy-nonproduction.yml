@@ -10,10 +10,18 @@ permissions:
   contents: read
   deployments: write
 
+concurrency:
+  group: pc-tech-deployment-nonproduction
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: nonproduction
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      DEPLOYMENT_SHA: ${{ github.sha }}
 
     steps:
       - name: Checkout main branch
@@ -25,11 +33,30 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Enable nonproduction maintenance
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs on nonproduction
+
+      - name: Prepare independent maintenance page
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs shell nonproduction
+
+      - name: Publish maintenance gate
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy .wrangler/maintenance-site --project-name=pc-tech --branch=main --commit-dirty=true
+
+      - name: Verify maintenance before build and migrations
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs confirm nonproduction
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build application
         run: npm run build
+
+      - name: Stamp release and asset checksums
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs stamp nonproduction
 
       - name: Audit immutable additive D1 migrations
         run: npm run db:migrations:audit
@@ -93,3 +120,13 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=pc-tech --branch=main --commit-dirty=true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate deployed release and disable maintenance
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs off nonproduction
+
+      - name: Verify public application
+        run: node --experimental-strip-types scripts/deployment-maintenance.mjs normal nonproduction
+
+      - name: Keep maintenance enabled on failure
+        if: ${{ failure() || cancelled() }}
+        run: echo "Deployment failed. Maintenance mode remains enabled if activation succeeded. Use the documented recovery procedure."
