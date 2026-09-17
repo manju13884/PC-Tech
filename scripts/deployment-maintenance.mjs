@@ -134,7 +134,8 @@ export async function main(command, environment) {
     const run = process.env.MAINTENANCE_OWNER || `${required('GITHUB_RUN_ID')}-${required('GITHUB_RUN_ATTEMPT')}`
     if (!process.env.GITHUB_ENV && required('MAINTENANCE_TOKEN').length < 32) throw new Error('Use a random maintenance token of at least 32 characters.')
     if (project.deployment_configs.production.fail_open !== false) {
-      await cloudflare(`/pages/projects/${target.project}`, { deployment_configs: { production: { fail_open: false } } }, 'PATCH')
+      // Pages requires equal runtime fail-open settings for both configs within a project.
+      await cloudflare(`/pages/projects/${target.project}`, { deployment_configs: { production: { fail_open: false }, preview: { fail_open: false } } }, 'PATCH')
       if ((await validateTarget(target)).deployment_configs.production.fail_open !== false) throw new Error('Unable to enforce Pages fail-closed routing.')
     }
     const token = randomBytes(32).toString('hex')
