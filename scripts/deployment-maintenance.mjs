@@ -133,6 +133,13 @@ export async function main(command, environment) {
     const sha = revision()
     const run = process.env.MAINTENANCE_OWNER || `${required('GITHUB_RUN_ID')}-${required('GITHUB_RUN_ATTEMPT')}`
     if (!process.env.GITHUB_ENV && required('MAINTENANCE_TOKEN').length < 32) throw new Error('Use a random maintenance token of at least 32 characters.')
+    if (project.source?.config && project.source.config.production_deployments_enabled !== false) {
+      // The target's canonical branch must deploy only through the gated Actions workflow.
+      await cloudflare(`/pages/projects/${target.project}`, { source: { type: project.source.type,
+        config: { ...project.source.config, production_deployments_enabled: false } } }, 'PATCH')
+      if ((await validateTarget(target)).source?.config?.production_deployments_enabled !== false) throw new Error('Unable to disable competing automatic Pages builds.')
+      console.log('Canonical Pages Git builds disabled; the gated Actions workflow owns releases.')
+    }
     if (project.deployment_configs.production.fail_open !== false) {
       // Pages requires equal runtime fail-open settings for both configs within a project.
       await cloudflare(`/pages/projects/${target.project}`, { deployment_configs: { production: { fail_open: false }, preview: { fail_open: false } } }, 'PATCH')
@@ -144,7 +151,8 @@ export async function main(command, environment) {
       owner TEXT NOT NULL, token_hash TEXT NOT NULL, commit_sha TEXT NOT NULL, updated_at TEXT NOT NULL)`)
     await query(target, `INSERT INTO deployment_maintenance VALUES (1,1,?,?,?,datetime('now'))
       ON CONFLICT(id) DO UPDATE SET active=1, owner=excluded.owner, token_hash=excluded.token_hash,
-      commit_sha=excluded.commit_sha, updated_at=excluded.updated_at WHERE deployment_maintenance.active=0`, [run, digest(token), sha])
+      commit_sha=excluded.commit_sha, updated_at=excluded.updated_at
+      WHERE deployment_maintenance.active=0 OR deployment_maintenance.owner=?`, [run, digest(token), sha, process.env.MAINTENANCE_PREVIOUS_OWNER || ''])
     const row = await state(target)
     if (row.owner !== run || row.token_hash !== digest(token)) throw new Error('Another release owns maintenance. Use the documented recovery procedure.')
     if (process.env.GITHUB_ENV) {

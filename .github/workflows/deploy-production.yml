@@ -5,6 +5,13 @@ on:
     branches:
       - production
 
+  workflow_dispatch:
+    inputs:
+      maintenance_previous_owner:
+        description: 'Failed release owner to recover (leave empty for a normal deployment)'
+        required: false
+        type: string
+
 permissions:
   contents: read
   deployments: write
@@ -33,6 +40,8 @@ jobs:
           cache: npm
 
       - name: Enable production maintenance
+        env:
+          MAINTENANCE_PREVIOUS_OWNER: ${{ inputs.maintenance_previous_owner }}
         run: node --experimental-strip-types scripts/deployment-maintenance.mjs on production
 
       - name: Prepare independent maintenance page
@@ -41,6 +50,7 @@ jobs:
       - name: Publish maintenance gate
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy .wrangler/maintenance-site --project-name=pc-tech-production --branch=production --commit-dirty=true
@@ -66,6 +76,7 @@ jobs:
       - name: Export production D1 backup
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 export pc-tech-production-db --remote --env production --output=.wrangler/backups/pc-tech-production-db-pre-dashboard-deploy.sql
@@ -81,6 +92,7 @@ jobs:
       - name: List pending production D1 migrations
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations list pc-tech-production-db --remote --env production
@@ -88,6 +100,7 @@ jobs:
       - name: Apply production D1 migrations
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations apply pc-tech-production-db --remote --env production
@@ -95,6 +108,7 @@ jobs:
       - name: Verify production D1 migrations
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations list pc-tech-production-db --remote --env production
@@ -105,6 +119,7 @@ jobs:
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=pc-tech-production --branch=production --commit-dirty=true

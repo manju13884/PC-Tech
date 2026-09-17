@@ -15,6 +15,8 @@ release to make room for another one.
 1. Validate the explicit Pages project, branch and D1 binding against the target
    allowlist in `scripts/deployment-maintenance.mjs`. Set Pages runtime to fail
    closed so quota exhaustion cannot bypass the middleware.
+   Disable automatic Pages Git builds for that project's canonical branch so a
+   second build cannot race the gated Actions release. Other projects are unchanged.
 2. Enable that environment's maintenance record with a release owner, Git SHA
    and one-time health token. Only its SHA-256 hash is stored in D1.
 3. Publish an independent, self-contained maintenance Worker to the same Pages
@@ -103,6 +105,14 @@ remains enabled. A failed/cancelled run holds its lock; a new run fails rather
 than silently taking ownership and reopening it.
 
 ## Recovery after a successful deployment that stayed closed
+
+To rebuild and redeploy after a failed workflow, use GitHub Actions **Run workflow**
+on the target branch and set `maintenance_previous_owner` to the exact failed
+owner from `status` (Actions run ID followed by `-` and its attempt number).
+Ensure that run has stopped. This explicitly transfers the lock, keeps maintenance
+enabled, and repeats the entire gated deployment. Leave the input empty for normal
+releases. Wrangler is pinned to the validated version to avoid dependency drift
+while installing the standalone maintenance uploader.
 
 Ensure the failed workflow has stopped. Run `status` for the correct target and
 copy its owner and expected commit. Recover ownership without opening the site:
