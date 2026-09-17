@@ -1,4 +1,5 @@
 import { getAuthenticatedUser } from '../lib/authenticatedUser';
+import { jobCompletionError } from '../../src/utils/jobCompletionValidation';
 
 interface Env {
   DB?: D1Database;
@@ -673,6 +674,19 @@ export async function onRequestPatch(context: Context): Promise<Response> {
     );
   }
   if (status === 'COMPLETED') {
+    const completionJob = await db.prepare(`
+      SELECT card.job_number, spec.attributes_json,
+        COALESCE((SELECT json_group_array(json_object(
+          'process_entry_id', entry.id, 'process_name', entry.process_name, 'process_status', entry.process_status
+        )) FROM job_card_process_entries entry WHERE entry.job_card_id=card.id), '[]') AS process_entries_json
+      FROM job_cards card
+      INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
+      LEFT JOIN product_specification_records spec ON spec.id=line.approved_specification_revision_id
+      WHERE card.id=?
+    `).bind(jobCardId).first<{ job_number: string; attributes_json: string | null; process_entries_json: string }>();
+    if (!completionJob) return json({ error: 'Job Card was not found.' }, 404);
+    const completionError = jobCompletionError(completionJob);
+    if (completionError) return json({ error: completionError }, 409);
     const activeReservation = await db.prepare("SELECT process_name FROM inventory_reel_reservations WHERE job_card_id=? AND status='ACTIVE' LIMIT 1").bind(jobCardId).first<{ process_name: string }>();
     if (activeReservation)
       return json(

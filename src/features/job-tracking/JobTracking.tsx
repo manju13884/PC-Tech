@@ -1,6 +1,7 @@
 import { Activity, ChevronRight, FilterX, RefreshCw } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { formatIstDate, formatIstDateTime } from '../../utils/dateTimeFormatting';
+import { jobCompletionError } from '../../utils/jobCompletionValidation';
 import { JobCard, type InventoryReel, type JobCardLine } from '../job-cards/JobCards';
 import '../job-cards/job-cards.css';
 import './job-tracking.css';
@@ -116,6 +117,15 @@ export default function JobTracking() {
   }, [jobs, search, status]);
 
   const saveStatus = async (jobCardId: number, nextStatus: JobStatus, completionSummary: ReelSummary[] = []) => {
+    if (nextStatus === 'COMPLETED') {
+      const job = jobs.find((value) => value.job_card_id === jobCardId);
+      const completionError = job ? jobCompletionError(job) : 'Job Card was not found.';
+      if (completionError) {
+        setError(completionError);
+        setNotice(null);
+        return;
+      }
+    }
     setUpdatingId(jobCardId);
     setError('');
     try {
