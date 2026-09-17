@@ -21,7 +21,11 @@ async function cloudflare(path, body, method = body ? 'POST' : 'GET') {
     body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(60000),
   })
   const data = await response.json()
-  if (!response.ok || !data.success) throw new Error(`Cloudflare control request failed (${response.status}).`)
+  if (!response.ok || !data.success) {
+    const codes = (data.errors ?? []).map(error => `${error.code}: ${error.message}`).join('; ')
+      .replaceAll(required('CLOUDFLARE_API_TOKEN'), '[redacted]').replaceAll(required('CLOUDFLARE_ACCOUNT_ID'), '[account]')
+    throw new Error(`Cloudflare ${method} ${path} failed (${response.status}): ${codes}`)
+  }
   return data.result
 }
 async function validateTarget(target) {
