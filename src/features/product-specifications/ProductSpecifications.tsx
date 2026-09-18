@@ -128,6 +128,7 @@ function buildPaperLayers(ply: string, current: PaperLayer[]): PaperLayer[] {
 
 function detectType(item?: Item): string {
   const value = `${item?.item_name ?? ''} ${item?.description ?? ''}`.toLowerCase()
+  if (/\b(?:3|5)\s*ply\s+packing\s+tray\b/.test(value)) return 'BOX'
   if (/box|carton/.test(value)) return 'BOX'
   if (/board|sheet/.test(value)) return 'BOARD / SHEET'
   if (/stretch|film|shrink/.test(value)) return 'FILM'
