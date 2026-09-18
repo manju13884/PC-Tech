@@ -12,6 +12,7 @@ const allowedMigrations = new Set([
   '0043_create_material_issues.sql',
   '0044_add_material_issue_invoice_mapping.sql',
   '0045_add_finished_goods_stock_permission.sql',
+  '0048_add_material_stock_deletion_audit.sql',
 ])
 const migrationName = migrationPath ? basename(migrationPath) : ''
 if (!allowedMigrations.has(migrationName)) {
@@ -41,6 +42,8 @@ const statements = splitSql(readFileSync(resolve(migrationPath), 'utf8'))
 
 function makeCloudflareCompatible(statement) {
   if (!statement.includes('SELECT CASE')) return statement
+  const inlineCase = statement.match(/SELECT CASE WHEN\s+([\s\S]*?)\s+THEN\s+(RAISE\(ABORT,\s*'[^']+'\))\s+END;/)
+  if (inlineCase) return statement.replace(inlineCase[0], `SELECT ${inlineCase[2]} WHERE ${inlineCase[1].trim()};`)
   const lines = statement.split('\n')
   const caseStart = lines.findIndex((line) => line.trim() === 'SELECT CASE')
   const caseEnd = lines.findIndex((line, index) => index > caseStart && /^  END;\s*$/.test(line))
