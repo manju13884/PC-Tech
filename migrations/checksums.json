@@ -45,5 +45,7 @@
   "0044_add_material_issue_invoice_mapping.sql": "e089918b21dc11bbd6db201dc8183c274e6d55b5ebd4dfa1bcb66ede5b2906c2",
   "0045_add_finished_goods_stock_permission.sql": "dd70708cfeed57326433a479bf1156583e00c83515d09046aed3996bd345e406",
   "0046_add_production_plan_closure.sql": "4c0fab946675970ec04078a8d2fb9fb79e1626ca4e1b4adcb6ced20d0f2fe12a",
-  "0047_create_job_card_status_history.sql": "b70e6977c9fbce87dab681ef3d54dbcae6e93a583f1e71b7d66dfc6833629cba"
+  "0047_create_job_card_status_history.sql": "b70e6977c9fbce87dab681ef3d54dbcae6e93a583f1e71b7d66dfc6833629cba",
+  "0048_add_material_stock_deletion_audit.sql": "45a0c2151306bab998864cb109ea8d786a719c8e70a4aecb0d0a8bf64fb6b206",
+  "0049_restrict_material_stock_delete_access.sql": "373abf0e07724142826e81617b4d6fe9338f7423bab2aa60b716654bd168a18a"
 }

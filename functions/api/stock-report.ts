@@ -13,11 +13,21 @@ async function canView(db: D1Database, roleId: number, roleName: string) {
   return Boolean(permission)
 }
 
+async function canDelete(db: D1Database, roleId: number, roleName: string) {
+  if (roleName === 'SUPERADMIN') return true
+  const permission = await db.prepare(
+    `SELECT 1 AS allowed FROM role_menu_permissions
+     WHERE role_id = ? AND menu_key = 'material-stock' AND (can_full = 1 OR can_delete = 1) LIMIT 1`,
+  ).bind(roleId).first()
+  return Boolean(permission)
+}
+
 export async function onRequestGet(context: Context): Promise<Response> {
   if (!context.env.DB) return json({ error: 'Stock Report database is unavailable.' }, 503)
   const user = await getAuthenticatedUser(context.request, context.env.DB)
   if (!user) return json({ error: 'Authentication required.' }, 401)
   if (!await canView(context.env.DB, user.roleId, user.roleName)) return json({ error: 'Stock Report view access is required.' }, 403)
+  const deleteAllowed = await canDelete(context.env.DB, user.roleId, user.roleName)
   const url = new URL(context.request.url)
   const asOnDate = url.searchParams.get('as_on_date')?.trim() || new Date().toISOString().slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(asOnDate)) return json({ error: 'As On Date is invalid.' }, 400)
@@ -104,6 +114,14 @@ export async function onRequestGet(context: Context): Promise<Response> {
         'KG' uom, CASE WHEN ((m.reel_weight_kg - COALESCE(la.net_all,0)) + COALESCE(ld.net_asof,0)) <= 0 THEN 'Consumed'
           WHEN reservation.id IS NOT NULL THEN 'Reserved' ELSE 'Available' END reel_status,
         reservation.job_number AS reserved_for_job,
+        CASE WHEN
+          NOT EXISTS (SELECT 1 FROM job_card_process_entries jpe WHERE jpe.inventory_stock_id=m.id OR jpe.inventory_stock_id_2=m.id)
+          AND NOT EXISTS (SELECT 1 FROM job_tracking_reel_consumptions jtrc WHERE jtrc.inventory_stock_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM inventory_reel_reservations irr WHERE irr.inventory_stock_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM inventory_stock_adjustments isa WHERE isa.inventory_stock_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM inventory_stock_ledger isl WHERE isl.inventory_stock_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM inventory_material_issues imi WHERE imi.inventory_stock_id=m.id)
+        THEN 1 ELSE 0 END AS can_delete,
         CASE WHEN ld.last_transaction > m.created_at THEN ld.last_transaction ELSE m.created_at END last_transaction_date,
         m.created_at AS received_date
       FROM material_inventory_records m
@@ -123,5 +141,52 @@ export async function onRequestGet(context: Context): Promise<Response> {
       SUM(CASE WHEN closing_stock<0 THEN 1 ELSE 0 END) negative_stock
       FROM report ${whereStatus} GROUP BY uom`).bind(...commonValues).all(),
   ])
-  return json({ rows: rows.results ?? [], totals: totals.results ?? [], page, pageSize, total: count?.count ?? 0, lowStockAvailable: false, asOnDate })
+  const reportRows = (rows.results ?? []).map((row) => ({ ...row, can_delete: deleteAllowed ? row.can_delete : 0 }))
+  return json({ rows: reportRows, totals: totals.results ?? [], page, pageSize, total: count?.count ?? 0, lowStockAvailable: false, asOnDate })
+}
+
+export async function onRequestDelete(context: Context): Promise<Response> {
+  if (!context.env.DB) return json({ error: 'Stock Report database is unavailable.' }, 503)
+  const user = await getAuthenticatedUser(context.request, context.env.DB)
+  if (!user) return json({ error: 'Authentication required.' }, 401)
+  if (!await canDelete(context.env.DB, user.roleId, user.roleName)) return json({ error: 'Material Stock delete access is required.' }, 403)
+
+  const body = await context.request.json<{ inventory_stock_id?: unknown; reason?: unknown }>().catch(() => ({}))
+  const stockId = Number(body.inventory_stock_id)
+  const reason = typeof body.reason === 'string' ? body.reason.trim() : ''
+  if (!Number.isInteger(stockId) || stockId <= 0) return json({ error: 'Material stock record is required.' }, 400)
+  if (!reason) return json({ error: 'Enter a reason for deleting this Material Stock row.' }, 400)
+  if (reason.length > 500) return json({ error: 'Deletion reason must not exceed 500 characters.' }, 400)
+
+  const stock = await context.env.DB.prepare('SELECT * FROM material_inventory_records WHERE id = ?').bind(stockId).first<Record<string, unknown>>()
+  if (!stock) return json({ error: 'Material stock record was not found.' }, 404)
+  const dependency = await context.env.DB.prepare(
+    `SELECT EXISTS (SELECT 1 FROM job_card_process_entries WHERE inventory_stock_id=? OR inventory_stock_id_2=?)
+      OR EXISTS (SELECT 1 FROM job_tracking_reel_consumptions WHERE inventory_stock_id=?)
+      OR EXISTS (SELECT 1 FROM inventory_reel_reservations WHERE inventory_stock_id=?)
+      OR EXISTS (SELECT 1 FROM inventory_stock_adjustments WHERE inventory_stock_id=?)
+      OR EXISTS (SELECT 1 FROM inventory_stock_ledger WHERE inventory_stock_id=?)
+      OR EXISTS (SELECT 1 FROM inventory_material_issues WHERE inventory_stock_id=?) AS in_use`,
+  ).bind(stockId, stockId, stockId, stockId, stockId, stockId, stockId).first<{ in_use: number }>()
+  if (dependency?.in_use) return json({ error: 'This Material Stock row cannot be deleted because it is mapped or has already been used.' }, 409)
+
+  try {
+    const results = await context.env.DB.batch([
+      context.env.DB.prepare(
+        `INSERT INTO material_inventory_deletions
+          (inventory_stock_id, material_no, reel_number, material_snapshot, deletion_reason, deleted_by_user_id, deleted_by_name)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(stockId, String(stock.material_no ?? ''), String(stock.reel_number ?? ''), JSON.stringify(stock), reason, user.id, user.fullName),
+      context.env.DB.prepare('DELETE FROM material_inventory_records WHERE id = ?').bind(stockId),
+    ])
+    if (!results[1]?.success || Number(results[1].meta.changes) !== 1) throw new Error('material_stock_delete_failed')
+    return json({ success: true, message: `${String(stock.material_no)} deleted successfully.` })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('material_stock_is_in_use') || message.includes('FOREIGN KEY')) {
+      return json({ error: 'This Material Stock row cannot be deleted because it is mapped or has already been used.' }, 409)
+    }
+    console.error('[stock-report] Unable to delete material stock', error)
+    return json({ error: 'Unable to delete the Material Stock row.' }, 500)
+  }
 }

@@ -116,3 +116,22 @@ export async function updateRoleMenuAccess(
 
   return updatedAccess
 }
+
+export async function updateRoleMenuPermission(
+  roleId: number,
+  menuKey: string,
+  permission: 'view' | 'delete',
+  value: boolean,
+): Promise<AdminAccessPermission> {
+  const response = await fetch(`/api/auth/access/${roleId}/${menuKey}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ permission, value }),
+  })
+  if (!response.ok) throw new Error(await getResponseError(response, `Unable to update permission (${response.status})`))
+  const data: unknown = await response.json()
+  const updatedAccess = data && typeof data === 'object' ? (data as { access?: unknown }).access : null
+  if (!isAdminAccessPermission(updatedAccess)) throw new Error('Access response was invalid')
+  return updatedAccess
+}

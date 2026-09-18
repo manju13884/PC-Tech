@@ -4,7 +4,7 @@ export interface StockReportRow {
   purchase_order_number: string; location_name: string; opening_stock: number; received_qty: number
   issued_qty: number; returned_qty: number; adjustment_increase: number; adjustment_decrease: number
   closing_stock: number; uom: string; last_transaction_date: string; received_date: string
-  reel_status: 'Available' | 'Reserved' | 'Consumed'; reserved_for_job: string | null
+  reel_status: 'Available' | 'Reserved' | 'Consumed'; reserved_for_job: string | null; can_delete: number
 }
 export interface StockReportTotal { uom: string; total_materials: number; total_stock: number; in_stock: number; zero_stock: number; negative_stock: number }
 export interface StockReportResult { rows: StockReportRow[]; totals: StockReportTotal[]; page: number; pageSize: number; total: number; lowStockAvailable: boolean; asOnDate: string }
@@ -19,3 +19,12 @@ async function get<T>(url: string): Promise<T> {
 }
 export const loadStockReport = (filters: Record<string, string>) => get<StockReportResult>(`/api/stock-report?${new URLSearchParams(filters)}`)
 export const loadStockTransactions = async (id: number, asOnDate: string) => (await get<{ transactions: StockTransaction[] }>(`/api/stock-report?transactions=1&inventory_stock_id=${id}&as_on_date=${asOnDate}`)).transactions
+export async function deleteMaterialStock(id: number, reason: string): Promise<string> {
+  const response = await fetch('/api/stock-report', {
+    method: 'DELETE', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inventory_stock_id: id, reason }),
+  })
+  const payload = await response.json().catch(() => ({})) as { error?: string; message?: string }
+  if (!response.ok) throw new Error(payload.error || 'Unable to delete the Material Stock row.')
+  return payload.message || 'Material Stock row deleted successfully.'
+}

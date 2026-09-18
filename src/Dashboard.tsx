@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
 import { ArrowLeftRight, Ban, BarChart3, Calculator, ChevronRight, CircleCheck, ClipboardList, Database, FileCheck2, FileDown, FlaskConical, Home, KeyRound, Package, PackageCheck, Pencil, Printer, RefreshCw, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
-import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, type AdminAccessPermission } from './adminAccessService'
+import { getAdminAccess, getAdminAccessError, updateRoleMenuAccess, updateRoleMenuPermission, type AdminAccessPermission } from './adminAccessService'
 import { createAdminRole, deactivateAdminRole, getAdminRoles, getAdminRolesError, updateAdminRole, type AdminRole } from './adminRolesService'
 import { activateAdminUser, createAdminUser, deactivateAdminUser, getAdminUsers, getAdminUsersError, resetAdminUserPassword, updateAdminUser, type AdminUser } from './adminUsersService'
 import { getCustomers, getCustomersError, refreshCustomers, type Customer } from './customerService'
@@ -2008,13 +2008,19 @@ export default function Dashboard({
     return adminAccessByRole[roleId]?.find((access) => access.menuKey === menuKey)?.view ?? false
   }
 
+  function getRoleMenuDeleteAccess(roleId: number, menuKey: string): boolean {
+    return adminAccessByRole[roleId]?.find((access) => access.menuKey === menuKey)?.delete ?? false
+  }
+
   async function toggleRoleMenuAccess(roleId: number, menuKey: string, value: boolean) {
     const updateKey = `${roleId}:${menuKey}`
     setSavingAccessKey(updateKey)
     setRoleActionMessage('')
 
     try {
-      const updatedAccess = await updateRoleMenuAccess(roleId, menuKey, value)
+      const updatedAccess = menuKey === 'material-stock'
+        ? await updateRoleMenuPermission(roleId, menuKey, 'view', value)
+        : await updateRoleMenuAccess(roleId, menuKey, value)
 
       setAdminAccessByRole((accessByRole) => {
         const roleAccess = accessByRole[roleId] ?? []
@@ -2033,6 +2039,29 @@ export default function Dashboard({
     } catch (caughtError) {
       setRoleActionMessageType('error')
       setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to update access')
+    } finally {
+      setSavingAccessKey('')
+    }
+  }
+
+  async function toggleMaterialStockDeleteAccess(roleId: number, value: boolean) {
+    const menuKey = 'material-stock'
+    const updateKey = `${roleId}:${menuKey}:delete`
+    setSavingAccessKey(updateKey)
+    setRoleActionMessage('')
+    try {
+      const updatedAccess = await updateRoleMenuPermission(roleId, menuKey, 'delete', value)
+      setAdminAccessByRole((accessByRole) => ({
+        ...accessByRole,
+        [roleId]: (accessByRole[roleId] ?? []).some((access) => access.menuKey === menuKey)
+          ? (accessByRole[roleId] ?? []).map((access) => access.menuKey === menuKey ? updatedAccess : access)
+          : [...(accessByRole[roleId] ?? []), updatedAccess],
+      }))
+      setRoleActionMessageType('success')
+      setRoleActionMessage('Material Stock delete access updated.')
+    } catch (caughtError) {
+      setRoleActionMessageType('error')
+      setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to update delete access')
     } finally {
       setSavingAccessKey('')
     }
@@ -3180,6 +3209,30 @@ export default function Dashboard({
                                 </div>
                               </details>
                             ))}
+                            <details className="admin-access-group" open>
+                              <summary>
+                                <span>Special Permissions</span>
+                                <small>1 permission</small>
+                              </summary>
+                              <div className="admin-users-table-wrap">
+                                <table className="admin-users-table admin-access-table">
+                                  <thead><tr><th>Functionality</th>{accessRoles.map((role) => <th key={role.id}>{role.name}</th>)}</tr></thead>
+                                  <tbody><tr><td><strong>Delete Material Stock Rows</strong></td>{accessRoles.map((role) => {
+                                    const checkboxKey = `${role.id}:material-stock:delete`
+                                    const isProtectedSuperadminAccess = role.name === 'SUPERADMIN'
+                                    return <td key={role.id}><input
+                                      className="admin-access-checkbox"
+                                      type="checkbox"
+                                      checked={isProtectedSuperadminAccess || getRoleMenuDeleteAccess(role.id, 'material-stock')}
+                                      onChange={(event) => toggleMaterialStockDeleteAccess(role.id, event.target.checked)}
+                                      disabled={isProtectedSuperadminAccess || savingAccessKey === checkboxKey}
+                                      aria-label={`${role.name} delete Material Stock rows`}
+                                      title={isProtectedSuperadminAccess ? 'SUPERADMIN automatically has this permission.' : 'Grant permission to delete eligible, unused Material Stock rows.'}
+                                    /></td>
+                                  })}</tr></tbody>
+                                </table>
+                              </div>
+                            </details>
                           </div>
                         )}
                       </section>
