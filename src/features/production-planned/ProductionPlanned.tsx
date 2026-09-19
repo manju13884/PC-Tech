@@ -166,7 +166,7 @@ const GridHeader = () => (
         <br />
         Run
       </th>
-      <th>Deckle Size</th>
+      <th>Deckle Size<br />(CM)</th>
       <th>Cut Length (CM)</th>
       <th>Top GSM (G/N)</th>
       <th>Top BF</th>
@@ -467,12 +467,14 @@ export default function ProductionPlanned() {
                     .filter((layer) => layer.flute)
                     .map((layer) => layer.flute)
                     .join(" + ") || "—";
-                const deckle =
+                const deckleSource =
                   line.deckle_size ||
                   layers.find((layer) => layer.deckle_size)?.deckle_size ||
                   (line.width_mm != null && line.height_mm != null
                     ? String(line.width_mm + line.height_mm + 20)
                     : numberText(line.width_mm));
+                const deckleMm = deckleSource === "—" || deckleSource === "" ? Number.NaN : Number(deckleSource);
+                const deckle = Number.isFinite(deckleMm) ? numberText(deckleMm / 10) : "—";
                 const cutLengthCm = line.cut_length_cm ?? calculatedCutLengthCm(line.length_mm, line.width_mm);
                 const twoPly =
                   line.two_ply_quantity ??
