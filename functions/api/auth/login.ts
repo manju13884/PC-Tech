@@ -39,6 +39,7 @@ const ALL_MENU_KEYS = [
   'corrugated-box-price-advanced',
   'corrugated-board-price',
   'so-specification-mapping',
+  'so-production-status',
   'product-specifications',
   'production-specifications',
   'paper-purchase-request',

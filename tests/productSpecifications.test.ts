@@ -146,6 +146,7 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /paper_layers/)
   assert.match(component, /Select joint/)
   assert.match(component, /Brass Pinning/)
+  assert.match(component, /<option value="Pinning">Pinning<\/option>/)
   assert.match(component, /SS Pinning/)
   assert.match(component, /GI Pinning/)
   assert.match(component, /Select finish/)

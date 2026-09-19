@@ -79,7 +79,7 @@ test('Job Cards are created additively from Production Planned lines', async () 
   assert.match(component, /className="job-card-logo" src="\/assets\/PC-Bord-Logo-only-transparent\.png" alt="Polarcanvas"/)
   assert.match(component, /job-card-label-column/)
   assert.match(component, /job-card-col-process/)
-  for (const heading of ['PRODUCTION JOB CARD', 'REQUIRED ITEM', 'PROCESS', 'Start Datetime', 'End Datetime', 'Reel No.', 'In Reel Weight', 'Out Reel Weight', 'Remaining Reel Weight', 'Out Qty', 'Emp. Name', 'Supervisor', 'Quality', 'Dispatch', 'Manufactured Qty']) {
+  for (const heading of ['PRODUCTION JOB CARD', 'REQUIRED ITEM', 'PROCESS', 'Start Datetime', 'End Datetime', 'Reel No.', 'In Reel Weight', 'Remaining Reel Weight', 'Out Qty', 'Emp. Name', 'Supervisor', 'Quality', 'Dispatch', 'Manufactured Qty']) {
     assert.match(component, new RegExp(heading))
   }
   assert.doesNotMatch(component, /<th>(?:Start|End) Time<\/th>/)
@@ -106,7 +106,7 @@ test('Job Cards are created additively from Production Planned lines', async () 
   assert.match(component, /stage !== 'Paper Cutting' && stage !== 'Corrugation'/)
   assert.match(component, /field="reel_number" secondField="reel_number_2"/)
   assert.match(component, /field="in_reel_weight" secondField="in_reel_weight_2" numeric/)
-  assert.match(component, /field="out_reel_weight" secondField="out_reel_weight_2" numeric/)
+  assert.doesNotMatch(component, /<th>Out Reel Weight<\/th>/)
   assert.match(component, /field="remaining_reel_weight" secondField="remaining_reel_weight_2" numeric/)
   assert.match(component, /<th>Sales Order<\/th>\s*<td>\{line\.sales_order_number\}<\/td>/)
   assert.doesNotMatch(component, /<th>Order No\.<\/th>/)

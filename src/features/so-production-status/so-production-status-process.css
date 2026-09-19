@@ -1,0 +1,210 @@
+/* Lean ERP process strip: stages share the available width without page overflow. */
+.so-prod-page > .so-prod-empty {
+  padding: 5px 8px;
+  border: 1px solid #dbe3ee;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.so-prod-detail-row td {
+  padding: 3px 5px 5px;
+  background: #eaf0f7;
+}
+
+.so-prod-detail {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid #d7e1ec;
+  border-radius: 4px;
+  background: #f6f9fc;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 7%);
+}
+
+.so-prod-detail section + section {
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.so-prod-detail header {
+  min-height: 22px;
+  margin: 0;
+  padding: 0 8px 0 7px;
+  border-bottom: 1px solid #d7e1ec;
+  border-left: 3px solid #3b82f6;
+  background: #e8f0f8;
+  color: #334155;
+  font-size: 10px;
+  line-height: 22px;
+}
+
+.so-prod-detail header span {
+  padding: 1px 5px;
+  border: 1px solid #bfdbfe;
+  border-radius: 3px;
+  background: #fff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.so-prod-message {
+  padding: 5px 1px 2px;
+}
+
+.so-prod-process-scroll {
+  overflow-x: hidden;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  padding: 7px;
+  background: #f6f9fc;
+  scrollbar-width: thin;
+}
+
+.so-prod-process-flow {
+  display: grid;
+  width: 100%;
+  min-width: 100%;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.so-prod-process {
+  display: flex;
+  width: auto;
+  min-width: 0;
+  padding: 5px 0 7px;
+  border: 1px solid #cbd7e4;
+  border-radius: 6px;
+  background: #e5ebf2;
+  flex-direction: column;
+  text-align: center;
+}
+
+.so-prod-process + .so-prod-process {
+  margin-left: -1px;
+}
+
+.so-prod-process:hover {
+  border-color: #aebfd1;
+  background: #dce5ef;
+}
+
+.so-prod-process.is-completed {
+  border-color: #a8d5b9;
+  background: #dcefe4;
+}
+
+.so-prod-process.is-in_progress {
+  border-color: #e6bd68;
+  background: #fae8bd;
+}
+
+.so-prod-process-rail {
+  order: 2;
+  height: 18px;
+  margin-top: 5px;
+}
+
+.so-prod-process-rail .before,
+.so-prod-process-rail .after {
+  height: 2px;
+  background: #cbd5e1;
+}
+
+.so-prod-process-rail .is-hidden {
+  visibility: hidden;
+}
+
+.so-prod-process-rail .marker {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-width: 1.5px;
+  border-color: #94a3b8;
+  background: #fff;
+  color: #64748b;
+  font-size: 8px;
+}
+
+.so-prod-process-rail .marker::after {
+  display: none;
+}
+
+.so-prod-process strong {
+  display: flex;
+  height: 24px;
+  min-height: 24px;
+  max-height: 24px;
+  padding: 0 4px;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 12px;
+  order: 1;
+}
+
+.so-prod-process > span {
+  min-height: 11px;
+  margin-top: 5px;
+  padding: 0 3px;
+  color: #718096;
+  font-size: 9px;
+  line-height: 11px;
+  order: 3;
+}
+
+.so-prod-process.is-completed > span {
+  color: #27845a;
+}
+
+.so-prod-process.is-completed .marker {
+  border-color: #45a963;
+  background: #55b86a;
+  color: #fff;
+}
+
+.so-prod-process.is-completed .before,
+.so-prod-process.is-completed .after {
+  background: #67bd78;
+}
+
+.so-prod-process.is-in_progress .marker {
+  border-color: #c77c08;
+  background: #e99a18;
+  color: #fff;
+  box-shadow: none;
+}
+
+.so-prod-process.is-in_progress .before {
+  background: #67bd78;
+}
+
+.so-prod-process.is-in_progress strong {
+  color: #7a4d08;
+  font-weight: 800;
+}
+
+.so-prod-process.is-in_progress > span {
+  display: block;
+  margin: 5px 0 0;
+  padding: 0 3px;
+  border-radius: 0;
+  background: transparent;
+  color: #966214;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+@media (max-width: 700px) {
+  .so-prod-process-flow {
+    grid-auto-columns: minmax(0, 1fr);
+  }
+}

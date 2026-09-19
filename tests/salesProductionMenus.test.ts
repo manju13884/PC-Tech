@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const menuKeys = [
   'so-specification-mapping',
+  'so-production-status',
   'product-specifications',
   'production-specifications',
   'job-cards',
@@ -22,7 +23,10 @@ test('new Sales and Production menus are permission-controlled everywhere', asyn
   ])
 
   for (const menuKey of menuKeys) {
-    for (const source of [dashboard, login, currentUser, `${originalMigration}\n${plannedMigration}`]) {
+    const permissionMigrations = menuKey === 'so-production-status'
+      ? await readFile('migrations/0051_add_so_production_status_permission.sql', 'utf8')
+      : `${originalMigration}\n${plannedMigration}`
+    for (const source of [dashboard, login, currentUser, permissionMigrations]) {
       assert.match(source, new RegExp(`['\"]${menuKey}['\"]`))
     }
   }

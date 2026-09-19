@@ -37,6 +37,7 @@ import FinishedGoodsStock from './features/inventory/FinishedGoodsStock'
 import StockReport from './features/inventory/StockReport'
 import { getInventoryVendors, getInventoryVendorsRefreshedAt, refreshInventoryVendors } from './features/inventory/inventoryZohoService'
 import SoSpecificationMapping from './features/so-specification-mapping/SoSpecificationMapping'
+import SoProductionStatus from './features/so-production-status/SoProductionStatus'
 import { loadCoaTemplate } from './lib/coaTemplateLoader'
 import type { CoaAnalysisItem, CoaInvoiceValues } from './lib/coaGenerator'
 import { loadCocTemplate } from './lib/templateLoader'
@@ -103,6 +104,13 @@ const menuGroups: MenuGroup[] = [
         title: 'SO Specification Mapping',
         description: 'Map sales-order lines to the required product and production specifications.',
         icon: SlidersHorizontal,
+      },
+      {
+        key: 'so-production-status',
+        title: 'SO Production Status',
+        menuTitle: 'SO Prod Status',
+        description: 'View production planning, Job Card and process progress for Sales Order items.',
+        icon: ClipboardList,
       },
     ],
   },
@@ -2153,7 +2161,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' || selectedItem.key === 'job-tracking' ? ' document-form-page' : ''}${INVENTORY_MENU_KEYS.has(selectedItem.key) ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'so-production-status' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' || selectedItem.key === 'job-tracking' ? ' document-form-page' : ''}${INVENTORY_MENU_KEYS.has(selectedItem.key) ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
             {selectedItem.key !== 'home' && (
               <header className="dashboard-page-heading">
                 <h2>
@@ -2205,6 +2213,9 @@ export default function Dashboard({
               )}
               {selectedItem.key === 'so-specification-mapping' && (
                 <SoSpecificationMapping />
+              )}
+              {selectedItem.key === 'so-production-status' && (
+                <SoProductionStatus />
               )}
               {selectedItem.key === 'production-planning' && (
                 <ProductionPlanning />

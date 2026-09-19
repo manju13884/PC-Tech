@@ -1,0 +1,65 @@
+/* Matches the compact status-aware expand control used by Production Job Tracking. */
+.so-prod-expand {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  margin: 0 auto;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #2563eb;
+  border-radius: 3px;
+  background: #3b82f6;
+  color: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 14%);
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.so-prod-expand.is-created {
+  border-color: #2563eb;
+  background: #3b82f6;
+  color: #fff;
+}
+
+.so-prod-expand.is-in_progress {
+  border-color: #d97706;
+  background: #f59e0b;
+  color: #5f2b00;
+}
+
+.so-prod-expand.is-completed {
+  border-color: #15803d;
+  background: #22a35a;
+  color: #fff;
+}
+
+.so-prod-expand:hover {
+  filter: brightness(.92);
+  box-shadow: 0 2px 4px rgb(15 23 42 / 20%);
+}
+
+.so-prod-expand.is-created:hover { background: #3b82f6; }
+.so-prod-expand.is-in_progress:hover { background: #f59e0b; }
+.so-prod-expand.is-completed:hover { background: #22a35a; }
+
+.so-prod-expand:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 1px;
+}
+
+.so-prod-expand svg {
+  transition: transform 140ms ease;
+}
+
+.so-prod-grid tr.is-expanded .so-prod-expand {
+  filter: brightness(.84);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 22%);
+}
+
+.so-prod-grid tr.is-expanded .so-prod-expand svg {
+  transform: rotate(90deg);
+}
+
+.so-prod-grid tr.is-expanded > td {
+  background: #eef6ff;
+}

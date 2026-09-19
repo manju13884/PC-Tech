@@ -183,11 +183,12 @@ function ReelDetailCell({ stage, label, entry, field, secondField, numeric = fal
       const consumed = entry?.[outWeightField] == null ? '' : Math.max(0, Number(entry?.[inWeightField] ?? 0) - Number(entry?.[outWeightField]));
       return <input key={`${stage}:${inputField}:consumed:${consumed}`} className="job-card-process-entry job-card-reel-readonly" aria-label={`${stage} Consumed Reel Weight${suffix}`} readOnly value={consumed} />;
     }
-    if (label === 'In Reel Weight' || label === 'Remaining Reel Weight') {
+    if (label === 'In Reel Weight') {
       return <input key={`${stage}:${inputField}:${entry?.[inputField] ?? ''}`} className="job-card-process-entry job-card-reel-readonly" aria-label={`${stage} ${label}${suffix}`} readOnly value={entry?.[inputField] ?? ''} />;
     }
-    if (label === 'Out Reel Weight') {
-      return <input key={`${stage}:${inputField}:${entry?.[inputField] ?? ''}`} className="job-card-process-entry" aria-label={`${stage} Out Reel Weight${suffix}`} inputMode="decimal" defaultValue={entry?.[inputField] ?? ''} readOnly={!reelEditable} disabled={!selectedId || savingProcessKey === `${stage}:reel_${slot}`} onBlur={(event) => onReelConsume?.(stage, slot, event.target.value)} />;
+    if (label === 'Remaining Reel Weight') {
+      const remainingWeight = entry?.[outWeightField] ?? entry?.[inputField] ?? '';
+      return <input key={`${stage}:${inputField}:${remainingWeight}`} className="job-card-process-entry" aria-label={`${stage} Remaining Reel Weight${suffix}`} inputMode="decimal" defaultValue={remainingWeight} readOnly={!reelEditable} disabled={!selectedId || savingProcessKey === `${stage}:reel_${slot}`} onBlur={(event) => onReelConsume?.(stage, slot, event.target.value)} />;
     }
     return <input key={`${stage}:${inputField}:${entry?.[inputField] ?? ''}`} className="job-card-process-entry" aria-label={`${stage} ${label}${suffix}`} inputMode={numeric ? 'decimal' : undefined} maxLength={numeric ? undefined : 80} defaultValue={entry?.[inputField] ?? ''} disabled={savingProcessKey === `${stage}:${inputField}`} onBlur={(event) => onChange?.(stage, inputField, event.target.value)} />;
   };
@@ -844,7 +845,6 @@ export function JobCard({ line, processEditable = false, reelEditable = processE
           <col className="job-card-col-weight" />
           <col className="job-card-col-weight" />
           <col className="job-card-col-weight" />
-          <col className="job-card-col-weight" />
           <col className="job-card-col-qty" />
           <col className="job-card-col-qty" />
           <col className="job-card-col-employee" />
@@ -858,7 +858,6 @@ export function JobCard({ line, processEditable = false, reelEditable = processE
             <th>End Datetime</th>
             <th>{processEditable ? 'Select Reel' : 'Reel No.'}</th>
             <th>Reel Weight</th>
-            <th>Out Reel Weight</th>
             <th>Consumed Weight</th>
             <th>Remaining Reel Weight</th>
             <th>In Qty</th>
@@ -929,53 +928,22 @@ export function JobCard({ line, processEditable = false, reelEditable = processE
                 </td>
                 <ReelDetailCell stage={stage} label="Reel Number" entry={entry} field="reel_number" secondField="reel_number_2" processEditable={processEditable} reelEditable={reelEditable} savingProcessKey={savingProcessKey} onChange={onProcessValueChange} inventoryReels={inventoryReels} onReelSelect={onReelSelect} onReelConsume={onReelConsume} />
                 <ReelDetailCell stage={stage} label="In Reel Weight" entry={entry} field="in_reel_weight" secondField="in_reel_weight_2" numeric processEditable={processEditable} reelEditable={reelEditable} savingProcessKey={savingProcessKey} onChange={onProcessValueChange} inventoryReels={inventoryReels} onReelSelect={onReelSelect} onReelConsume={onReelConsume} />
-                <ReelDetailCell stage={stage} label="Out Reel Weight" entry={entry} field="out_reel_weight" secondField="out_reel_weight_2" numeric processEditable={processEditable} reelEditable={reelEditable} savingProcessKey={savingProcessKey} onChange={onProcessValueChange} inventoryReels={inventoryReels} onReelSelect={onReelSelect} onReelConsume={onReelConsume} />
                 <ReelDetailCell stage={stage} label="Consumed Reel Weight" entry={entry} field="out_reel_weight" secondField="out_reel_weight_2" numeric processEditable={processEditable} reelEditable={reelEditable} savingProcessKey={savingProcessKey} onChange={onProcessValueChange} inventoryReels={inventoryReels} onReelSelect={onReelSelect} onReelConsume={onReelConsume} />
                 <ReelDetailCell stage={stage} label="Remaining Reel Weight" entry={entry} field="remaining_reel_weight" secondField="remaining_reel_weight_2" numeric processEditable={processEditable} reelEditable={reelEditable} savingProcessKey={savingProcessKey} onChange={onProcessValueChange} inventoryReels={inventoryReels} onReelSelect={onReelSelect} onReelConsume={onReelConsume} />
-                <td className={stage === 'Corrugation' ? 'job-card-split-process-values' : ''}>
-                  <div className={stage === 'Corrugation' ? 'job-card-process-entry-stack' : ''}>
-                    {processEditable ? (
-                      <>
-                        <input key={`${stage}:in:${entry?.in_quantity ?? ''}`} className="job-card-process-entry" aria-label={`${stage} In Qty 1`} inputMode="decimal" defaultValue={entry?.in_quantity ?? ''} disabled={savingProcessKey === `${stage}:in_quantity`} onBlur={(event) => onProcessValueChange?.(stage, 'in_quantity', event.target.value)} />
-                        {stage === 'Corrugation' && <input key={`${stage}:in2:${entry?.in_quantity_2 ?? ''}`} className="job-card-process-entry" aria-label="Corrugation In Qty 2" inputMode="decimal" defaultValue={entry?.in_quantity_2 ?? ''} disabled={savingProcessKey === `${stage}:in_quantity_2`} onBlur={(event) => onProcessValueChange?.(stage, 'in_quantity_2', event.target.value)} />}
-                      </>
-                    ) : (
-                      <>
-                        <span>{numberText(entry?.in_quantity)}</span>
-                        {stage === 'Corrugation' && <span>{numberText(entry?.in_quantity_2)}</span>}
-                      </>
-                    )}
-                  </div>
+                <td>
+                  {processEditable ? (
+                    <input key={`${stage}:in:${entry?.in_quantity ?? ''}`} className="job-card-process-entry" aria-label={`${stage} In Qty`} inputMode="decimal" defaultValue={entry?.in_quantity ?? ''} disabled={savingProcessKey === `${stage}:in_quantity`} onBlur={(event) => onProcessValueChange?.(stage, 'in_quantity', event.target.value)} />
+                  ) : numberText(entry?.in_quantity)}
                 </td>
-                <td className={stage === 'Corrugation' ? 'job-card-split-process-values' : ''}>
-                  <div className={stage === 'Corrugation' ? 'job-card-process-entry-stack' : ''}>
-                    {processEditable ? (
-                      <>
-                        <input key={`${stage}:out:${entry?.out_quantity ?? ''}`} className="job-card-process-entry" aria-label={`${stage} Out Qty 1`} inputMode="decimal" defaultValue={entry?.out_quantity ?? ''} disabled={savingProcessKey === `${stage}:out_quantity`} onBlur={(event) => onProcessValueChange?.(stage, 'out_quantity', event.target.value)} />
-                        {stage === 'Corrugation' && <input key={`${stage}:out2:${entry?.out_quantity_2 ?? ''}`} className="job-card-process-entry" aria-label="Corrugation Out Qty 2" inputMode="decimal" defaultValue={entry?.out_quantity_2 ?? ''} disabled={savingProcessKey === `${stage}:out_quantity_2`} onBlur={(event) => onProcessValueChange?.(stage, 'out_quantity_2', event.target.value)} />}
-                      </>
-                    ) : (
-                      <>
-                        <span>{numberText(entry?.out_quantity)}</span>
-                        {stage === 'Corrugation' && <span>{numberText(entry?.out_quantity_2)}</span>}
-                      </>
-                    )}
-                  </div>
+                <td>
+                  {processEditable ? (
+                    <input key={`${stage}:out:${entry?.out_quantity ?? ''}`} className="job-card-process-entry" aria-label={`${stage} Out Qty`} inputMode="decimal" defaultValue={entry?.out_quantity ?? ''} disabled={savingProcessKey === `${stage}:out_quantity`} onBlur={(event) => onProcessValueChange?.(stage, 'out_quantity', event.target.value)} />
+                  ) : numberText(entry?.out_quantity)}
                 </td>
-                <td className={stage === 'Corrugation' ? 'job-card-split-process-values' : ''}>
-                  <div className={stage === 'Corrugation' ? 'job-card-process-entry-stack' : ''}>
-                    {processEditable ? (
-                      <>
-                        <input key={`${stage}:employee:${entry?.employee_name ?? ''}`} className="job-card-process-entry" aria-label={`${stage} Employee Name 1`} maxLength={120} defaultValue={entry?.employee_name ?? ''} disabled={savingProcessKey === `${stage}:employee_name`} onBlur={(event) => onProcessValueChange?.(stage, 'employee_name', event.target.value)} />
-                        {stage === 'Corrugation' && <input key={`${stage}:employee2:${entry?.employee_name_2 ?? ''}`} className="job-card-process-entry" aria-label="Corrugation Employee Name 2" maxLength={120} defaultValue={entry?.employee_name_2 ?? ''} disabled={savingProcessKey === `${stage}:employee_name_2`} onBlur={(event) => onProcessValueChange?.(stage, 'employee_name_2', event.target.value)} />}
-                      </>
-                    ) : (
-                      <>
-                        <span>{entry?.employee_name}</span>
-                        {stage === 'Corrugation' && <span>{entry?.employee_name_2}</span>}
-                      </>
-                    )}
-                  </div>
+                <td>
+                  {processEditable ? (
+                    <input key={`${stage}:employee:${entry?.employee_name ?? ''}`} className="job-card-process-entry" aria-label={`${stage} Employee Name`} maxLength={120} defaultValue={entry?.employee_name ?? ''} disabled={savingProcessKey === `${stage}:employee_name`} onBlur={(event) => onProcessValueChange?.(stage, 'employee_name', event.target.value)} />
+                  ) : entry?.employee_name}
                 </td>
               </tr>
             );

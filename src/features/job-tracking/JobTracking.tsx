@@ -482,10 +482,6 @@ export default function JobTracking() {
                     <dd>{numberText(reel.reelWeight)} KG</dd>
                   </div>
                   <div>
-                    <dt>Out Reel Weight</dt>
-                    <dd>{reel.outWeight == null ? '—' : `${numberText(reel.outWeight)} KG`}</dd>
-                  </div>
-                  <div>
                     <dt>Consumed Weight</dt>
                     <dd>{reel.consumedWeight == null ? '—' : `${numberText(reel.consumedWeight)} KG`}</dd>
                   </div>
