@@ -18,6 +18,7 @@ interface SubmittedLine {
   productionQuantity?: unknown
   twoPlyQuantity?: unknown
   deckleSize?: unknown
+  cutLengthCm?: unknown
   productionDate?: unknown
   deliveryDate?: unknown
 }
@@ -199,7 +200,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
       `SELECT line.id, plan.id AS plan_id, plan.plan_number, plan.plan_date,
        CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS plan_status,
        line.customer_name, line.sales_order_number, line.delivery_date, line.item_name, line.item_description,
-       line.production_quantity, line.two_ply_quantity, line.deckle_size, line.uom, line.product_type, line.ply,
+       line.production_quantity, line.two_ply_quantity, line.deckle_size, line.cut_length_cm, line.uom, line.product_type, line.ply,
        spec.polar_canvas_item_code AS specification_code, spec.length_mm, spec.width_mm, spec.height_mm, spec.attributes_json
        FROM production_plan_lines line
        INNER JOIN production_plans plan ON plan.id = line.production_plan_id
@@ -280,6 +281,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const deliveryDates = new Map<string, string>()
   const twoPlyQuantities = new Map<string, number | null>()
   const deckleSizes = new Map<string, string>()
+  const cutLengthsCm = new Map<string, number>()
   const orderIds = new Set<string>()
   for (const entry of submitted) {
     const orderId =
@@ -288,7 +290,11 @@ export async function onRequestPost(context: Context): Promise<Response> {
       typeof entry.lineItemId === 'string' ? entry.lineItemId.trim() : ''
     const quantity = Number(entry.productionQuantity)
     const twoPlyQuantity = entry.twoPlyQuantity == null || entry.twoPlyQuantity === '' ? null : Number(entry.twoPlyQuantity)
-    const deckleSize = typeof entry.deckleSize === 'string' ? entry.deckleSize.trim().slice(0, 100) : ''
+    const deckleSizeCm = typeof entry.deckleSize === 'string' ? Number(entry.deckleSize.trim()) : Number.NaN
+    const deckleSize = Number.isFinite(deckleSizeCm) && deckleSizeCm >= 0
+      ? String(Number((deckleSizeCm * 10).toFixed(3)))
+      : ''
+    const cutLengthCm = Number(entry.cutLengthCm)
     const productionDate =
       typeof entry.productionDate === 'string' ? entry.productionDate.trim() : ''
     const deliveryDate =
@@ -306,12 +312,14 @@ export async function onRequestPost(context: Context): Promise<Response> {
       !lineId ||
       !Number.isFinite(quantity) ||
       quantity <= 0 ||
+      !Number.isFinite(cutLengthCm) ||
+      cutLengthCm <= 0 ||
       quantities.has(lineId)
     ) {
       return json(
         {
           error:
-            'Every included row requires a valid positive Production Quantity.',
+            'Every included row requires a valid positive Production Quantity and Cut Length in CM.',
         },
         400,
       )
@@ -319,6 +327,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     quantities.set(lineId, quantity)
     twoPlyQuantities.set(lineId, Number.isFinite(twoPlyQuantity) && twoPlyQuantity! >= 0 ? twoPlyQuantity : null)
     deckleSizes.set(lineId, deckleSize)
+    cutLengthsCm.set(lineId, cutLengthCm)
     productionDates.set(lineId, productionDate)
     deliveryDates.set(lineId, deliveryDate)
     orderIds.add(orderId)
@@ -493,8 +502,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
             `INSERT INTO production_plan_lines (production_plan_id, zoho_customer_id, customer_name, zoho_sales_order_id,
          sales_order_number, sales_order_date, zoho_sales_order_line_item_id, zoho_item_id, item_name, item_description,
          customer_po_number, delivery_date, ordered_quantity, previously_planned_quantity, balance_quantity,
-         production_quantity, two_ply_quantity, deckle_size, uom, customer_product_specification_id, approved_specification_revision_id, product_type, ply)
-         VALUES ((SELECT id FROM production_plans WHERE plan_number = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         production_quantity, two_ply_quantity, deckle_size, cut_length_cm, uom, customer_product_specification_id, approved_specification_revision_id, product_type, ply)
+         VALUES ((SELECT id FROM production_plans WHERE plan_number = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .bind(
             planNumber,
@@ -515,6 +524,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
             quantity,
             twoPlyQuantities.get(lineId),
             deckleSizes.get(lineId),
+            cutLengthsCm.get(lineId),
             line.unit,
             mapping.product_specification_id,
             mapping.product_specification_id,

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatIstDate } from '../../utils/dateTimeFormatting';
 import { calculateRotarySize, calculateSlottingSize } from '../product-specifications/rotarySizeCalculations';
 import { calculateRequiredPaperQuantity } from './jobCardCalculations';
+import { calculatedCutLengthCm, formatCutLengthExpression } from '../production-planning/cutLength';
 import './job-cards.css';
 import ReelSelector from '../job-tracking/ReelSelector';
 
@@ -34,6 +35,7 @@ export interface JobCardLine {
   production_quantity: number;
   two_ply_quantity: number | null;
   deckle_size: string;
+  cut_length_cm: number | null;
   uom: string;
   product_type: string;
   ply: number | null;
@@ -533,6 +535,7 @@ function ProductSpecificationDialog({ line, onClose }: { line: JobCardLine; onCl
               <dt>Outer Dimensions (MM)</dt>
               <dd>{[line.length_mm, line.width_mm, line.height_mm].filter((value) => value != null).join(' X ')}</dd>
             </div>
+            <div><dt>Cut Length (CM)</dt><dd>{formatCutLengthExpression(line.cut_length_cm ?? calculatedCutLengthCm(line.length_mm, line.width_mm))}</dd></div>
             <div>
               <dt>Ply</dt>
               <dd>{line.ply ? `${line.ply} Ply` : ''}</dd>
@@ -720,6 +723,7 @@ export function JobCard({ line, processEditable = false, reelEditable = processE
                   <dt>Slotting Size</dt>
                   <dd>{slottingSize == null ? '' : `${numberText(slottingSize)} mm`}</dd>
                 </div>
+                <div><dt>Cut Length (CM)</dt><dd>{formatCutLengthExpression(line.cut_length_cm ?? calculatedCutLengthCm(line.length_mm, line.width_mm))}</dd></div>
                 <div>
                   <dt>Board / Creasing Allowance</dt>
                   <dd>{attributes.board_creasing_allowance ? `${attributes.board_creasing_allowance} mm` : ''}</dd>

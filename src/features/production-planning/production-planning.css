@@ -99,6 +99,89 @@
 .production-quantity { box-sizing:border-box; width:100%; min-width:0; height:23px; border:1px solid #b8c6d8; border-radius:4px; padding:0 .15rem; background:#fff; color:#172033; font-size:.53rem; font-weight:700; text-align:center; }
 .production-quantity::-webkit-inner-spin-button,.production-quantity::-webkit-outer-spin-button { margin:0; appearance:none; -webkit-appearance:none; }
 .production-quantity[type=number] { appearance:textfield; -moz-appearance:textfield; }
+.production-cut-length-control{display:flex;align-items:center;justify-content:center;gap:4px}.production-cut-length-control .production-quantity{min-width:54px;flex:1}.production-cut-length-control>span{flex:0 0 auto;color:#334155;font-weight:700;white-space:nowrap}
+.production-planning-workspace .production-lines-panel .production-lines-scroll table{width:2643px;min-width:2643px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-serial{width:48px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-order-number{width:110px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-code{width:110px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-customer{width:180px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-date{width:110px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-quantity{width:70px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-description{width:250px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-dimension{width:60px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-product-type{width:105px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-ply{width:55px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-flute-run{width:70px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-deckle{width:100px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-cut-length{width:130px}
+.production-planning-workspace .production-lines-panel .production-planning-grid .col-paper{width:70px}
+.production-planning-workspace .production-lines-panel .production-planning-grid th{font-size:.5rem;line-height:1.15}
+.production-planning-workspace .production-lines-panel .production-planning-grid td{font-size:.58rem}
+.production-planning-workspace .production-lines-panel .production-grid-groups .group-machine{width:300px;min-width:300px}
+.production-planning-workspace .production-lines-panel .production-grid-columns .machine-flute-header{width:70px;min-width:70px;max-width:70px}
+.production-planning-workspace .production-lines-panel .production-grid-columns .machine-deckle-header{width:100px;min-width:100px;max-width:100px}
+.production-planning-workspace .production-lines-panel .production-grid-columns .machine-cut-length-header{width:130px;min-width:130px;max-width:130px}
+.production-planning-workspace .production-lines-panel .production-grid-columns th:nth-child(16),
+.production-planning-workspace .production-lines-panel .production-planning-grid tbody td:nth-child(17){width:100px;min-width:100px;max-width:100px}
+.production-planning-workspace .production-lines-panel .production-grid-columns th:nth-child(17),
+.production-planning-workspace .production-lines-panel .production-planning-grid tbody td:nth-child(18){width:130px;min-width:130px;max-width:130px}
+.production-planning-workspace .production-lines-panel .production-cut-length-control{width:100%;overflow:visible}
+.production-planning-workspace .production-lines-panel .production-cut-length-control .production-quantity{width:0;min-width:0;flex:1 1 0}
+.production-planning-workspace .production-lines-panel .production-planning-grid td:nth-child(n+11){font-variant-numeric:tabular-nums}
+.production-planning-workspace .production-lines-panel .production-planning-grid td.production-text-cell{text-align:left}
+.production-planning-workspace .production-lines-panel .production-planning-grid td.production-description{display:-webkit-box;max-height:2.5em;overflow:hidden;text-align:left;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.production-planning-workspace .production-lines-panel .production-grid-columns th:nth-child(-n+3),
+.production-planning-workspace .production-lines-panel .production-planning-grid tbody td:nth-child(-n+4){position:sticky;z-index:2;background:#fff}
+.production-planning-workspace .production-lines-panel .production-grid-groups th:first-child{position:sticky;z-index:5;left:0;background:#e9eff7}
+.production-planning-workspace .production-lines-panel .production-grid-columns th{z-index:4;background:#f7f9fc}
+.production-planning-workspace .production-lines-panel .production-grid-columns th:nth-child(1),
+.production-planning-workspace .production-lines-panel .production-planning-grid tbody td:nth-child(2){left:48px}
+.production-planning-workspace .production-lines-panel .production-grid-columns th:nth-child(2),
+.production-planning-workspace .production-lines-panel .production-planning-grid tbody td:nth-child(3){left:158px}
+.production-planning-workspace .production-lines-panel .production-grid-columns th:nth-child(3),
+.production-planning-workspace .production-lines-panel .production-planning-grid tbody td:nth-child(4){left:268px;box-shadow:2px 0 3px rgb(15 23 42 / 10%)}
+.production-planning-workspace .production-lines-panel .production-planning-grid tbody td:first-child{left:0}
+.production-planning-workspace .production-lines-panel .production-planning-grid tbody tr:nth-child(even) td:nth-child(-n+4){background:#fbfdff}
+.production-planning-workspace .production-lines-panel .production-planning-grid tbody tr:hover td:nth-child(-n+4){background:#eef6ff}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-lines-scroll table{width:2643px;min-width:2643px}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-planning-grid .col-flute-run{width:70px}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-planning-grid .col-deckle{width:100px}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-planning-grid .col-cut-length{width:130px}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-grid-groups .group-machine{width:300px;min-width:300px}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-grid-columns .machine-flute-header{width:70px;min-width:70px;max-width:70px}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-grid-columns .machine-deckle-header,
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-planning-grid tbody td:nth-child(17){width:100px;min-width:100px;max-width:100px}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-grid-columns .machine-cut-length-header,
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-planning-grid tbody td:nth-child(18){width:130px;min-width:130px;max-width:130px}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-cut-length-control{display:flex;width:100%;align-items:center;gap:6px;overflow:hidden}
+.production-planning-workspace:not(.production-planned-workspace) .production-selection-panel .production-cut-length-control .production-quantity{width:0;min-width:0;flex:1 1 0}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-lines-scroll table{width:1812px;min-width:1812px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-serial{width:46px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-order-number{width:80px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-code{width:75px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-customer{width:120px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-date{width:90px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-quantity{width:55px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-description{width:160px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-dimension{width:42px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-product-type{width:70px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-ply{width:40px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-flute-run{width:60px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-deckle{width:90px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-cut-length{width:100px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid .col-paper{width:45px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-grid-groups .group-machine{width:250px;min-width:250px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-grid-columns .machine-flute-header{width:60px;min-width:60px;max-width:60px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-grid-columns .machine-deckle-header,
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid tbody td:nth-child(17){width:90px;min-width:90px;max-width:90px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-grid-columns .machine-cut-length-header,
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid tbody td:nth-child(18){width:100px;min-width:100px;max-width:100px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-grid-columns th:nth-child(1),
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid tbody td:nth-child(2){left:46px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-grid-columns th:nth-child(2),
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid tbody td:nth-child(3){left:126px}
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-grid-columns th:nth-child(3),
+.production-planning-workspace:not(.production-planned-workspace) :is(.production-selection-panel,.production-lines-panel) .production-planning-grid tbody td:nth-child(4){left:201px}
 .production-date-control { position:relative; display:flex; box-sizing:border-box; width:100%; height:23px; align-items:center; justify-content:center; overflow:hidden; border:1px solid #b8c6d8; border-radius:4px; background:#fff; color:#172033; font-size:.5rem; font-weight:700; white-space:nowrap; cursor:pointer; }
 .production-date-control:focus-within { border-color:#60a5fa; box-shadow:0 0 0 2px rgb(96 165 250 / 18%); }
 .production-date { position:absolute; z-index:2; inset:0; width:100%; height:100%; opacity:.01; cursor:pointer; }

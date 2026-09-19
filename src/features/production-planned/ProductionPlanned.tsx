@@ -3,6 +3,7 @@ import { Factory, FilterX, Printer, RefreshCw, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { formatIstDate } from "../../utils/dateTimeFormatting";
 import { calculateTwoPlyQuantity } from "../production-planning/productionPlanningCalculations";
+import { calculatedCutLengthCm } from "../production-planning/cutLength";
 import "../production-planning/production-planning.css";
 import "./production-planned.css";
 
@@ -28,6 +29,7 @@ interface SavedPlanLine {
   production_quantity: number;
   two_ply_quantity: number | null;
   deckle_size: string;
+  cut_length_cm: number | null;
   uom: string;
   product_type: string;
   ply: number | null;
@@ -165,7 +167,7 @@ const GridHeader = () => (
         Run
       </th>
       <th>Deckle Size</th>
-      <th>Cut Length</th>
+      <th>Cut Length (CM)</th>
       <th>Top GSM (G/N)</th>
       <th>Top BF</th>
       <th>B Flute GSM (G/N)</th>
@@ -471,10 +473,7 @@ export default function ProductionPlanned() {
                   (line.width_mm != null && line.height_mm != null
                     ? String(line.width_mm + line.height_mm + 20)
                     : numberText(line.width_mm));
-                const cutLength =
-                  line.length_mm != null && line.width_mm != null
-                    ? 2 * line.length_mm + 2 * line.width_mm + 50
-                    : line.length_mm;
+                const cutLengthCm = line.cut_length_cm ?? calculatedCutLengthCm(line.length_mm, line.width_mm);
                 const twoPly =
                   line.two_ply_quantity ??
                   calculateTwoPlyQuantity(line.production_quantity, line.ply);
@@ -511,7 +510,7 @@ export default function ProductionPlanned() {
                     <td>{line.ply ? `${line.ply} Ply` : "—"}</td>
                     <td>{fluteRun}</td>
                     <td>{deckle}</td>
-                    <td className="numeric">{numberText(cutLength)}</td>
+                    <td className="numeric">{numberText(cutLengthCm)}</td>
                     <td>{formatLayerGsm(top)}</td>
                     <td>{cell(top, "bf_rct")}</td>
                     <td>{formatLayerGsm(bFlute)}</td>

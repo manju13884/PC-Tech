@@ -19,6 +19,7 @@ import {
   type SalesOrder,
 } from '../../salesOrderService'
 import { calculateTwoPlyQuantity } from './productionPlanningCalculations'
+import { calculatedCutLengthCm } from './cutLength'
 import '../product-specifications/product-specifications.css'
 import './production-planning.css'
 
@@ -43,6 +44,7 @@ interface PlanLine {
   productionQuantity: number
   twoPlyQuantity: number | null
   deckleSize: string
+  cutLengthCm: number | null
   productionDate: string
   uom: string
   specificationCode: string
@@ -76,12 +78,16 @@ const linerAfterFlute = (line: PlanLine, flute: string) => {
   return index >= 0 ? layers.slice(index + 1).find((layer) => !layer.flute) : undefined
 }
 const topLayer = (line: PlanLine) => line.specificationAttributes?.paper_layers?.find((layer) => !layer.flute)
+const millimetresToCentimetres = (value: string | number) => {
+  const millimetres = Number(value)
+  return Number.isFinite(millimetres) ? String(Number((millimetres / 10).toFixed(3))) : ''
+}
 const calculatedDeckleSize = (line: PlanLine) => line.widthMm != null && line.heightMm != null
-  ? String(line.widthMm + line.heightMm + 20)
-  : line.widthMm == null ? '' : String(line.widthMm)
+  ? millimetresToCentimetres(line.widthMm + line.heightMm + 20)
+  : line.widthMm == null ? '' : millimetresToCentimetres(line.widthMm)
 const preloadedDeckleSize = (line: PlanLine) => {
   const savedDeckle = line.specificationAttributes?.paper_layers?.find((layer) => layer.deckle_size?.trim())?.deckle_size
-  return savedDeckle?.trim() || calculatedDeckleSize(line)
+  return savedDeckle?.trim() ? millimetresToCentimetres(savedDeckle) : calculatedDeckleSize(line)
 }
 const todayIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const customerDisplayName = (customer: Customer) => customer.gst_number
@@ -132,14 +138,14 @@ const PlanningGridHeader = () => (
       <th className="group-paper" colSpan={12}>Paper Composition</th>
     </tr>
     <tr className="production-grid-columns">
-      <th>Sales Order</th><th>PC Item Code <span className="production-required-mark" aria-label="required">*</span></th><th>Customer</th>
-      <th>Production Date <span className="production-required-mark" aria-label="required">*</span></th><th>Delivery Date <span className="production-required-mark" aria-label="required">*</span></th><th>Box Qty <span className="production-required-mark" aria-label="required">*</span></th><th>Top Sheet</th><th>2 Ply Qty</th>
+      <th>Sale Order<br />No.</th><th>PC Item<br />Code <span className="production-required-mark" aria-label="required">*</span></th><th>Customer</th>
+      <th>Production<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Delivery<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Box<br />Qty <span className="production-required-mark" aria-label="required">*</span></th><th>Top<br />Sheet</th><th>2 Ply<br />Qty</th>
       <th>Product Description</th>
       <th>L</th><th>W</th><th>H</th><th>Product<br />Type</th><th>Ply</th>
-      <th>Flute<br />Run</th><th>Deckle Size</th><th>Cut Length</th><th>Top GSM (G/N)</th><th>Top BF</th>
-      <th>B Flute GSM (G/N)</th><th>B Flute BF</th><th>B Liner GSM (G/N)</th><th>B Liner BF</th>
-      <th>A Flute GSM (G/N)</th><th>A Flute BF</th><th>A Liner GSM (G/N)</th>
-      <th>C Flute GSM (G/N)</th><th>C Flute BF</th><th>C Liner GSM (G/N)</th>
+      <th className="machine-flute-header">Flute<br />Run</th><th className="machine-deckle-header">Deckle Size<br />(CM)</th><th className="machine-cut-length-header">Cut Length<br />(CM)</th><th>Top<br />GSM (G/N)</th><th>Top<br />BF</th>
+      <th>B Flute<br />GSM (G/N)</th><th>B Flute<br />BF</th><th>B Liner<br />GSM (G/N)</th><th>B Liner<br />BF</th>
+      <th>A Flute<br />GSM (G/N)</th><th>A Flute<br />BF</th><th>A Liner<br />GSM (G/N)</th>
+      <th>C Flute<br />GSM (G/N)</th><th>C Flute<br />BF</th><th>C Liner<br />GSM (G/N)</th>
     </tr>
   </thead>
 )
@@ -153,7 +159,7 @@ const PlanningGridColumns = () => (
     <col className="col-description" />
     <col className="col-dimension" /><col className="col-dimension" /><col className="col-dimension" />
     <col className="col-product-type" /><col className="col-ply" /><col className="col-flute-run" />
-    <col className="col-machine" /><col className="col-machine" />
+    <col className="col-deckle" /><col className="col-cut-length" />
     {Array.from({ length: 12 }, (_, index) => <col className="col-paper" key={index} />)}
   </colgroup>
 )
@@ -231,6 +237,7 @@ export default function ProductionPlanning() {
           productionDate: value.productionDate || todayIso(),
           twoPlyQuantity: calculateTwoPlyQuantity(value.productionQuantity, value.ply),
           deckleSize: preloadedDeckleSize(value),
+          cutLengthCm: value.cutLengthCm ?? calculatedCutLengthCm(value.lengthMm, value.widthMm),
           included: value.productionStatus === 'READY',
         })))
         setOrderId('')
@@ -257,6 +264,8 @@ export default function ProductionPlanning() {
         !Number.isFinite(v.productionQuantity) ||
         v.productionQuantity <= 0 ||
         v.productionQuantity > v.balanceQuantity ||
+        !Number.isFinite(v.cutLengthCm) ||
+        (v.cutLengthCm ?? 0) <= 0 ||
         !v.productionDate ||
         v.productionDate < todayIso() ||
         !v.deliveryDate,
@@ -273,6 +282,7 @@ export default function ProductionPlanning() {
           productionQuantity: v.productionQuantity,
           twoPlyQuantity: v.twoPlyQuantity,
           deckleSize: v.deckleSize,
+          cutLengthCm: v.cutLengthCm,
           productionDate: v.productionDate,
           deliveryDate: v.deliveryDate,
         })),
@@ -292,10 +302,9 @@ export default function ProductionPlanning() {
     const aFlute = layerForFlute(v, 'A'), aLiner = linerAfterFlute(v, 'A')
     const cFlute = layerForFlute(v, 'C'), cLiner = linerAfterFlute(v, 'C')
     const fluteRun = (v.specificationAttributes?.paper_layers ?? []).filter((layer) => layer.flute).map((layer) => layer.flute).join(' + ') || '—'
-    const cutLength = v.lengthMm != null && v.widthMm != null ? (2 * v.lengthMm) + (2 * v.widthMm) + 50 : v.lengthMm
     const cell = (layer: PaperLayer | undefined, key: 'gsm' | 'bf_rct') => layer?.[key] || '—'
     return <tr key={`${v.salesOrderId}-${v.lineItemId}`} className={v.productionStatus === 'SPECIFICATION_MISSING' ? 'is-missing' : ''}>
-      <td><span className="production-row-index">{index + 1}<button type="button" className="production-row-remove" aria-label={`Remove ${v.salesOrderNumber} ${v.itemName}`} title="Remove row" onClick={() => removeLine(v)}><X size={12} /></button></span></td><td>{v.salesOrderNumber}</td><td>{v.specificationCode ? <button type="button" className="production-spec-link" onClick={() => setViewingSpecification(v)}>{v.specificationCode}</button> : <span className="production-spec-missing">Specification Missing</span>}</td><td title={v.customerName}>{v.customerName}</td>
+      <td><span className="production-row-index">{index + 1}<button type="button" className="production-row-remove" aria-label={`Remove ${v.salesOrderNumber} ${v.itemName}`} title="Remove row" onClick={() => removeLine(v)}><X size={12} /></button></span></td><td className="production-text-cell" title={v.salesOrderNumber}>{v.salesOrderNumber}</td><td title={v.specificationCode || 'Specification Missing'}>{v.specificationCode ? <button type="button" className="production-spec-link" onClick={() => setViewingSpecification(v)}>{v.specificationCode}</button> : <span className="production-spec-missing">Specification Missing</span>}</td><td className="production-text-cell" title={v.customerName}>{v.customerName}</td>
       <td><label className="production-date-control" title="Select Production Date"><span>{formatPlanDate(v.productionDate || todayIso())}</span><input className="production-date" aria-label="Production Date" type="date" min={todayIso()} value={v.productionDate || todayIso()} onClick={(e) => e.currentTarget.showPicker?.()} onChange={(e) => setLines((all) => all.map((x) => ({ ...x, productionDate: e.target.value })))} /></label></td>
       <td><label className="production-date-control" title="Select Delivery Date"><span>{v.deliveryDate ? formatPlanDate(v.deliveryDate) : 'Select date'}</span><input className="production-date" aria-label="Delivery Date" type="date" value={v.deliveryDate || ''} onClick={(e) => e.currentTarget.showPicker?.()} onChange={(e) => setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deliveryDate: e.target.value } : x))} /></label></td>
       <td><input aria-label="Box Qty" title={`Maximum available quantity: ${v.balanceQuantity}`} className="production-quantity" type="number" min="0.001" max={v.balanceQuantity} step="any" value={v.productionQuantity} disabled={!v.included} onChange={(e) => { const productionQuantity = Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, productionQuantity, twoPlyQuantity: calculateTwoPlyQuantity(productionQuantity, x.ply) } : x)) }} /></td>
@@ -303,7 +312,7 @@ export default function ProductionPlanning() {
       <td><input aria-label="2 Ply Qty" className="production-quantity" type="number" min="0" step="any" value={v.twoPlyQuantity ?? calculateTwoPlyQuantity(v.productionQuantity, v.ply) ?? ''} disabled={!v.included} onChange={(e) => { const twoPlyQuantity = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, twoPlyQuantity } : x)) }} /></td>
       <td className="production-description" title={v.itemDescription}>{v.itemDescription || v.itemName}</td>
       <td className="numeric">{numberText(v.lengthMm)}</td><td className="numeric">{numberText(v.widthMm)}</td><td className="numeric">{numberText(v.heightMm)}</td>
-      <td>{v.productType || '—'}</td><td>{v.ply ? `${v.ply} Ply` : '—'}</td><td>{fluteRun}</td><td><input aria-label="Deckle Size" className="production-quantity" type="text" value={v.deckleSize ?? preloadedDeckleSize(v)} disabled={!v.included} onChange={(e) => { const deckleSize = e.target.value; setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deckleSize } : x)) }} /></td><td className="numeric">{numberText(cutLength)}</td>
+      <td>{v.productType || '—'}</td><td>{v.ply ? `${v.ply} Ply` : '—'}</td><td>{fluteRun}</td><td><input aria-label="Deckle Size" title="Deckle Size in CM" className="production-quantity" type="text" value={v.deckleSize ?? preloadedDeckleSize(v)} disabled={!v.included} onChange={(e) => { const deckleSize = e.target.value; setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deckleSize } : x)) }} /></td><td><input aria-label="Cut Length in CM" className="production-quantity" type="number" min="0.001" step="any" value={v.cutLengthCm ?? ''} disabled={!v.included} onChange={(e) => { const cutLengthCm = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, cutLengthCm } : x)) }} /></td>
       <td className="numeric">{formatLayerGsm(top)}</td><td className="numeric">{cell(top, 'bf_rct')}</td>
       <td className="numeric">{formatLayerGsm(bFlute)}</td><td className="numeric">{cell(bFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(bLiner)}</td><td className="numeric">{cell(bLiner, 'bf_rct')}</td>
       <td className="numeric">{formatLayerGsm(aFlute)}</td><td className="numeric">{cell(aFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(aLiner)}</td>
