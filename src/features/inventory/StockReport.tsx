@@ -34,7 +34,7 @@ const initial = () => ({
   color: "",
   supplier: "",
   po_number: "",
-  stock_status: "",
+  stock_status: "IN_STOCK",
   sort: "material_type",
   direction: "asc",
   page: "1",
@@ -409,7 +409,7 @@ export default function StockReport({ username }: { username: string }) {
               {report.rows.map((v, i) => (
                 <tr
                   key={v.id}
-                  className={v.closing_stock < 0 ? "negative" : ""}
+                  className={v.closing_stock < 0 ? "negative" : v.reel_status === "Consumed" ? "is-consumed" : ""}
                 >
                   <td>{(report.page - 1) * report.pageSize + i + 1}</td>
                   <td>{v.material_type}</td>
