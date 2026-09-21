@@ -80,7 +80,7 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /Paper Composition/)
   assert.match(component, /attributes\.paper_layers\.length > 0 \? attributes\.paper_layers : buildPaperLayers\(savedPly, \[\]\)/)
   assert.match(component, /Select Ply above to enter paper composition\./)
-  assert.match(component, /'Printing', 'Creasing',\s*'RS4', 'Slotting'/)
+  assert.match(component, /'Rotary \/ Creasing', 'Slotting', 'Printing',\s*'RS4'/)
   assert.match(component, /Deckle Size/)
   assert.match(component, /type="text" value=\{layer\.deckle_size \|\| calculatedDeckle\(form\)\}/)
   assert.match(component, /updatePaperLayer\(index, 'deckle_size', e\.target\.value\)/)
@@ -111,9 +111,12 @@ test('product form supports item-aware dimensions, GSM, BF and print controls', 
   assert.match(component, /<dt>Design Type<\/dt>.*<dt>Board Type<\/dt>/)
   assert.ok(component.indexOf('paper-composition') < component.indexOf('<strong>Production Stages<\/strong>'))
   assert.match(component, /defaultProductionStages/)
-  for (const stage of ['Paper Cutting', 'Corrugation', 'Pasting', 'Board \/ Sheet Cutting', 'Printing', 'RS4', 'Creasing', 'Slotting', 'Die Cutting', 'Stitching \/ Gluing', 'Quality Inspection', 'Bundling \/ Packing']) {
-    assert.match(component, new RegExp(stage))
+  const stageOptions = component.match(/const productionStageOptions = \[([\s\S]*?)\] as const/)?.[1]
+  assert.ok(stageOptions, 'Production stage options must be defined')
+  for (const stage of ['Paper Cutting', 'Corrugation', 'Pasting', 'Rotary / Creasing', 'Slotting', 'Printing', 'RS4', 'Die Cutting', 'Stitching / Gluing', 'Quality Inspection', 'Bundling / Packing']) {
+    assert.ok(stageOptions.includes(`'${stage}'`), `Missing production stage: ${stage}`)
   }
+  assert.doesNotMatch(stageOptions, /'Board \/ Sheet Cutting'|'Creasing'/)
   assert.match(component, /Product Specification Report/)
   assert.match(component, /Box Dimension Drawing \(Isometric Projection\)/)
   assert.match(component, /product-spec-box-preview/)

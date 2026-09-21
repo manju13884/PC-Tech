@@ -57,7 +57,7 @@ function normalizeProductionStages(stages: unknown[]): string[] {
 }
 
 function defaultProductionStages(type: string, printRequired: boolean): string[] {
-  if (type === 'BOX') return productionStageOptions.filter((stage) => stage !== 'Die Cutting' && (stage !== 'Printing' || printRequired))
+  if (type === 'BOX' || type === 'PARTITIONS') return productionStageOptions.filter((stage) => stage !== 'Die Cutting' && (stage !== 'Printing' || printRequired))
   if (type === 'BOARD / SHEET') return ['Paper Cutting', 'Corrugation', 'Pasting', 'Rotary / Creasing', 'Quality Inspection', 'Bundling / Packing']
   if (type === 'PAPER / ROLL') return ['Paper Cutting', 'Quality Inspection', 'Bundling / Packing']
   return [...(printRequired ? ['Printing'] : []), 'Quality Inspection', 'Bundling / Packing']
@@ -129,6 +129,7 @@ function buildPaperLayers(ply: string, current: PaperLayer[]): PaperLayer[] {
 function detectType(item?: Item): string {
   const value = `${item?.item_name ?? ''} ${item?.description ?? ''}`.toLowerCase()
   if (/\b(?:3|5)\s*ply\s+packing\s+tray\b/.test(value)) return 'BOX'
+  if (/\bcorrugated\s+partitions?\b/.test(value)) return 'PARTITIONS'
   if (/box|carton/.test(value)) return 'BOX'
   if (/board|sheet/.test(value)) return 'BOARD / SHEET'
   if (/stretch|film|shrink/.test(value)) return 'FILM'
@@ -149,7 +150,7 @@ function specificationSize(specification: Specification): string {
   const length = value(specification.length_mm)
   const width = value(specification.width_mm)
   const height = value(specification.height_mm)
-  if (specification.specification_type === 'BOX') return [length, width, height].filter(Boolean).join(' × ') + (length || width || height ? ' mm' : '') || '—'
+  if (specification.specification_type === 'BOX' || specification.specification_type === 'PARTITIONS') return [length, width, height].filter(Boolean).join(' × ') + (length || width || height ? ' mm' : '') || '—'
   if (specification.specification_type === 'BOARD / SHEET') return [length, width].filter(Boolean).join(' × ') + (length || width ? ' mm' : '') || '—'
   const attributes = readAttributes(specification.attributes_json)
   const parts = [width ? `${width} mm wide` : '', attributes.thickness_micron ? `${attributes.thickness_micron} μ` : '', attributes.roll_length_m ? `${attributes.roll_length_m} m roll` : ''].filter(Boolean)
@@ -192,7 +193,7 @@ function calculatedDeckle(form: FormState): string {
   const width = Number(form.width_mm)
   const height = Number(form.height_mm)
   let deckleMm: number | null = null
-  if (form.specification_type === 'BOX' && width > 0 && height > 0) deckleMm = width + height + 20
+  if ((form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') && width > 0 && height > 0) deckleMm = width + height + 20
   if (form.specification_type === 'BOARD / SHEET' && width > 0) deckleMm = width
   if (deckleMm == null) return '—'
   const format = (value: number) => Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.00$/, '')
@@ -209,10 +210,10 @@ function calculatedSpecificationValues(form: FormState) {
   const width = Number(form.width_mm)
   const height = Number(form.height_mm)
   const creasingAllowance = Number(form.board_creasing_allowance)
-  const hasBoxDimensions = form.specification_type === 'BOX' && length > 0 && width > 0 && height > 0
+  const hasBoxDimensions = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') && length > 0 && width > 0 && height > 0
   const hasSheetDimensions = form.specification_type === 'BOARD / SHEET' && length > 0 && width > 0
-  const rotaryCalculation = form.specification_type === 'BOX' ? calculateRotarySize(width, height, creasingAllowance) : null
-  const slottingSizeMm = form.specification_type === 'BOX' ? calculateSlottingSize(width, creasingAllowance) : null
+  const rotaryCalculation = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') ? calculateRotarySize(width, height, creasingAllowance) : null
+  const slottingSizeMm = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') ? calculateSlottingSize(width, creasingAllowance) : null
   const rotaryMm = rotaryCalculation?.rotarySize ?? (hasSheetDimensions ? length : 0)
   const deckleMm = hasBoxDimensions ? width + height + 20 : hasSheetDimensions ? width : 0
   const validLayers = form.paper_layers.map((layer) => {
@@ -272,9 +273,9 @@ export default function ProductSpecifications() {
   const displayedSpecifications = listCustomerId
     ? specifications.filter((specification) => specification.customer_id === listCustomerId)
     : []
-  const showsHeight = form.specification_type === 'BOX'
-  const showsDimensions = form.specification_type === 'BOX' || form.specification_type === 'BOARD / SHEET'
-  const showsBoardFields = form.specification_type === 'BOX' || form.specification_type === 'BOARD / SHEET'
+  const showsHeight = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS')
+  const showsDimensions = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') || form.specification_type === 'BOARD / SHEET'
+  const showsBoardFields = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') || form.specification_type === 'BOARD / SHEET'
   const showsRollFields = form.specification_type === 'PAPER / ROLL'
   const showsFlexibleFields = form.specification_type === 'TAPE' || form.specification_type === 'FILM'
   const calculatedValues = calculatedSpecificationValues(form)
@@ -412,7 +413,7 @@ export default function ProductSpecifications() {
       <div className="product-spec-grid">
         <label>Product Name<input type="text" maxLength={200} value={form.product_name} onChange={(e) => update('product_name', e.target.value)} /></label>
         <label>Polar Canvas Item Code<input value={form.polar_canvas_item_code} readOnly aria-readonly="true" /></label>
-        <label><span className="spec-field-label">Design Type <b className="spec-required-mark" aria-label="required">*</b></span><select required value={form.specification_type} onChange={(e) => updateDesignType(e.target.value)}><option>BOX</option><option>BOARD / SHEET</option><option>PAPER / ROLL</option><option>TAPE</option><option>FILM</option><option>GENERAL</option></select></label>
+        <label><span className="spec-field-label">Design Type <b className="spec-required-mark" aria-label="required">*</b></span><select required value={form.specification_type} onChange={(e) => updateDesignType(e.target.value)}><option>BOX</option><option value="PARTITIONS">Partitions</option><option>BOARD / SHEET</option><option>PAPER / ROLL</option><option>TAPE</option><option>FILM</option><option>GENERAL</option></select></label>
         {showsDimensions && <label>Length - OD (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.length_mm} onChange={(e) => update('length_mm', e.target.value)} /></label>}
         {(showsDimensions || showsFlexibleFields || showsRollFields) && <label>{showsRollFields ? 'Deckle / Width (mm)' : 'Width - OD (mm)'}<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.width_mm} onChange={(e) => update('width_mm', e.target.value)} /></label>}
         {showsHeight && <label>Height - OD (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.height_mm} onChange={(e) => update('height_mm', e.target.value)} /></label>}
@@ -461,7 +462,7 @@ export default function ProductSpecifications() {
           </label>)}
         </div>
       </div>
-      {form.specification_type === 'BOX' && <div className="product-spec-box-preview">
+      {(form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') && <div className="product-spec-box-preview">
         <div className="product-spec-box-preview-heading"><strong>Box Dimension Drawing (Isometric Projection)</strong><span>Generated from the Length, Width and Height above.</span></div>
         <IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} creasingAllowance={form.board_creasing_allowance} />
       </div>}
@@ -493,7 +494,7 @@ export default function ProductSpecifications() {
             </dl></section>
             {form.paper_layers.length > 0 && <section><h2>Paper Composition</h2><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>{form.paper_layers.map((layer, index) => <tr key={`${layer.layer_name}-report`}><td>{index + 1}</td><td>{layer.layer_name}</td><td>{layer.gsm || '—'}</td><td>{layer.bf_rct || '—'}</td><td>{layer.deckle_size || calculatedDeckle(form)}</td><td>{layer.shade || '—'}</td><td>{layer.paper_grade || '—'}</td><td>{layer.flute || '—'}</td></tr>)}</tbody></table></section>}
             <section><h2>Production Stages</h2><ol className="spec-report-stages">{form.production_stages.map((stage) => <li key={`${stage}-report`}>{stage}</li>)}</ol></section>
-            {form.specification_type === 'BOX' && <section className="spec-report-drawing-section"><h2>Box Dimension Drawing (Isometric Projection)</h2><IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} creasingAllowance={form.board_creasing_allowance} /></section>}
+            {(form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') && <section className="spec-report-drawing-section"><h2>Box Dimension Drawing (Isometric Projection)</h2><IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} creasingAllowance={form.board_creasing_allowance} /></section>}
             {form.notes && <section><h2>Specification Notes</h2><p className="spec-report-notes">{form.notes}</p></section>}
             <footer><span>Generated by PC-Tech | Confidential | Shred Upon Job Completion</span><span>{formatIstDateTime(new Date())}</span></footer>
           </article>
