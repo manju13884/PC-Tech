@@ -1,4 +1,5 @@
 import { formatLayerGsm } from '../production-planning/paperLayerDisplay';
+import { isTwoPlyRoll, twoPlyRollLayers } from '../production-planning/twoPlyRollComposition';
 import { Factory, FilterX, Printer, RefreshCw, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { formatIstDate } from "../../utils/dateTimeFormatting";
@@ -455,13 +456,15 @@ export default function ProductionPlanned() {
             <tbody>
               {filtered.map((line, index) => {
                 const layers = attributes(line).paper_layers ?? [];
-                const top = layers.find((layer) => !layer.flute),
-                  bFlute = layerForFlute(layers, "B"),
-                  bLiner = linerAfterFlute(layers, "B");
-                const aFlute = layerForFlute(layers, "A"),
-                  aLiner = linerAfterFlute(layers, "A"),
-                  cFlute = layerForFlute(layers, "C"),
-                  cLiner = linerAfterFlute(layers, "C");
+                const twoPlyRoll = isTwoPlyRoll(line.item_name, line.item_description, line.product_type);
+                const rollLayers = twoPlyRollLayers(layers);
+                const top = twoPlyRoll ? rollLayers.top : layers.find((layer) => !layer.flute),
+                  bFlute = twoPlyRoll ? rollLayers.flute : layerForFlute(layers, "B"),
+                  bLiner = twoPlyRoll ? undefined : linerAfterFlute(layers, "B");
+                const aFlute = twoPlyRoll ? undefined : layerForFlute(layers, "A"),
+                  aLiner = twoPlyRoll ? undefined : linerAfterFlute(layers, "A"),
+                  cFlute = twoPlyRoll ? undefined : layerForFlute(layers, "C"),
+                  cLiner = twoPlyRoll ? undefined : linerAfterFlute(layers, "C");
                 const fluteRun =
                   layers
                     .filter((layer) => layer.flute)
@@ -513,18 +516,15 @@ export default function ProductionPlanned() {
                     <td>{fluteRun}</td>
                     <td>{deckle}</td>
                     <td className="numeric">{numberText(cutLengthCm)}</td>
-                    <td>{formatLayerGsm(top)}</td>
-                    <td>{cell(top, "bf_rct")}</td>
-                    <td>{formatLayerGsm(bFlute)}</td>
-                    <td>{cell(bFlute, "bf_rct")}</td>
-                    <td>{formatLayerGsm(bLiner)}</td>
-                    <td>{cell(bLiner, "bf_rct")}</td>
-                    <td>{formatLayerGsm(aFlute)}</td>
-                    <td>{cell(aFlute, "bf_rct")}</td>
-                    <td>{formatLayerGsm(aLiner)}</td>
-                    <td>{formatLayerGsm(cFlute)}</td>
-                    <td>{cell(cFlute, "bf_rct")}</td>
-                    <td>{formatLayerGsm(cLiner)}</td>
+                    {twoPlyRoll ? <td colSpan={12} className="two-ply-roll-composition"><div>
+                      <span><b>Top GSM</b>{formatLayerGsm(top)}</span><span><b>Top BF</b>{cell(top, "bf_rct")}</span>
+                      <span><b>Flute GSM</b>{formatLayerGsm(bFlute)}</span><span><b>Flute BF</b>{cell(bFlute, "bf_rct")}</span>
+                    </div></td> : <>
+                      <td>{formatLayerGsm(top)}</td><td>{cell(top, "bf_rct")}</td>
+                      <td>{formatLayerGsm(bFlute)}</td><td>{cell(bFlute, "bf_rct")}</td><td>{formatLayerGsm(bLiner)}</td><td>{cell(bLiner, "bf_rct")}</td>
+                      <td>{formatLayerGsm(aFlute)}</td><td>{cell(aFlute, "bf_rct")}</td><td>{formatLayerGsm(aLiner)}</td>
+                      <td>{formatLayerGsm(cFlute)}</td><td>{cell(cFlute, "bf_rct")}</td><td>{formatLayerGsm(cLiner)}</td>
+                    </>}
                     <td className="production-plan-actions-cell">
                       {(line.plan_status === "PLANNED" || line.plan_status === "DRAFT") && (
                         <button type="button" onClick={() => void prepareUnplan(line)}>

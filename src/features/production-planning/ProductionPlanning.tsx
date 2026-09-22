@@ -20,6 +20,7 @@ import {
 } from '../../salesOrderService'
 import { calculateTwoPlyQuantity } from './productionPlanningCalculations'
 import { calculatedCutLengthCm } from './cutLength'
+import { isTwoPlyRoll, twoPlyRollLayers } from './twoPlyRollComposition'
 import '../product-specifications/product-specifications.css'
 import './production-planning.css'
 
@@ -298,9 +299,14 @@ export default function ProductionPlanning() {
     }
   }
   const renderPlanningRow = (v: PlanLine, index: number) => {
-    const top = topLayer(v), bFlute = layerForFlute(v, 'B'), bLiner = linerAfterFlute(v, 'B')
-    const aFlute = layerForFlute(v, 'A'), aLiner = linerAfterFlute(v, 'A')
-    const cFlute = layerForFlute(v, 'C'), cLiner = linerAfterFlute(v, 'C')
+    const layers = v.specificationAttributes?.paper_layers ?? []
+    const twoPlyRoll = isTwoPlyRoll(v.itemName, v.itemDescription, v.productType)
+    const rollLayers = twoPlyRollLayers(layers)
+    const top = twoPlyRoll ? rollLayers.top : topLayer(v)
+    const bFlute = twoPlyRoll ? rollLayers.flute : layerForFlute(v, 'B')
+    const bLiner = twoPlyRoll ? undefined : linerAfterFlute(v, 'B')
+    const aFlute = twoPlyRoll ? undefined : layerForFlute(v, 'A'), aLiner = twoPlyRoll ? undefined : linerAfterFlute(v, 'A')
+    const cFlute = twoPlyRoll ? undefined : layerForFlute(v, 'C'), cLiner = twoPlyRoll ? undefined : linerAfterFlute(v, 'C')
     const fluteRun = (v.specificationAttributes?.paper_layers ?? []).filter((layer) => layer.flute).map((layer) => layer.flute).join(' + ') || '—'
     const cell = (layer: PaperLayer | undefined, key: 'gsm' | 'bf_rct') => layer?.[key] || '—'
     return <tr key={`${v.salesOrderId}-${v.lineItemId}`} className={v.productionStatus === 'SPECIFICATION_MISSING' ? 'is-missing' : ''}>
@@ -313,10 +319,15 @@ export default function ProductionPlanning() {
       <td className="production-description" title={v.itemDescription}>{v.itemDescription || v.itemName}</td>
       <td className="numeric">{numberText(v.lengthMm)}</td><td className="numeric">{numberText(v.widthMm)}</td><td className="numeric">{numberText(v.heightMm)}</td>
       <td>{v.productType || '—'}</td><td>{v.ply ? `${v.ply} Ply` : '—'}</td><td>{fluteRun}</td><td><input aria-label="Deckle Size" title="Deckle Size in CM" className="production-quantity" type="text" value={v.deckleSize ?? preloadedDeckleSize(v)} disabled={!v.included} onChange={(e) => { const deckleSize = e.target.value; setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deckleSize } : x)) }} /></td><td><input aria-label="Cut Length in CM" className="production-quantity" type="number" min="0.001" step="any" value={v.cutLengthCm ?? ''} disabled={!v.included} onChange={(e) => { const cutLengthCm = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, cutLengthCm } : x)) }} /></td>
-      <td className="numeric">{formatLayerGsm(top)}</td><td className="numeric">{cell(top, 'bf_rct')}</td>
-      <td className="numeric">{formatLayerGsm(bFlute)}</td><td className="numeric">{cell(bFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(bLiner)}</td><td className="numeric">{cell(bLiner, 'bf_rct')}</td>
-      <td className="numeric">{formatLayerGsm(aFlute)}</td><td className="numeric">{cell(aFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(aLiner)}</td>
-      <td className="numeric">{formatLayerGsm(cFlute)}</td><td className="numeric">{cell(cFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(cLiner)}</td>
+      {twoPlyRoll ? <td colSpan={12} className="two-ply-roll-composition"><div>
+        <span><b>Top GSM</b>{formatLayerGsm(top)}</span><span><b>Top BF</b>{cell(top, 'bf_rct')}</span>
+        <span><b>Flute GSM</b>{formatLayerGsm(bFlute)}</span><span><b>Flute BF</b>{cell(bFlute, 'bf_rct')}</span>
+      </div></td> : <>
+        <td className="numeric">{formatLayerGsm(top)}</td><td className="numeric">{cell(top, 'bf_rct')}</td>
+        <td className="numeric">{formatLayerGsm(bFlute)}</td><td className="numeric">{cell(bFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(bLiner)}</td><td className="numeric">{cell(bLiner, 'bf_rct')}</td>
+        <td className="numeric">{formatLayerGsm(aFlute)}</td><td className="numeric">{cell(aFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(aLiner)}</td>
+        <td className="numeric">{formatLayerGsm(cFlute)}</td><td className="numeric">{cell(cFlute, 'bf_rct')}</td><td className="numeric">{formatLayerGsm(cLiner)}</td>
+      </>}
     </tr>
   }
   return (
@@ -599,7 +610,7 @@ export default function ProductionPlanning() {
             <section className="production-spec-modal-section">
               <h4>Paper Composition</h4>
               <div className="production-spec-paper"><table><thead><tr><th>#</th><th>Layer</th><th>GSM</th><th>BF/RCT</th><th>Shade</th><th>Grade</th><th>Flute</th></tr></thead><tbody>
-                {(viewingSpecification.specificationAttributes?.paper_layers ?? []).map((layer, index) => <tr key={`${layer.layer_name}-${index}`}><td>{index + 1}</td><td>{layer.layer_name || '—'}</td><td>{layer.gsm || '—'}</td><td>{layer.bf_rct || '—'}</td><td>{layer.shade || '—'}</td><td>{layer.paper_grade || '—'}</td><td>{layer.flute || '—'}</td></tr>)}
+                {(viewingSpecification.specificationAttributes?.paper_layers ?? []).map((layer, index) => <tr key={`${layer.layer_name}-${index}`}><td>{index + 1}</td><td>{isTwoPlyRoll(viewingSpecification.itemName, viewingSpecification.itemDescription, viewingSpecification.productType) ? (/flut/i.test(layer.layer_name ?? '') ? 'Flute' : 'Top') : layer.layer_name || '—'}</td><td>{layer.gsm || '—'}</td><td>{layer.bf_rct || '—'}</td><td>{layer.shade || '—'}</td><td>{layer.paper_grade || '—'}</td><td>{layer.flute || '—'}</td></tr>)}
                 {!viewingSpecification.specificationAttributes?.paper_layers?.length && <tr><td colSpan={7}>Paper composition is not available.</td></tr>}
               </tbody></table></div>
             </section>
