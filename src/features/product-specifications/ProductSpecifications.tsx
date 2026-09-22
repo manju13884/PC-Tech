@@ -5,6 +5,7 @@ import { getCustomers, type Customer } from '../../customerService'
 import { getItems, type Item } from '../../itemService'
 import { formatIstDateTime } from '../../utils/dateTimeFormatting'
 import { calculateRotarySize, calculateSlottingSize } from './rotarySizeCalculations'
+import { calculatePartitionSummary, partitionTypes, validatePartition } from './partitionSpecifications'
 import './product-specifications.css'
 
 type PaperLayer = {
@@ -17,12 +18,14 @@ type FormState = {
   ply: string; gsm: string; bf: string; print_required: boolean; print_colors: string; notes: string
   flute_type: string; paper_type: string; material: string; shade_color: string
   finish: string; thickness_micron: string; roll_length_m: string; joint_type: string; board_type: string; board_creasing_allowance: string
+  partition_type: string; partition_rows: string; partition_columns: string; cell_length_mm: string; cell_width_mm: string; slot_width_mm: string; slot_depth_mm: string
   paper_layers: PaperLayer[]; production_stages: string[]
 }
 const emptyForm: FormState = {
   specification_name: '', polar_canvas_item_code: '', product_name: '', specification_type: 'GENERAL', length_mm: '', width_mm: '', height_mm: '', ply: '', gsm: '', bf: '',
   print_required: false, print_colors: '', notes: '', flute_type: '', paper_type: '', material: '',
   shade_color: '', finish: '', thickness_micron: '', roll_length_m: '', joint_type: '', board_type: '', board_creasing_allowance: '',
+  partition_type: '', partition_rows: '', partition_columns: '', cell_length_mm: '', cell_width_mm: '', slot_width_mm: '', slot_depth_mm: '',
   paper_layers: [], production_stages: [],
 }
 type Specification = Omit<FormState, 'print_required'> & {
@@ -39,7 +42,7 @@ const specificationLockMessage = (specification: Specification) => specification
   ? `This Product Specification cannot be edited because it is mapped to Sales Order ${specification.locked_sales_orders} and is associated with Production Plan ${specification.locked_production_plans || 'previous production planning'}. Clone it to create a new specification.`
   : ''
 
-const attributeKeys = ['flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type', 'board_creasing_allowance'] as const
+const attributeKeys = ['flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type', 'board_creasing_allowance', 'partition_type', 'partition_rows', 'partition_columns', 'cell_length_mm', 'cell_width_mm', 'slot_width_mm', 'slot_depth_mm'] as const
 type AttributeFields = Pick<FormState, (typeof attributeKeys)[number]>
 const emptyAttributes = Object.fromEntries(attributeKeys.map((key) => [key, ''])) as AttributeFields
 const productionStageOptions = [
@@ -114,6 +117,8 @@ const paperCompositionByPly: Record<string, string[]> = {
   '9': ['Top', 'Fluting 1', 'Liner 1', 'Fluting 2', 'Liner 2', 'Fluting 3', 'Liner 3', 'Fluting 4', 'Bottom'],
 }
 
+const fluteOptions = ['A', 'B', 'C', 'E', 'F'] as const
+
 function buildPaperLayers(ply: string, current: PaperLayer[]): PaperLayer[] {
   return (paperCompositionByPly[ply] ?? []).map((layerName, index) => ({
     layer_name: layerName,
@@ -124,6 +129,15 @@ function buildPaperLayers(ply: string, current: PaperLayer[]): PaperLayer[] {
     shade: current[index]?.shade ?? '',
     flute: layerName.toLowerCase().includes('fluting') ? current[index]?.flute ?? '' : '',
   }))
+}
+
+function paperLayerDisplayName(layerName: string, isPartition: boolean, flute: string): string {
+  if (!isPartition || !flute) return layerName
+  if (layerName === 'Top Liner') return 'Top'
+  if (layerName === 'Bottom Liner' || layerName === 'Bottom') return `${flute} Liner`
+  if (layerName === 'Fluting') return `${flute} Flute`
+  if (layerName.startsWith('Fluting ')) return `${flute} Flute ${layerName.slice('Fluting '.length)}`
+  return layerName
 }
 
 function detectType(item?: Item): string {
@@ -193,7 +207,7 @@ function calculatedDeckle(form: FormState): string {
   const width = Number(form.width_mm)
   const height = Number(form.height_mm)
   let deckleMm: number | null = null
-  if ((form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') && width > 0 && height > 0) deckleMm = width + height + 20
+  if (form.specification_type === 'BOX' && width > 0 && height > 0) deckleMm = width + height + 20
   if (form.specification_type === 'BOARD / SHEET' && width > 0) deckleMm = width
   if (deckleMm == null) return '—'
   const format = (value: number) => Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.00$/, '')
@@ -210,10 +224,10 @@ function calculatedSpecificationValues(form: FormState) {
   const width = Number(form.width_mm)
   const height = Number(form.height_mm)
   const creasingAllowance = Number(form.board_creasing_allowance)
-  const hasBoxDimensions = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') && length > 0 && width > 0 && height > 0
+  const hasBoxDimensions = form.specification_type === 'BOX' && length > 0 && width > 0 && height > 0
   const hasSheetDimensions = form.specification_type === 'BOARD / SHEET' && length > 0 && width > 0
-  const rotaryCalculation = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') ? calculateRotarySize(width, height, creasingAllowance) : null
-  const slottingSizeMm = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') ? calculateSlottingSize(width, creasingAllowance) : null
+  const rotaryCalculation = form.specification_type === 'BOX' ? calculateRotarySize(width, height, creasingAllowance) : null
+  const slottingSizeMm = form.specification_type === 'BOX' ? calculateSlottingSize(width, creasingAllowance) : null
   const rotaryMm = rotaryCalculation?.rotarySize ?? (hasSheetDimensions ? length : 0)
   const deckleMm = hasBoxDimensions ? width + height + 20 : hasSheetDimensions ? width : 0
   const validLayers = form.paper_layers.map((layer) => {
@@ -273,12 +287,15 @@ export default function ProductSpecifications() {
   const displayedSpecifications = listCustomerId
     ? specifications.filter((specification) => specification.customer_id === listCustomerId)
     : []
-  const showsHeight = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS')
-  const showsDimensions = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') || form.specification_type === 'BOARD / SHEET'
+  const showsHeight = form.specification_type === 'BOX'
+  const showsDimensions = form.specification_type === 'BOX' || form.specification_type === 'BOARD / SHEET'
   const showsBoardFields = (form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') || form.specification_type === 'BOARD / SHEET'
+  const isPartition = form.specification_type === 'PARTITIONS'
+  const showsBoxCalculations = form.specification_type === 'BOX'
   const showsRollFields = form.specification_type === 'PAPER / ROLL'
   const showsFlexibleFields = form.specification_type === 'TAPE' || form.specification_type === 'FILM'
   const calculatedValues = calculatedSpecificationValues(form)
+  const partitionSummary = calculatePartitionSummary({ partitionType: form.partition_type, lengthMm: form.length_mm, widthMm: form.width_mm, heightMm: form.height_mm, rows: form.partition_rows, columns: form.partition_columns, cellLengthMm: form.cell_length_mm, cellWidthMm: form.cell_width_mm })
 
   const loadSpecifications = async () => {
     const response = await fetch('/api/product-specifications', { credentials: 'include' })
@@ -312,6 +329,7 @@ export default function ProductSpecifications() {
     ...current,
     specification_type: specificationType,
     production_stages: defaultProductionStages(specificationType, current.print_required),
+    ...(specificationType === 'PARTITIONS' ? {} : { partition_type: '', partition_rows: '', partition_columns: '', cell_length_mm: '', cell_width_mm: '', slot_width_mm: '', slot_depth_mm: '' }),
   }))
   const updatePrintRequired = (printRequired: boolean) => setForm((current) => ({
     ...current,
@@ -327,7 +345,16 @@ export default function ProductSpecifications() {
       : productionStageOptions.filter((value) => [...current.production_stages, stage].includes(value)),
   }))
   const updatePly = (ply: string) => {
-    setForm((current) => ({ ...current, ply, paper_layers: buildPaperLayers(ply, current.paper_layers) }))
+    setForm((current) => {
+      const paperLayers = buildPaperLayers(ply, current.paper_layers)
+      return {
+        ...current,
+        ply,
+        paper_layers: current.specification_type === 'PARTITIONS' && current.flute_type
+          ? paperLayers.map((layer) => layer.layer_name.toLowerCase().includes('fluting') ? { ...layer, flute: current.flute_type } : layer)
+          : paperLayers,
+      }
+    })
     if (!ply) return
     const matchingItem = matchingPlyItem(items, item, ply)
     if (!matchingItem) {
@@ -338,6 +365,11 @@ export default function ProductSpecifications() {
     setListItemId(matchingItem.item_id)
     setError('')
   }
+  const updatePartitionFlute = (flute: string) => setForm((current) => ({
+    ...current,
+    flute_type: flute,
+    paper_layers: current.paper_layers.map((layer) => layer.layer_name.toLowerCase().includes('fluting') ? { ...layer, flute } : layer),
+  }))
   const updatePaperLayer = (index: number, key: keyof Omit<PaperLayer, 'layer_name'>, value: string) => setForm((current) => ({
     ...current,
     paper_layers: (current.paper_layers.length > 0 ? current.paper_layers : buildPaperLayers(current.ply, []))
@@ -364,11 +396,15 @@ export default function ProductSpecifications() {
   }
   async function save(event: FormEvent) {
     event.preventDefault(); if (readOnlyMode || !customer || !item) return
+    if (form.specification_type === 'PARTITIONS') {
+      const validationError = validatePartition({ partitionType: form.partition_type, lengthMm: form.length_mm, widthMm: form.width_mm, heightMm: form.height_mm, rows: form.partition_rows, columns: form.partition_columns, cellLengthMm: form.cell_length_mm, cellWidthMm: form.cell_width_mm, ply: form.ply, fluteType: form.flute_type })
+      if (validationError) { setError(validationError); setMessage(''); return }
+    }
     setSaving(true); setError(''); setMessage('')
     try {
       const response = await fetch('/api/product-specifications', {
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, id: editingId, customer_id: customer.customer_id, customer_name: customer.customer_name, item_id: item.item_id, item_name: item.item_name, item_sku: item.sku }),
+        body: JSON.stringify({ ...form, cell_length_mm: partitionSummary.cellLengthMm ?? '', cell_width_mm: partitionSummary.cellWidthMm ?? '', id: editingId, customer_id: customer.customer_id, customer_name: customer.customer_name, item_id: item.item_id, item_name: item.item_name, item_sku: item.sku }),
       })
       const responseText = await response.text()
       let payload: { error?: string; specification?: { id?: number; polar_canvas_item_code?: string } }
@@ -413,11 +449,11 @@ export default function ProductSpecifications() {
       <div className="product-spec-grid">
         <label>Product Name<input type="text" maxLength={200} value={form.product_name} onChange={(e) => update('product_name', e.target.value)} /></label>
         <label>Polar Canvas Item Code<input value={form.polar_canvas_item_code} readOnly aria-readonly="true" /></label>
-        <label><span className="spec-field-label">Design Type <b className="spec-required-mark" aria-label="required">*</b></span><select required value={form.specification_type} onChange={(e) => updateDesignType(e.target.value)}><option>BOX</option><option value="PARTITIONS">Partitions</option><option>BOARD / SHEET</option><option>PAPER / ROLL</option><option>TAPE</option><option>FILM</option><option>GENERAL</option></select></label>
+        <label><span className="spec-field-label">Design Type <b className="spec-required-mark" aria-label="required">*</b></span><select required value={form.specification_type} onChange={(e) => updateDesignType(e.target.value)}><option>BOX</option><option value="PARTITIONS">Corrugated Partitions</option><option>BOARD / SHEET</option><option>PAPER / ROLL</option><option>TAPE</option><option>FILM</option><option>GENERAL</option></select></label>
         {showsDimensions && <label>Length - OD (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.length_mm} onChange={(e) => update('length_mm', e.target.value)} /></label>}
         {(showsDimensions || showsFlexibleFields || showsRollFields) && <label>{showsRollFields ? 'Deckle / Width (mm)' : 'Width - OD (mm)'}<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.width_mm} onChange={(e) => update('width_mm', e.target.value)} /></label>}
         {showsHeight && <label>Height - OD (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.height_mm} onChange={(e) => update('height_mm', e.target.value)} /></label>}
-        {showsBoardFields && <label>Ply<select value={form.ply} onChange={(e) => updatePly(e.target.value)}><option value="">Select ply</option><option value="2">2 Ply</option><option value="3">3 Ply</option><option value="5">5 Ply</option><option value="7">7 Ply</option><option value="9">9 Ply</option></select></label>}
+        {showsBoardFields && !isPartition && <label>Ply<select value={form.ply} onChange={(e) => updatePly(e.target.value)}><option value="">Select ply</option><option value="2">2 Ply</option><option value="3">3 Ply</option><option value="5">5 Ply</option><option value="7">7 Ply</option><option value="9">9 Ply</option></select></label>}
         {showsRollFields && <label>GSM<input type="number" min="0" step="0.01" value={form.gsm} onChange={(e) => update('gsm', e.target.value)} /></label>}
         {showsRollFields && <label>BF/RCT<input type="number" min="0" step="0.01" value={form.bf} onChange={(e) => update('bf', e.target.value)} /></label>}
         {showsRollFields && <label>Paper Grade<input value={form.paper_type} onChange={(e) => update('paper_type', e.target.value)} placeholder="Kraft / Test liner" /></label>}
@@ -426,30 +462,60 @@ export default function ProductSpecifications() {
         {showsFlexibleFields && <label>Thickness (micron)<input type="number" min="0" step="0.01" value={form.thickness_micron} onChange={(e) => update('thickness_micron', e.target.value)} /></label>}
         {(showsFlexibleFields || showsRollFields) && <label>Roll Length (m)<input type="number" min="0" step="0.01" value={form.roll_length_m} onChange={(e) => update('roll_length_m', e.target.value)} /></label>}
         {showsHeight && <label>Joint Type<select value={form.joint_type} onChange={(e) => update('joint_type', e.target.value)}><option value="">Select joint</option><option value="Glue">Glue</option><option value="Stitch">Stitch</option><option value="Pinning">Pinning</option><option value="Brass Pinning">Brass Pinning</option><option value="SS Pinning">SS Pinning</option><option value="GI Pinning">GI Pinning</option><option value="Glue & Stitch">Glue &amp; Stitch</option><option value="Self Lock">Self Lock</option><option value="Not Applicable">Not Applicable</option>{form.joint_type && !['Glue', 'Stitch', 'Pinning', 'Brass Pinning', 'SS Pinning', 'GI Pinning', 'Glue & Stitch', 'Self Lock', 'Not Applicable'].includes(form.joint_type) && <option value={form.joint_type}>{form.joint_type}</option>}</select></label>}
-        {showsBoardFields && <label>Board Type<select value={form.board_type} onChange={(e) => update('board_type', e.target.value)}><option value="">Select board type</option><option value="Plant Board">Plant Board</option><option value="Manual Board">Manual Board</option>{form.board_type && !['Plant Board', 'Manual Board'].includes(form.board_type) && <option value={form.board_type}>{form.board_type}</option>}</select></label>}
+        {showsBoardFields && !isPartition && <label>Board Type<select value={form.board_type} onChange={(e) => update('board_type', e.target.value)}><option value="">Select board type</option><option value="Plant Board">Plant Board</option><option value="Manual Board">Manual Board</option>{form.board_type && !['Plant Board', 'Manual Board'].includes(form.board_type) && <option value={form.board_type}>{form.board_type}</option>}</select></label>}
         <label>Finish<select value={form.finish} onChange={(e) => update('finish', e.target.value)}><option value="">Select finish</option><option value="Normal">Normal</option><option value="Gloss Lamination">Gloss Lamination</option><option value="Matt Lamination">Matt Lamination</option><option value="Varnish">Varnish</option><option value="UV Coating">UV Coating</option><option value="Water Resistant">Water Resistant</option><option value="Not Applicable">Not Applicable</option>{form.finish && !['Normal', 'Gloss Lamination', 'Matt Lamination', 'Varnish', 'UV Coating', 'Water Resistant', 'Not Applicable'].includes(form.finish) && <option value={form.finish}>{form.finish}</option>}</select></label>
         {form.specification_type !== 'PAPER / ROLL' && <label>Print<select value={form.print_required ? 'YES' : 'NO'} onChange={(e) => updatePrintRequired(e.target.value === 'YES')}><option>NO</option><option>YES</option></select></label>}
-        {showsBoardFields && <label>Board / Creasing Allowance<select value={form.board_creasing_allowance} onChange={(e) => update('board_creasing_allowance', e.target.value)}><option value="">Select allowance</option>{['6', '7', '8', '10'].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
+        {showsBoardFields && !isPartition && <label>Board / Creasing Allowance<select value={form.board_creasing_allowance} onChange={(e) => update('board_creasing_allowance', e.target.value)}><option value="">Select allowance</option>{['6', '7', '8', '10'].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>}
         {form.print_required && <label>Print Colours<input value={form.print_colors} onChange={(e) => update('print_colors', e.target.value)} placeholder="e.g. 2 colours" /></label>}
-        {showsBoardFields && <label>Adjusted Width<input value={calculatedValues.adjustedWidth} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label>Top Flap<input value={calculatedValues.topFlap} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label>Box Height<input value={calculatedValues.boxHeight} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label>Bottom Flap<input value={calculatedValues.bottomFlap} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label className="product-spec-rotary-result">Rotary Size<input value={calculatedValues.rotarySize} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label>Sheet Size (Deckle × Rotary)<input value={calculatedValues.sheetSize} readOnly aria-readonly="true" title="Sheet Size = Deckle Size × Rotary Size" /></label>}
-        {showsBoardFields && <label>Slotting Size<input value={calculatedValues.slottingSize} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label>Box Weight<input value={calculatedValues.boxWeight} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label>Board GSM<input value={calculatedValues.boardGsm} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label>BS<input value={calculatedValues.burstingStrength} readOnly aria-readonly="true" /></label>}
-        {showsBoardFields && <label>Moisture<input value={calculatedValues.moisture} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label>Adjusted Width<input value={calculatedValues.adjustedWidth} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label>Top Flap<input value={calculatedValues.topFlap} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label>Box Height<input value={calculatedValues.boxHeight} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label>Bottom Flap<input value={calculatedValues.bottomFlap} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label className="product-spec-rotary-result">Rotary Size<input value={calculatedValues.rotarySize} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label>Sheet Size (Deckle × Rotary)<input value={calculatedValues.sheetSize} readOnly aria-readonly="true" title="Sheet Size = Deckle Size × Rotary Size" /></label>}
+        {showsBoxCalculations && <label>Slotting Size<input value={calculatedValues.slottingSize} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label>Box Weight<input value={calculatedValues.boxWeight} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label>Board GSM<input value={calculatedValues.boardGsm} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label>BS<input value={calculatedValues.burstingStrength} readOnly aria-readonly="true" /></label>}
+        {showsBoxCalculations && <label>Moisture<input value={calculatedValues.moisture} readOnly aria-readonly="true" /></label>}
         <label className="spec-notes">Specification Notes<textarea value={form.notes} onChange={(e) => update('notes', e.target.value)} placeholder="Add material, flute, tolerance or finishing instructions" /></label>
       </div>
+      {isPartition && <section className="partition-configuration">
+        <div className="partition-section-heading"><strong>Partition Configuration</strong><span>Define the finished divider grid and slot dimensions.</span></div>
+        <div className="partition-type-row">
+          <label><span className="spec-field-label">Partition Type <b className="spec-required-mark" aria-label="required">*</b></span><select required value={form.partition_type} onChange={(e) => update('partition_type', e.target.value)}><option value="">Select partition type</option>{partitionTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select></label>
+        </div>
+        <div className="partition-subsection"><strong>Overall Dimensions</strong><div className="partition-field-grid partition-three-columns">
+          <label><span className="spec-field-label">Length (mm) <b className="spec-required-mark" aria-label="required">*</b></span><input className="spec-dimension-input" required type="number" min="0.01" step="0.01" value={form.length_mm} onChange={(e) => update('length_mm', e.target.value)} /></label>
+          <label><span className="spec-field-label">Width (mm) <b className="spec-required-mark" aria-label="required">*</b></span><input className="spec-dimension-input" required type="number" min="0.01" step="0.01" value={form.width_mm} onChange={(e) => update('width_mm', e.target.value)} /></label>
+          <label><span className="spec-field-label">Partition Height (mm) <b className="spec-required-mark" aria-label="required">*</b></span><input className="spec-dimension-input" required type="number" min="0.01" step="0.01" value={form.height_mm} onChange={(e) => update('height_mm', e.target.value)} /></label>
+        </div></div>
+        <div className="partition-subsection"><strong>Cell Configuration</strong><div className="partition-field-grid partition-three-columns">
+          <label><span className="spec-field-label">No. of Rows <b className="spec-required-mark" aria-label="required">*</b></span><input className="spec-dimension-input" required type="number" min="1" step="1" value={form.partition_rows} onChange={(e) => update('partition_rows', e.target.value)} /></label>
+          <label><span className="spec-field-label">No. of Columns <b className="spec-required-mark" aria-label="required">*</b></span><input className="spec-dimension-input" required type="number" min="1" step="1" value={form.partition_columns} onChange={(e) => update('partition_columns', e.target.value)} /></label>
+          <label>Total Cells<input value={partitionSummary.totalCells || ''} readOnly aria-readonly="true" /></label>
+        </div></div>
+        <div className="partition-subsection"><strong>Cell Size</strong><div className="partition-field-grid partition-three-columns">
+          <label>Cell Length (mm)<input className="spec-dimension-input" type="number" min="0.01" step="0.01" value={form.partition_type === 'Standard Equal Cell' ? partitionSummary.cellLengthMm ?? '' : form.cell_length_mm} readOnly={form.partition_type === 'Standard Equal Cell'} aria-readonly={form.partition_type === 'Standard Equal Cell'} onChange={(e) => update('cell_length_mm', e.target.value)} /></label>
+          <label>Cell Width (mm)<input className="spec-dimension-input" type="number" min="0.01" step="0.01" value={form.partition_type === 'Standard Equal Cell' ? partitionSummary.cellWidthMm ?? '' : form.cell_width_mm} readOnly={form.partition_type === 'Standard Equal Cell'} aria-readonly={form.partition_type === 'Standard Equal Cell'} onChange={(e) => update('cell_width_mm', e.target.value)} /></label>
+          <label>Cell Size<input value={partitionSummary.cellLengthMm !== null && partitionSummary.cellWidthMm !== null ? `${calculatedNumber(partitionSummary.cellLengthMm)} × ${calculatedNumber(partitionSummary.cellWidthMm)} mm` : ''} readOnly aria-readonly="true" /></label>
+        </div></div>
+        <div className="partition-subsection"><strong>Partition Construction</strong><div className="partition-field-grid partition-three-columns">
+          <label><span className="spec-field-label">Partition Ply <b className="spec-required-mark" aria-label="required">*</b></span><select required value={form.ply} onChange={(e) => updatePly(e.target.value)}><option value="">Select partition ply</option><option value="3">3 Ply</option><option value="5">5 Ply</option><option value="7">7 Ply</option></select></label>
+          <label><span className="spec-field-label">Flute / Flute Run <b className="spec-required-mark" aria-label="required">*</b></span><select required value={form.flute_type} onChange={(e) => updatePartitionFlute(e.target.value)}><option value="">Select flute</option>{fluteOptions.map((flute) => <option key={flute} value={flute}>{flute} Flute</option>)}</select></label>
+        </div></div>
+        {partitionSummary.longPieces !== null && partitionSummary.crossPieces !== null && <div className="partition-pieces">
+          <label>Long Partitions<input value={`${partitionSummary.longPieces} pcs × ${partitionSummary.longPieceLengthMm ?? ''} × ${partitionSummary.longPieceHeightMm ?? ''} mm`} readOnly aria-readonly="true" /></label>
+          <label>Cross Partitions<input value={`${partitionSummary.crossPieces} pcs × ${partitionSummary.crossPieceLengthMm ?? ''} × ${partitionSummary.crossPieceHeightMm ?? ''} mm`} readOnly aria-readonly="true" /></label>
+        </div>}
+        <div className="partition-slot-details"><strong>Slot Details</strong><div className="partition-field-grid"><label>Slot Width (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.slot_width_mm} onChange={(e) => update('slot_width_mm', e.target.value)} /></label><label>Slot Depth (mm)<input className="spec-dimension-input" type="number" min="0" step="0.01" value={form.slot_depth_mm} onChange={(e) => update('slot_depth_mm', e.target.value)} /></label></div></div>
+      </section>}
       {showsBoardFields && <div className="paper-composition">
-        <div className="paper-composition-heading"><strong>Paper Composition{form.ply ? ` · ${form.ply} Ply` : ''}</strong><span>{form.paper_layers.length > 0 ? form.paper_layers.map((layer) => layer.layer_name).join(' + ') : 'Select Ply above to enter paper composition.'}</span></div>
+        <div className="paper-composition-heading"><strong>Paper Composition{form.ply ? ` · ${form.ply} Ply` : ''}</strong><span>{form.paper_layers.length > 0 ? form.paper_layers.map((layer) => paperLayerDisplayName(layer.layer_name, isPartition, form.flute_type)).join(' + ') : isPartition ? 'Select Partition Ply above to enter paper composition.' : 'Select Ply above to enter paper composition.'}</span></div>
         {form.paper_layers.length > 0 && <div className="paper-composition-table"><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>
           {form.paper_layers.map((layer, index) => {
             const isFluting = layer.layer_name.toLowerCase().includes('fluting')
-            return <tr key={`${layer.layer_name}-${index}`}><td>{index + 1}</td><td><strong>{layer.layer_name}</strong></td><td><input type="number" min="0" step="0.01" value={layer.gsm} onChange={(e) => updatePaperLayer(index, 'gsm', e.target.value)} placeholder="GSM" /></td><td><input type="number" min="0" step="0.01" value={layer.bf_rct} onChange={(e) => updatePaperLayer(index, 'bf_rct', e.target.value)} placeholder="BF / RCT" /></td><td><input type="text" value={layer.deckle_size || calculatedDeckle(form)} onChange={(e) => updatePaperLayer(index, 'deckle_size', e.target.value)} placeholder="Deckle size" /></td><td><select value={layer.shade} onChange={(e) => updatePaperLayer(index, 'shade', e.target.value)}><option value="">Select</option><option value="GYT">GYT</option><option value="Natural">Natural</option><option value="White">White</option></select></td><td><input value={layer.paper_grade} onChange={(e) => updatePaperLayer(index, 'paper_grade', e.target.value)} placeholder={isFluting ? 'Fluting medium' : 'Kraft liner'} /></td><td>{isFluting ? <select value={layer.flute} onChange={(e) => updatePaperLayer(index, 'flute', e.target.value)}><option value="">Select</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="E">E</option><option value="F">F</option></select> : <span className="not-applicable">—</span>}</td></tr>
+            return <tr key={`${layer.layer_name}-${index}`}><td>{index + 1}</td><td><strong>{paperLayerDisplayName(layer.layer_name, isPartition, form.flute_type)}</strong></td><td><input type="number" min="0" step="0.01" value={layer.gsm} onChange={(e) => updatePaperLayer(index, 'gsm', e.target.value)} placeholder="GSM" /></td><td><input type="number" min="0" step="0.01" value={layer.bf_rct} onChange={(e) => updatePaperLayer(index, 'bf_rct', e.target.value)} placeholder="BF / RCT" /></td><td><input type="text" value={layer.deckle_size || calculatedDeckle(form)} onChange={(e) => updatePaperLayer(index, 'deckle_size', e.target.value)} placeholder="Deckle size" /></td><td><select value={layer.shade} onChange={(e) => updatePaperLayer(index, 'shade', e.target.value)}><option value="">Select</option><option value="GYT">GYT</option><option value="Natural">Natural</option><option value="White">White</option></select></td><td><input value={layer.paper_grade} onChange={(e) => updatePaperLayer(index, 'paper_grade', e.target.value)} placeholder={isFluting ? 'Fluting medium' : 'Kraft liner'} /></td><td>{isFluting ? <select value={layer.flute} onChange={(e) => updatePaperLayer(index, 'flute', e.target.value)}><option value="">Select</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="E">E</option><option value="F">F</option></select> : <span className="not-applicable">—</span>}</td></tr>
           })}
         </tbody></table></div>}
       </div>}
@@ -462,7 +528,7 @@ export default function ProductSpecifications() {
           </label>)}
         </div>
       </div>
-      {(form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') && <div className="product-spec-box-preview">
+      {form.specification_type === 'BOX' && <div className="product-spec-box-preview">
         <div className="product-spec-box-preview-heading"><strong>Box Dimension Drawing (Isometric Projection)</strong><span>Generated from the Length, Width and Height above.</span></div>
         <IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} creasingAllowance={form.board_creasing_allowance} />
       </div>}
@@ -486,15 +552,16 @@ export default function ProductSpecifications() {
         <div className="product-spec-report-scroll">
           <article className="product-spec-report-a4">
             <div className="spec-report-brand"><img src="/assets/Bird Logo-transparent.png" alt="Polar Canvas" /><div><h1>POLAR CANVAS</h1><p>PRODUCT SPECIFICATION</p></div><strong>Polar Canvas Item Code : {form.polar_canvas_item_code}</strong></div>
-            <dl className="spec-report-master"><div><dt>Customer</dt><dd>{customer.customer_name}</dd></div><div><dt>Product Name</dt><dd>{form.product_name || '—'}</dd></div><div><dt>Item</dt><dd>{item.item_name}</dd></div><div><dt>Created DateTime</dt><dd>{formatIstDateTime(reportSpecification?.created_at)}</dd></div><div><dt>Updated DateTime</dt><dd>{formatIstDateTime(reportSpecification?.updated_at)}</dd></div><div><dt>Design Type</dt><dd>{form.specification_type}</dd></div><div><dt>Board Type</dt><dd>{form.board_type || '—'}</dd></div></dl>
+            <dl className="spec-report-master"><div><dt>Customer</dt><dd>{customer.customer_name}</dd></div><div><dt>Product Name</dt><dd>{form.product_name || '—'}</dd></div><div><dt>Item</dt><dd>{item.item_name}</dd></div><div><dt>Created DateTime</dt><dd>{formatIstDateTime(reportSpecification?.created_at)}</dd></div><div><dt>Updated DateTime</dt><dd>{formatIstDateTime(reportSpecification?.updated_at)}</dd></div><div><dt>Design Type</dt><dd>{form.specification_type}</dd></div>{!isPartition && <div><dt>Board Type</dt><dd>{form.board_type || '—'}</dd></div>}</dl>
             <section><h2>Technical Specification</h2><dl className="spec-report-details">
-              <div><dt>Length (OD)</dt><dd>{form.length_mm ? `${form.length_mm} mm` : '—'}</dd></div><div><dt>Width (OD)</dt><dd>{form.width_mm ? `${form.width_mm} mm` : '—'}</dd></div><div><dt>Height (OD)</dt><dd>{form.height_mm ? `${form.height_mm} mm` : '—'}</dd></div><div><dt>Ply</dt><dd>{form.ply ? `${form.ply} Ply` : '—'}</dd></div>
-              <div><dt>Material</dt><dd>{form.material || '—'}</dd></div><div><dt>Joint Type</dt><dd>{form.joint_type || '—'}</dd></div><div><dt>Board / Creasing Allowance</dt><dd>{form.board_creasing_allowance || '—'}</dd></div><div><dt>Finish</dt><dd>{form.finish || '—'}</dd></div><div><dt>Print</dt><dd>{form.print_required ? `Yes${form.print_colors ? ` · ${form.print_colors}` : ''}` : 'No'}</dd></div>
-              <div><dt>Adjusted Width</dt><dd>{calculatedValues.adjustedWidth}</dd></div><div><dt>Top Flap</dt><dd>{calculatedValues.topFlap}</dd></div><div><dt>Box Height</dt><dd>{calculatedValues.boxHeight}</dd></div><div><dt>Bottom Flap</dt><dd>{calculatedValues.bottomFlap}</dd></div><div><dt>Rotary Size</dt><dd>{calculatedValues.rotarySize}</dd></div><div><dt>Sheet Size (Deckle × Rotary)</dt><dd>{calculatedValues.sheetSize}</dd></div><div><dt>Slotting Size</dt><dd>{calculatedValues.slottingSize}</dd></div><div><dt>Box Weight</dt><dd>{calculatedValues.boxWeight}</dd></div><div><dt>Board GSM</dt><dd>{calculatedValues.boardGsm}</dd></div><div><dt>BS</dt><dd>{calculatedValues.burstingStrength}</dd></div><div><dt>Moisture</dt><dd>{calculatedValues.moisture}</dd></div>
+              <div><dt>Length (OD)</dt><dd>{form.length_mm ? `${form.length_mm} mm` : '—'}</dd></div><div><dt>Width (OD)</dt><dd>{form.width_mm ? `${form.width_mm} mm` : '—'}</dd></div><div><dt>Height (OD)</dt><dd>{form.height_mm ? `${form.height_mm} mm` : '—'}</dd></div><div><dt>{isPartition ? 'Partition Ply' : 'Ply'}</dt><dd>{form.ply ? `${form.ply} Ply` : '—'}</dd></div>
+              <div><dt>Material</dt><dd>{form.material || '—'}</dd></div><div><dt>Joint Type</dt><dd>{form.joint_type || '—'}</dd></div>{!isPartition && <div><dt>Board / Creasing Allowance</dt><dd>{form.board_creasing_allowance || '—'}</dd></div>}<div><dt>Finish</dt><dd>{form.finish || '—'}</dd></div><div><dt>Print</dt><dd>{form.print_required ? `Yes${form.print_colors ? ` · ${form.print_colors}` : ''}` : 'No'}</dd></div>
+              {showsBoxCalculations && <><div><dt>Adjusted Width</dt><dd>{calculatedValues.adjustedWidth}</dd></div><div><dt>Top Flap</dt><dd>{calculatedValues.topFlap}</dd></div><div><dt>Box Height</dt><dd>{calculatedValues.boxHeight}</dd></div><div><dt>Bottom Flap</dt><dd>{calculatedValues.bottomFlap}</dd></div><div><dt>Rotary Size</dt><dd>{calculatedValues.rotarySize}</dd></div><div><dt>Sheet Size (Deckle × Rotary)</dt><dd>{calculatedValues.sheetSize}</dd></div><div><dt>Slotting Size</dt><dd>{calculatedValues.slottingSize}</dd></div><div><dt>Box Weight</dt><dd>{calculatedValues.boxWeight}</dd></div><div><dt>Board GSM</dt><dd>{calculatedValues.boardGsm}</dd></div><div><dt>BS</dt><dd>{calculatedValues.burstingStrength}</dd></div><div><dt>Moisture</dt><dd>{calculatedValues.moisture}</dd></div></>}
+              {isPartition && <><div><dt>Partition Type</dt><dd>{form.partition_type}</dd></div><div><dt>Flute / Flute Run</dt><dd>{form.flute_type ? `${form.flute_type} Flute` : '—'}</dd></div><div><dt>Rows</dt><dd>{form.partition_rows}</dd></div><div><dt>Columns</dt><dd>{form.partition_columns}</dd></div><div><dt>Total Cells</dt><dd>{partitionSummary.totalCells ?? '—'}</dd></div><div><dt>Cell Length</dt><dd>{partitionSummary.cellLengthMm !== null ? `${calculatedNumber(partitionSummary.cellLengthMm)} mm` : '—'}</dd></div><div><dt>Cell Width</dt><dd>{partitionSummary.cellWidthMm !== null ? `${calculatedNumber(partitionSummary.cellWidthMm)} mm` : '—'}</dd></div><div><dt>Cell Size</dt><dd>{partitionSummary.cellLengthMm !== null && partitionSummary.cellWidthMm !== null ? `${calculatedNumber(partitionSummary.cellLengthMm)} × ${calculatedNumber(partitionSummary.cellWidthMm)} mm` : '—'}</dd></div><div><dt>Slot Width</dt><dd>{form.slot_width_mm ? `${form.slot_width_mm} mm` : '—'}</dd></div><div><dt>Slot Depth</dt><dd>{form.slot_depth_mm ? `${form.slot_depth_mm} mm` : '—'}</dd></div>{partitionSummary.longPieces !== null && <div><dt>Long Partitions</dt><dd>{partitionSummary.longPieces}</dd></div>}{partitionSummary.crossPieces !== null && <div><dt>Cross Partitions</dt><dd>{partitionSummary.crossPieces}</dd></div>}</>}
             </dl></section>
-            {form.paper_layers.length > 0 && <section><h2>Paper Composition</h2><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>{form.paper_layers.map((layer, index) => <tr key={`${layer.layer_name}-report`}><td>{index + 1}</td><td>{layer.layer_name}</td><td>{layer.gsm || '—'}</td><td>{layer.bf_rct || '—'}</td><td>{layer.deckle_size || calculatedDeckle(form)}</td><td>{layer.shade || '—'}</td><td>{layer.paper_grade || '—'}</td><td>{layer.flute || '—'}</td></tr>)}</tbody></table></section>}
+            {form.paper_layers.length > 0 && <section><h2>Paper Composition</h2><table><thead><tr><th>#</th><th>Layer Type</th><th>GSM</th><th>BF/RCT</th><th>Deckle Size</th><th>Shade</th><th>Paper Grade</th><th>Flute</th></tr></thead><tbody>{form.paper_layers.map((layer, index) => <tr key={`${layer.layer_name}-report`}><td>{index + 1}</td><td>{paperLayerDisplayName(layer.layer_name, isPartition, form.flute_type)}</td><td>{layer.gsm || '—'}</td><td>{layer.bf_rct || '—'}</td><td>{layer.deckle_size || calculatedDeckle(form)}</td><td>{layer.shade || '—'}</td><td>{layer.paper_grade || '—'}</td><td>{layer.flute || '—'}</td></tr>)}</tbody></table></section>}
             <section><h2>Production Stages</h2><ol className="spec-report-stages">{form.production_stages.map((stage) => <li key={`${stage}-report`}>{stage}</li>)}</ol></section>
-            {(form.specification_type === 'BOX' || form.specification_type === 'PARTITIONS') && <section className="spec-report-drawing-section"><h2>Box Dimension Drawing (Isometric Projection)</h2><IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} creasingAllowance={form.board_creasing_allowance} /></section>}
+            {form.specification_type === 'BOX' && <section className="spec-report-drawing-section"><h2>Box Dimension Drawing (Isometric Projection)</h2><IsometricBoxDrawing length={form.length_mm} width={form.width_mm} height={form.height_mm} creasingAllowance={form.board_creasing_allowance} /></section>}
             {form.notes && <section><h2>Specification Notes</h2><p className="spec-report-notes">{form.notes}</p></section>}
             <footer><span>Generated by PC-Tech | Confidential | Shred Upon Job Completion</span><span>{formatIstDateTime(new Date())}</span></footer>
           </article>

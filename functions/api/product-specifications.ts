@@ -126,6 +126,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const itemId = text('item_id')
   const itemName = text('item_name')
   const productName = text('product_name').slice(0, 200)
+  const specificationType = text('specification_type') || 'GENERAL'
   const recordId = Number(body.id)
   if (Number.isInteger(recordId) && recordId > 0) {
     const lock = await specificationLock(context.env.DB, recordId)
@@ -146,9 +147,46 @@ export async function onRequestPost(context: Context): Promise<Response> {
   if (Object.values(numbers).some((value) => value !== null && (!Number.isFinite(value) || value < 0))) {
     return response({ error: 'Specification measurements must be valid positive numbers.' }, 400)
   }
+  const isPartition = specificationType === 'PARTITIONS'
+  const partitionType = text('partition_type')
+  const partitionRows = number('partition_rows')
+  const partitionColumns = number('partition_columns')
+  const requestedCellLengthMm = number('cell_length_mm')
+  const requestedCellWidthMm = number('cell_width_mm')
+  const slotWidthMm = number('slot_width_mm')
+  const slotDepthMm = number('slot_depth_mm')
+  if (isPartition) {
+    if (!['Standard Equal Cell', 'Custom'].includes(partitionType)) return response({ error: 'Select a valid Partition Type.' }, 400)
+    if (![numbers.length_mm, numbers.width_mm, numbers.height_mm].every((value) => typeof value === 'number' && value > 0)) return response({ error: 'Partition Length, Width, and Height must be greater than zero.' }, 400)
+    if (![partitionRows, partitionColumns].every((value) => typeof value === 'number' && Number.isInteger(value) && value > 0)) return response({ error: 'Partition Rows and Columns must be positive whole numbers.' }, 400)
+    if (![3, 5, 7].includes(numbers.ply as number)) return response({ error: 'Corrugated Partitions must use 3 Ply, 5 Ply, or 7 Ply.' }, 400)
+    if (!['A', 'B', 'C', 'E', 'F'].includes(text('flute_type'))) return response({ error: 'Select a valid Flute / Flute Run for Corrugated Partitions.' }, 400)
+    if (partitionType === 'Custom' && [requestedCellLengthMm, requestedCellWidthMm].some((value) => value !== null && (!Number.isFinite(value) || value <= 0))) return response({ error: 'Custom Cell Length and Cell Width must be greater than zero when entered.' }, 400)
+    if ([slotWidthMm, slotDepthMm].some((value) => value !== null && (!Number.isFinite(value) || value < 0))) return response({ error: 'Slot dimensions must be valid non-negative numbers.' }, 400)
+  }
+  const roundDimension = (value: number) => Math.round(value * 100) / 100
+  const cellLengthMm = isPartition && partitionType === 'Standard Equal Cell'
+    ? roundDimension((numbers.length_mm as number) / (partitionColumns as number))
+    : requestedCellLengthMm
+  const cellWidthMm = isPartition && partitionType === 'Standard Equal Cell'
+    ? roundDimension((numbers.width_mm as number) / (partitionRows as number))
+    : requestedCellWidthMm
   const attributes: Record<string, unknown> = Object.fromEntries([
     'flute_type', 'paper_type', 'material', 'shade_color', 'finish', 'thickness_micron', 'roll_length_m', 'joint_type', 'board_type', 'board_creasing_allowance',
   ].map((key) => [key, text(key)]))
+  if (isPartition) {
+    attributes.board_type = ''
+    attributes.board_creasing_allowance = ''
+  }
+  Object.assign(attributes, isPartition ? {
+    partition_type: partitionType,
+    partition_rows: String(partitionRows),
+    partition_columns: String(partitionColumns),
+    cell_length_mm: cellLengthMm === null ? '' : String(cellLengthMm),
+    cell_width_mm: cellWidthMm === null ? '' : String(cellWidthMm),
+    slot_width_mm: slotWidthMm === null ? '' : String(slotWidthMm),
+    slot_depth_mm: slotDepthMm === null ? '' : String(slotDepthMm),
+  } : { partition_type: '', partition_rows: '', partition_columns: '', cell_length_mm: '', cell_width_mm: '', slot_width_mm: '', slot_depth_mm: '' })
   const paperLayers = Array.isArray(body.paper_layers) ? body.paper_layers
     .filter((layer): layer is Record<string, unknown> => Boolean(layer) && typeof layer === 'object')
     .slice(0, 9)
@@ -172,7 +210,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
     : []
 
   const commonValues = [
-    productName, customerId, customerName, itemId, itemName, text('item_sku'), text('specification_type') || 'GENERAL',
+    productName, customerId, customerName, itemId, itemName, text('item_sku'), specificationType,
     numbers.length_mm, numbers.width_mm, numbers.height_mm, numbers.ply, numbers.gsm, numbers.bf,
     body.print_required === true ? 1 : 0, text('print_colors'), text('notes'), JSON.stringify(attributes), user.id,
   ]
