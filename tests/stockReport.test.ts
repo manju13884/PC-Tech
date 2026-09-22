@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-test('Stock Report is permission-controlled and read-only', async () => {
+test('Stock Report is permission-controlled with governed Material Stock actions', async () => {
   const [dashboard, ui, service, api, styles] = await Promise.all([
     readFile('src/Dashboard.tsx', 'utf8'),
     readFile('src/features/inventory/StockReport.tsx', 'utf8'),
@@ -20,8 +20,10 @@ test('Stock Report is permission-controlled and read-only', async () => {
   assert.match(api, /adjustment_increase/)
   assert.match(api, /adjustment_decrease/)
   assert.match(api, /SUM\(CASE WHEN closing_stock>0 THEN 1 ELSE 0 END\) in_stock/)
-  assert.doesNotMatch(api, /\b(?:INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b/i)
-  assert.doesNotMatch(service, /method:\s*['"](?:POST|PUT|PATCH|DELETE)/)
+  assert.match(api, /onRequestDelete/)
+  assert.match(api, /can_delete/)
+  assert.match(api, /can_edit/)
+  assert.match(service, /method:\s*['"]DELETE/)
   assert.match(ui, /Export Excel/)
   assert.match(ui, /View Transactions/)
   assert.match(ui, /In Stock \(No\. of Reels\)/)

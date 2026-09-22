@@ -22,12 +22,22 @@ async function canDelete(db: D1Database, roleId: number, roleName: string) {
   return Boolean(permission)
 }
 
+async function canEdit(db: D1Database, roleId: number, roleName: string) {
+  if (roleName === 'SUPERADMIN') return true
+  const permission = await db.prepare(
+    `SELECT 1 AS allowed FROM role_menu_permissions
+     WHERE role_id = ? AND menu_key = 'material-stock' AND (can_full = 1 OR can_edit = 1) LIMIT 1`,
+  ).bind(roleId).first()
+  return Boolean(permission)
+}
+
 export async function onRequestGet(context: Context): Promise<Response> {
   if (!context.env.DB) return json({ error: 'Stock Report database is unavailable.' }, 503)
   const user = await getAuthenticatedUser(context.request, context.env.DB)
   if (!user) return json({ error: 'Authentication required.' }, 401)
   if (!await canView(context.env.DB, user.roleId, user.roleName)) return json({ error: 'Stock Report view access is required.' }, 403)
   const deleteAllowed = await canDelete(context.env.DB, user.roleId, user.roleName)
+  const editAllowed = await canEdit(context.env.DB, user.roleId, user.roleName)
   const url = new URL(context.request.url)
   const asOnDate = url.searchParams.get('as_on_date')?.trim() || new Date().toISOString().slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(asOnDate)) return json({ error: 'As On Date is invalid.' }, 400)
@@ -105,7 +115,9 @@ export async function onRequestGet(context: Context): Promise<Response> {
       FROM inventory_stock_ledger WHERE transaction_at < datetime(?,'+1 day','-5 hours','-30 minutes') GROUP BY inventory_stock_id
     ), report AS (
       SELECT m.id, m.material_type, m.material_no, m.reel_number, m.paper_type, m.gsm, m.bf, m.reel_size_cm,
-        m.color, m.vendor_name AS supplier, m.purchase_order_number, '' location_name,
+        m.color, m.vendor_id, m.vendor_name AS supplier, m.purchase_order_id, m.purchase_order_number,
+        m.purchase_order_line_item_id, m.item_name, m.item_description, m.po_quantity, m.po_unit, '' location_name,
+        m.reel_weight_kg, m.status AS material_status,
         0 AS opening_stock,
         (m.reel_weight_kg - COALESCE(la.net_all,0)) + COALESCE(ld.received,0) AS received_qty,
         COALESCE(ld.issued,0) issued_qty, COALESCE(ld.returned,0) returned_qty,
@@ -122,6 +134,14 @@ export async function onRequestGet(context: Context): Promise<Response> {
           AND NOT EXISTS (SELECT 1 FROM inventory_stock_ledger isl WHERE isl.inventory_stock_id=m.id)
           AND NOT EXISTS (SELECT 1 FROM inventory_material_issues imi WHERE imi.inventory_stock_id=m.id)
         THEN 1 ELSE 0 END AS can_delete,
+        CASE WHEN
+          NOT EXISTS (SELECT 1 FROM inventory_stock_ledger isl WHERE isl.inventory_stock_id=m.id AND isl.movement='OUT')
+          AND NOT EXISTS (SELECT 1 FROM job_tracking_reel_consumptions jtrc WHERE jtrc.inventory_stock_id=m.id)
+          AND NOT EXISTS (SELECT 1 FROM inventory_material_issues imi WHERE imi.inventory_stock_id=m.id AND imi.status='COMPLETED')
+          AND NOT EXISTS (SELECT 1 FROM job_card_process_entries jpe WHERE (jpe.inventory_stock_id=m.id OR jpe.inventory_stock_id_2=m.id) AND jpe.process_status='COMPLETED')
+        THEN 1 ELSE 0 END AS can_edit,
+        CASE WHEN EXISTS (SELECT 1 FROM material_inventory_edit_requests mier WHERE mier.inventory_stock_id=m.id AND mier.status='PENDING_APPROVAL')
+          THEN 1 ELSE 0 END AS edit_pending,
         CASE WHEN ld.last_transaction > m.created_at THEN ld.last_transaction ELSE m.created_at END last_transaction_date,
         m.created_at AS received_date
       FROM material_inventory_records m
@@ -141,7 +161,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
       SUM(CASE WHEN closing_stock<0 THEN 1 ELSE 0 END) negative_stock
       FROM report ${whereStatus} GROUP BY uom`).bind(...commonValues).all(),
   ])
-  const reportRows = (rows.results ?? []).map((row) => ({ ...row, can_delete: deleteAllowed ? row.can_delete : 0 }))
+  const reportRows = (rows.results ?? []).map((row) => ({ ...row, can_delete: deleteAllowed ? row.can_delete : 0, can_edit: editAllowed ? row.can_edit : 0 }))
   return json({ rows: reportRows, totals: totals.results ?? [], page, pageSize, total: count?.count ?? 0, lowStockAvailable: false, asOnDate })
 }
 

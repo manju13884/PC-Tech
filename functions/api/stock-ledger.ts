@@ -42,6 +42,16 @@ export async function onRequestGet(context: Context): Promise<Response> {
     INNER JOIN material_inventory_records m ON m.id=l.inventory_stock_id
     LEFT JOIN users creator ON creator.id=l.created_by_user_id
     LEFT JOIN users approver ON approver.id=l.approved_by_user_id
+  ), edit_entries AS (
+    SELECT -1000000000-h.id AS sort_id, h.action_at AS transaction_at, 'MATERIAL EDIT' AS transaction_type,
+      'MATERIAL_EDIT' AS reference_type, m.material_no AS reference_number, m.material_no, m.item_name,
+      m.reel_number, '' AS location_name, 0 AS in_qty, 0 AS out_qty, m.reel_weight_kg AS balance, 'KG' AS uom,
+      'Material Edit Approval' AS source, r.requested_by_name AS created_by, h.action_by_name AS approved_by,
+      'Old Values: ' || h.old_values || '; New Values: ' || h.proposed_values || '; Reason: ' || h.reason AS remarks
+    FROM material_inventory_edit_history h
+    INNER JOIN material_inventory_edit_requests r ON r.id=h.edit_request_id
+    INNER JOIN material_inventory_records m ON m.id=h.inventory_stock_id
+    WHERE h.action_type='APPROVED'
   ), receipts AS (
     SELECT -m.id AS sort_id, m.created_at AS transaction_at, 'Material Receipt' AS transaction_type,
       'MATERIAL_INVENTORY' AS reference_type, m.material_no AS reference_number, m.material_no, m.item_name,
@@ -55,7 +65,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
     LEFT JOIN inventory_stock_ledger l ON l.inventory_stock_id=m.id
     LEFT JOIN users creator ON creator.id=m.created_by_user_id
     GROUP BY m.id
-  ), movements AS (SELECT * FROM receipts UNION ALL SELECT * FROM ledger_entries)
+  ), movements AS (SELECT * FROM receipts UNION ALL SELECT * FROM ledger_entries UNION ALL SELECT * FROM edit_entries)
   SELECT * FROM movements ${clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''}
   ORDER BY transaction_at DESC, sort_id DESC LIMIT 1000`
   const result = await db.prepare(query).bind(...values).all()

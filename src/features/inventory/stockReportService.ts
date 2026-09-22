@@ -1,10 +1,18 @@
 export interface StockReportRow {
   id: number; material_type: string; material_no: string; reel_number: string; paper_type: string
   gsm: number; bf: number | null; reel_size_cm: number; color: string; supplier: string
-  purchase_order_number: string; location_name: string; opening_stock: number; received_qty: number
+  vendor_id:string; purchase_order_id:string; purchase_order_number: string; purchase_order_line_item_id:string
+  item_name:string; item_description:string|null; po_quantity:number; po_unit:string|null
+  location_name: string; opening_stock: number; received_qty: number
   issued_qty: number; returned_qty: number; adjustment_increase: number; adjustment_decrease: number
   closing_stock: number; uom: string; last_transaction_date: string; received_date: string
   reel_status: 'Available' | 'Reserved' | 'Consumed'; reserved_for_job: string | null; can_delete: number
+  can_edit: number; edit_pending: number; reel_weight_kg: number; material_status: 'Available' | 'Hold' | 'Consumed'
+}
+export interface MaterialEditRequest {
+  id:number; inventory_stock_id:number; status:'PENDING_APPROVAL'|'APPROVED'|'REJECTED'; old_values:string
+  proposed_values:string; edit_reason:string; requested_by_name:string; requested_at:string; reviewed_by_name:string|null
+  reviewed_at:string|null; rejection_reason:string|null; material_no:string; reel_number:string; item_name:string
 }
 export interface StockReportTotal { uom: string; total_materials: number; total_stock: number; in_stock: number; zero_stock: number; negative_stock: number }
 export interface StockReportResult { rows: StockReportRow[]; totals: StockReportTotal[]; page: number; pageSize: number; total: number; lowStockAvailable: boolean; asOnDate: string }
@@ -27,4 +35,14 @@ export async function deleteMaterialStock(id: number, reason: string): Promise<s
   const payload = await response.json().catch(() => ({})) as { error?: string; message?: string }
   if (!response.ok) throw new Error(payload.error || 'Unable to delete the Material Stock row.')
   return payload.message || 'Material Stock row deleted successfully.'
+}
+async function editRequest(body: Record<string, unknown>) {
+  const response = await fetch('/api/material-edit-requests', { method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) })
+  const payload = await response.json().catch(() => ({})) as { error?:string }
+  if (!response.ok) throw new Error(payload.error || 'Unable to process Material Edit request.')
+}
+export const submitMaterialEdit = (body: Record<string, unknown>) => editRequest(body)
+export const reviewMaterialEdit = (id:number, action:'approve'|'reject', rejectionReason='') => editRequest({ id, action, rejection_reason:rejectionReason })
+export async function loadMaterialEditRequests(): Promise<MaterialEditRequest[]> {
+  return (await get<{ requests:MaterialEditRequest[] }>('/api/material-edit-requests')).requests
 }

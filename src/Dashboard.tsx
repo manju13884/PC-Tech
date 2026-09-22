@@ -2239,7 +2239,7 @@ export default function Dashboard({
                 <StockReport username={username} />
               )}
               {selectedItem.key === 'material-stock' && (
-                <StockReport username={username} />
+                <StockReport username={username} userRole={userRole} />
               )}
               {selectedItem.key === 'material-issue-return' && (
                 <MaterialIssue />

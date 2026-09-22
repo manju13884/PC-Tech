@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Eye, RotateCcw, Trash2, X } from "lucide-react";
+import { ClipboardCheck, Download, Eye, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import { formatIstDateTime } from "../../utils/dateTimeFormatting";
 import {
   deleteMaterialStock,
@@ -10,6 +10,7 @@ import {
   type StockTransaction,
 } from "./stockReportService";
 import "./stock-report.css";
+import { MaterialEditApprovals, MaterialEditDialog } from "./MaterialEditWorkflow";
 
 const today = () =>
   new Intl.DateTimeFormat("en-CA", {
@@ -46,7 +47,7 @@ const esc = (v: unknown) =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-export default function StockReport({ username }: { username: string }) {
+export default function StockReport({ username, userRole = "" }: { username: string; userRole?: string }) {
   const [filters, setFilters] = useState(initial);
   const [report, setReport] = useState<StockReportResult>({
     rows: [],
@@ -67,6 +68,8 @@ export default function StockReport({ username }: { username: string }) {
   const [deleteRow, setDeleteRow] = useState<StockReportRow | null>(null);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [editRow, setEditRow] = useState<StockReportRow | null>(null);
+  const [showApprovals, setShowApprovals] = useState(false);
   const load = async (next = filters) => {
     setBusy(true);
     setError("");
@@ -340,6 +343,7 @@ export default function StockReport({ username }: { username: string }) {
           >
             <Download size={13} /> Export Excel
           </button>
+          {userRole === "SUPERADMIN" && <button className="approvals" onClick={() => setShowApprovals(true)}><ClipboardCheck size={13}/> Edit Approvals</button>}
         </div>
       </section>
       <section className="stock-report-summary">
@@ -445,6 +449,12 @@ export default function StockReport({ username }: { username: string }) {
                       <button title="View Transactions" onClick={() => void viewTransactions(v)}>
                         <Eye size={13} />
                       </button>
+                      {Boolean(v.edit_pending) ? <span className="edit-pending-badge">Edit Pending Approval</span> : <button
+                        className="edit"
+                        disabled={!Boolean(v.can_edit)}
+                        title={v.can_edit ? "Edit material" : "Cannot edit – material already consumed/issued."}
+                        onClick={() => { setEditRow(v); setError(""); setNotice("") }}
+                      ><Pencil size={13}/></button>}
                       <button
                         className="delete"
                         disabled={!Boolean(v.can_delete)}
@@ -590,6 +600,12 @@ export default function StockReport({ username }: { username: string }) {
             </footer>
           </section>
         </div>
+      )}
+      {editRow && (
+        <MaterialEditDialog row={editRow} onClose={() => setEditRow(null)} onDone={(message) => { setEditRow(null); setNotice(message); void load(filters) }} />
+      )}
+      {showApprovals && (
+        <MaterialEditApprovals onClose={() => setShowApprovals(false)} onChanged={() => void load(filters)} />
       )}
     </div>
   );
