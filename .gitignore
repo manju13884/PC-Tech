@@ -12,6 +12,10 @@ dist/
 
 # Logs
 *.log
+.local-logs/
+
+# Vite temporary config bundles
+vite.config.*.timestamp-*.mjs
 
 # Local Wrangler authentication state
 .wrangler-auth-local/
