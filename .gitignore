@@ -19,3 +19,6 @@ vite.config.*.timestamp-*.mjs
 
 # Local Wrangler authentication state
 .wrangler-auth-local/
+
+# Local Python utility caches
+__pycache__/

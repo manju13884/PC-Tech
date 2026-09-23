@@ -116,7 +116,7 @@ test('missing or malformed configuration and statuses fail closed', () => {
 
 for (const [field, value, label] of [
   ['quality_name', '', 'Quality'], ['quality_name', '   ', 'Quality'],
-  ['dispatch_name', '', 'Dispatch'], ['manufactured_quantity', null, 'Manufactured Qty'],
+  ['manufactured_quantity', null, 'Manufactured Qty'],
   ['manufactured_quantity', 0, 'Manufactured Qty'], ['manufactured_quantity', -1, 'Manufactured Qty'],
   ['manufactured_quantity', 'invalid', 'Manufactured Qty'],
 ]) {
@@ -132,7 +132,8 @@ for (const [field, value, label] of [
 test('lists only missing requirements together', () => {
   const record = { ...job(stages, []), quality_name: '', dispatch_name: '', manufactured_quantity: 0 };
   const error = validation.jobCompletionError(record);
-  for (const label of ['Production Processes', 'Quality', 'Dispatch', 'Manufactured Qty']) assert.ok(error.includes(label));
+  assert.doesNotMatch(error, /Dispatch/);
+  for (const label of ['Production Processes', 'Quality', 'Manufactured Qty']) assert.ok(error.includes(label));
   record.process_entries_json = job(stages, Array(6).fill('COMPLETED')).process_entries_json;
   assert.ok(!validation.jobCompletionError(record).includes('Production Processes'));
 });
@@ -191,3 +192,13 @@ test('Paper Cutting and Corrugation default In Qty to zero without overriding sa
   }
   assert.equal(value(undefined, 'Pasting'), '');
 });
+
+for (const dispatch_name of [undefined, null, '', '   ']) {
+  test(`Dispatch (${dispatch_name}) is optional for UI and API job completion`, async () => {
+    const record = { ...job(stages, Array(6).fill('COMPLETED')), dispatch_name };
+    assert.equal(validation.jobCompletionError(record), null);
+    const result = await complete(record);
+    assert.equal(result.response.status, 200);
+    assert.equal(result.batches.length, 1);
+  });
+}

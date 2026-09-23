@@ -5,7 +5,6 @@ type ProcessEntry = { process_name?: string; process_status?: string | null };
 export function jobCompletionError(job: {
   job_number?: string | null;
   quality_name?: string | null;
-  dispatch_name?: string | null;
   manufactured_quantity?: number | string | null;
   attributes_json?: string | null;
   process_entries_json?: string | null;
@@ -24,7 +23,6 @@ export function jobCompletionError(job: {
   } catch { /* Missing statuses are incomplete. */ }
   const missing: string[] = [];
   if (!job.quality_name?.trim()) missing.push('Quality');
-  if (!job.dispatch_name?.trim()) missing.push('Dispatch');
   if (!Number.isFinite(Number(job.manufactured_quantity)) || Number(job.manufactured_quantity) <= 0) missing.push('Manufactured Qty (must be greater than 0)');
   const requirements = missing.length ? ` Please complete the following: ${missing.join('; ')}.` : '';
   if (!stages.length) return `Job Card ${job.job_number} cannot be completed because no Job Process Steps are configured (Production Processes).${requirements}`;

@@ -1,4 +1,5 @@
 import { getAuthenticatedUser } from '../lib/authenticatedUser'
+import { fgAllowed } from '../lib/finishedGoodsStock'
 
 interface Env { DB?: D1Database }
 interface Context { request: Request; env: Env }
@@ -21,7 +22,7 @@ export async function onRequestGet(context:Context):Promise<Response>{
   const from=url.searchParams.get('from_date')?.trim()||''
   const to=url.searchParams.get('to_date')?.trim()||''
   if((from&&!/^\d{4}-\d{2}-\d{2}$/.test(from))||(to&&!/^\d{4}-\d{2}-\d{2}$/.test(to)))return json({error:'Enter valid From and To dates.'},400)
-  const clauses=['card.manufactured_quantity > 0','plan.deleted_at IS NULL']
+  const clauses=["card.status = 'COMPLETED'",'card.manufactured_quantity > 0','plan.deleted_at IS NULL']
   const values:unknown[]=[]
   const manufacturedAt=`COALESCE(
     (SELECT MAX(entry.completed_at) FROM job_card_process_entries entry WHERE entry.job_card_id=card.id AND entry.process_status='COMPLETED'),
@@ -34,8 +35,9 @@ export async function onRequestGet(context:Context):Promise<Response>{
   const reportSql=`SELECT card.id AS job_card_id,line.id AS production_plan_line_id,line.zoho_sales_order_id,
     line.sales_order_number,line.zoho_customer_id,line.customer_name,line.zoho_item_id,line.item_name,
     line.item_description,spec.polar_canvas_item_code,card.job_number,${manufacturedAt} AS manufactured_date,
-    card.manufactured_quantity,line.uom
+    card.manufactured_quantity,balance.dispatched_quantity,balance.stock_adjustment,balance.closing_stock,line.uom
     FROM job_cards card
+    INNER JOIN finished_goods_balances balance ON balance.job_card_id=card.id
     INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
     INNER JOIN production_plans plan ON plan.id=line.production_plan_id
     LEFT JOIN product_specification_records spec ON spec.id=line.approved_specification_revision_id
@@ -46,8 +48,10 @@ export async function onRequestGet(context:Context):Promise<Response>{
   const customers=await db.prepare(`SELECT DISTINCT line.zoho_customer_id AS customer_id,line.customer_name
     FROM job_cards card INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
     INNER JOIN production_plans plan ON plan.id=line.production_plan_id
-    WHERE card.manufactured_quantity>0 AND plan.deleted_at IS NULL ORDER BY line.customer_name`).all()
-  return json({rows:rows.results??[],customers:customers.results??[]})
+    WHERE card.status='COMPLETED' AND card.manufactured_quantity>0 AND plan.deleted_at IS NULL ORDER BY line.customer_name`).all()
+  const canDispatch=await fgAllowed(db,user,'dispatch')
+  const canAdjust=await fgAllowed(db,user,'adjust')
+  return json({rows:rows.results??[],customers:customers.results??[],canDispatch,canAdjust})
  }catch(error){
   console.error('[finished-goods-stock] load failed',error)
   return json({error:'Unable to load Finished Goods Stock. Please retry.'},500)

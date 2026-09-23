@@ -38,6 +38,7 @@ interface ZohoLineItem {
 }
 
 export interface InvoiceSummary {
+  sales_order_numbers?: string[]
   invoice_id: string
   invoice_number: string
   customer_id: string
@@ -223,6 +224,10 @@ function mapInvoice(invoice: ZohoInvoice): InvoiceSummary | null {
 
   return {
     invoice_id: invoiceId,
+    ...((invoice.salesorders || invoice.salesorder_number) ? { sales_order_numbers: [
+      normalizeText(invoice.salesorder_number),
+      ...(Array.isArray(invoice.salesorders) ? invoice.salesorders : invoice.salesorders ? [invoice.salesorders] : []).map(order => normalizeText(order.salesorder_number)),
+    ].filter(Boolean) } : {}),
     invoice_number: invoiceNumber,
     customer_id: invoice.customer_id != null ? String(invoice.customer_id) : '',
     date: normalizeText(invoice.date),
