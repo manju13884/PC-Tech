@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
+import { basename, resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
 import ts from 'typescript';
@@ -10,6 +11,14 @@ function load(path, imports) {
   runInNewContext(ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText,
     { exports, Response, Request, URL, console, require: name => { assert.ok(name in imports, name); return imports[name]; } });
   return exports;
+}
+// Exercise the same complete statements and trigger conversion used by remote D1 releases.
+function remoteMigration(path) {
+  const runner = readFileSync('scripts/apply-locked-d1-migration.mjs', 'utf8')
+    .split('if (checkOnly) {')[0].replace(/^import .*$/gm, '');
+  return runInNewContext(`${runner} statements.map(makeCloudflareCompatible);`, {
+    readFileSync, basename, resolve, process: { argv: ['node', 'runner', path] },
+  }).join('\n');
 }
 function fixture(beforeMigration = () => {}) {
   const sqlite = new DatabaseSync(':memory:');
@@ -24,9 +33,9 @@ function fixture(beforeMigration = () => {}) {
     INSERT INTO production_plan_lines VALUES(1,1,'C1','Customer','SO1','SO-00125','I1','Box','5 Ply Box',1,'Nos');
     INSERT INTO job_cards VALUES(1,1,'JC-000123','COMPLETED',1000,'2026-09-23','2026-09-23');
   `);
-  sqlite.exec(readFileSync('migrations/0053_create_finished_goods_dispatches.sql', 'utf8'));
+  sqlite.exec(remoteMigration('migrations/0053_create_finished_goods_dispatches.sql'));
   beforeMigration(sqlite);
-  sqlite.exec(readFileSync('migrations/0054_create_finished_goods_adjustments.sql', 'utf8'));
+  sqlite.exec(remoteMigration('migrations/0054_create_finished_goods_adjustments.sql'));
   let beforeWrite = async () => {};
   const db = { prepare(sql) {
     let args = [];

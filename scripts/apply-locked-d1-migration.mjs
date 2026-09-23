@@ -13,10 +13,12 @@ const allowedMigrations = new Set([
   '0044_add_material_issue_invoice_mapping.sql',
   '0045_add_finished_goods_stock_permission.sql',
   '0048_add_material_stock_deletion_audit.sql',
+  '0053_create_finished_goods_dispatches.sql',
+  '0054_create_finished_goods_adjustments.sql',
 ])
 const migrationName = migrationPath ? basename(migrationPath) : ''
 if (!allowedMigrations.has(migrationName)) {
-  throw new Error('Only reviewed Inventory and Job Tracking recovery migrations 0038-0045 are allowed.')
+  throw new Error('Only explicitly reviewed Inventory and Job Tracking migrations are allowed.')
 }
 
 function splitSql(sql) {
