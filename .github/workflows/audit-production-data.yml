@@ -1,55 +1,41 @@
-name: Audit Production Data
-
+name: One-Time Read-Only Production Snapshot
 on:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
-  audit:
+  export:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Checkout main branch
-        uses: actions/checkout@v5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: npm
-
-      - name: Install pinned dependencies
-        run: npm ci
-
-      - name: Count production records
+      - name: Create private snapshot directory
+        run: mkdir -m 700 snapshot
+      - name: Export Production READ ONLY
         uses: cloudflare/wrangler-action@v4
         with:
+          wranglerVersion: "4.107.1"
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute pc-tech-production-db --remote --env production --command="SELECT (SELECT COUNT(*) FROM product_specification_records) AS specifications, (SELECT COUNT(*) FROM production_plans WHERE deleted_at IS NULL) AS production_plans, (SELECT COUNT(*) FROM production_plan_lines) AS production_lines, (SELECT COUNT(*) FROM job_cards) AS job_cards;"
-
-      - name: Verify G K UDYOG specifications
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute pc-tech-production-db --remote --env production --command="SELECT id, polar_canvas_item_code, customer_id, customer_name, item_name FROM product_specification_records WHERE customer_id = '898884000001896067' OR UPPER(customer_name) = 'G K UDYOG' ORDER BY id;"
-
-      - name: Verify Production Pages project
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages project list
-
-      - name: Verify Production Pages D1 binding
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 export pc-tech-production-db --remote --env production --output=snapshot/production.sql
+      - name: Verify export and stamp source manifest
         run: |
-          curl --fail --silent --show-error \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/pc-tech-production" \
-            | jq '{production_branch: .result.production_branch, production_d1: .result.deployment_configs.production.d1_databases, preview_d1: .result.deployment_configs.preview.d1_databases}'
+          python3 - <<'PY'
+          import hashlib,json,pathlib,datetime
+          p=pathlib.Path('snapshot/production.sql')
+          assert p.stat().st_size>0
+          text=p.read_text()
+          assert 'CREATE TABLE' in text and 'INSERT INTO' in text
+          manifest={'source_database':'pc-tech-production-db','source_database_id':'e863e5c3-b60f-48a5-8fdd-862f1ac52eaf','direction':'PRODUCTION_TO_LOCAL','exported_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'size':p.stat().st_size}
+          pathlib.Path('snapshot/manifest.json').write_text(json.dumps(manifest,indent=2))
+          print('Production read-only export verified:',p.stat().st_size,'bytes')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-to-local-snapshot
+          path: snapshot/
+          retention-days: 1
+          if-no-files-found: error
