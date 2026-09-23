@@ -113,7 +113,7 @@ export default function JobTracking() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return jobs.filter((job) => (status === 'ALL' || job.job_status === status) && (!term || `${job.job_number} ${job.plan_number} ${job.sales_order_number} ${job.specification_code} ${job.customer_name} ${job.product_name} ${job.item_description}`.toLowerCase().includes(term)));
+    return jobs.filter((job) => (status === 'ALL' ? job.job_status !== 'COMPLETED' && job.job_status !== 'CANCELLED' : job.job_status === status) && (!term || `${job.job_number} ${job.plan_number} ${job.sales_order_number} ${job.specification_code} ${job.customer_name} ${job.product_name} ${job.item_description}`.toLowerCase().includes(term)));
   }, [jobs, search, status]);
 
   const saveStatus = async (jobCardId: number, nextStatus: JobStatus, completionSummary: ReelSummary[] = []) => {

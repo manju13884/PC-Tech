@@ -22,7 +22,7 @@ const today = () =>
 const n = (value: number) =>
   new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 }).format(value);
 const date = (value: string) =>
-  value ? formatIstDateTime(new Date(value)) : "â€”";
+  value ? formatIstDateTime(new Date(value)) : "—";
 const initial = () => ({
   as_on_date: today(),
   material_type: "",
@@ -137,24 +137,24 @@ export default function StockReport({ username, userRole = "" }: { username: str
         "Material Type",
         "Material",
         "Reel / Lot No.",
+        "Reel Status",
+        "Reserved For Job",
         "Paper Type",
         "GSM",
         "BF",
         "Reel Size",
         "Color",
+        "Received Qty",
+        "Issued Qty",
+        "Closing Stock",
+        "UOM",
         "Supplier",
         "PO Number",
         "Location",
         "Opening Stock",
-        "Received Qty",
-        "Issued Qty",
         "Returned Qty",
         "Adjustment Increase",
         "Adjustment Decrease",
-        "Closing Stock",
-        "Reel Status",
-        "Reserved For Job",
-        "UOM",
         "Last Transaction Date",
       ];
       const rows = exported.rows.map((v, i) => [
@@ -162,27 +162,27 @@ export default function StockReport({ username, userRole = "" }: { username: str
         v.material_type,
         v.material_no,
         v.reel_number,
+        v.reel_status,
+        v.reserved_for_job || "-",
         v.paper_type,
         v.gsm,
         v.bf ?? "",
         v.reel_size_cm,
         v.color,
+        v.received_qty,
+        v.issued_qty,
+        v.closing_stock,
+        v.uom,
         v.supplier,
         v.purchase_order_number,
         v.location_name || "-",
         v.opening_stock,
-        v.received_qty,
-        v.issued_qty,
         v.returned_qty,
         v.adjustment_increase,
         v.adjustment_decrease,
-        v.closing_stock,
-        v.reel_status,
-        v.reserved_for_job || "-",
-        v.uom,
         date(v.last_transaction_date),
       ]);
-      const numeric = new Set([0, 5, 6, 7, 12, 13, 14, 15, 16, 17, 18]);
+      const numeric = new Set([0, 7, 8, 9, 11, 12, 13, 18, 19, 20, 21]);
       const rowXml = rows
         .map(
           (row) =>
@@ -292,7 +292,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
             <option value="">All</option>
             <option value="IN_STOCK">In Stock</option>
             <option value="LOW_STOCK" disabled>
-              Low Stock â€” threshold not configured
+              Low Stock — threshold not configured
             </option>
             <option value="ZERO_STOCK">Zero Stock</option>
           </select>
@@ -371,7 +371,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
         </article>
         <article>
           <span>Low Stock</span>
-          <strong title="Threshold not configured">â€”</strong>
+          <strong title="Threshold not configured">—</strong>
         </article>
       </section>
       <section className="stock-report-grid">
@@ -391,17 +391,17 @@ export default function StockReport({ username, userRole = "" }: { username: str
                   "BF",
                   "Reel Size",
                   "Color",
+                  "Received Qty",
+                  "Issued Qty",
+                  "Closing Stock",
+                  "UOM",
                   "Supplier",
                   "PO Number",
                   "Location",
                   "Opening Stock",
-                  "Received Qty",
-                  "Issued Qty",
                   "Returned Qty",
                   "Adjustment Increase",
                   "Adjustment Decrease",
-                  "Closing Stock",
-                  "UOM",
                   "Last Transaction Date",
                   "Actions",
                 ].map((v) => (
@@ -432,17 +432,17 @@ export default function StockReport({ username, userRole = "" }: { username: str
                   <td>{v.bf ?? "-"}</td>
                   <td>{v.reel_size_cm ?? "-"}</td>
                   <td>{v.color || "-"}</td>
+                  <td>{n(v.received_qty)}</td>
+                  <td>{n(v.issued_qty)}</td>
+                  <td>{n(v.closing_stock)}</td>
+                  <td>{v.uom}</td>
                   <td>{v.supplier || "-"}</td>
                   <td>{v.purchase_order_number || "-"}</td>
                   <td>{v.location_name || "-"}</td>
                   <td>{n(v.opening_stock)}</td>
-                  <td>{n(v.received_qty)}</td>
-                  <td>{n(v.issued_qty)}</td>
                   <td>{n(v.returned_qty)}</td>
                   <td>{n(v.adjustment_increase)}</td>
                   <td>{n(v.adjustment_decrease)}</td>
-                  <td>{n(v.closing_stock)}</td>
-                  <td>{v.uom}</td>
                   <td>{date(v.last_transaction_date)}</td>
                   <td>
                     <span className="stock-report-row-actions">
@@ -452,7 +452,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
                       {Boolean(v.edit_pending) ? <span className="edit-pending-badge">Edit Pending Approval</span> : <button
                         className="edit"
                         disabled={!Boolean(v.can_edit)}
-                        title={v.can_edit ? "Edit material" : "Cannot edit â€“ material already consumed/issued."}
+                        title={v.can_edit ? "Edit material" : "Cannot edit – material already consumed/issued."}
                         onClick={() => { setEditRow(v); setError(""); setNotice("") }}
                       ><Pencil size={13}/></button>}
                       <button
@@ -518,7 +518,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
               <div>
                 <h3>Stock Transactions</h3>
                 <p>
-                  {transactionTitle} Â· As on {filters.as_on_date}
+                  {transactionTitle} · As on {filters.as_on_date}
                 </p>
               </div>
               <button onClick={() => setTransactions(null)}>
@@ -583,7 +583,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
         <div className="stock-report-modal stock-delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-material-title">
           <section>
             <header>
-              <div><h3 id="delete-material-title">Delete Material Stock</h3><p>{deleteRow.material_no} Â· Reel {deleteRow.reel_number}</p></div>
+              <div><h3 id="delete-material-title">Delete Material Stock</h3><p>{deleteRow.material_no} · Reel {deleteRow.reel_number}</p></div>
               <button disabled={deleting} onClick={() => setDeleteRow(null)}><X size={15} /></button>
             </header>
             <div className="stock-delete-body">
@@ -596,7 +596,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
             </div>
             <footer>
               <button className="secondary" disabled={deleting} onClick={() => setDeleteRow(null)}>Cancel</button>
-              <button className="danger" disabled={deleting || !deleteReason.trim()} onClick={() => void confirmDelete()}>{deleting ? "Deletingâ€¦" : "Delete Row"}</button>
+              <button className="danger" disabled={deleting || !deleteReason.trim()} onClick={() => void confirmDelete()}>{deleting ? "Deleting…" : "Delete Row"}</button>
             </footer>
           </section>
         </div>

@@ -932,7 +932,7 @@ export function JobCard({ line, processEditable = false, reelEditable = processE
                 <ReelDetailCell stage={stage} label="Remaining Reel Weight" entry={entry} field="remaining_reel_weight" secondField="remaining_reel_weight_2" numeric processEditable={processEditable} reelEditable={reelEditable} savingProcessKey={savingProcessKey} onChange={onProcessValueChange} inventoryReels={inventoryReels} onReelSelect={onReelSelect} onReelConsume={onReelConsume} />
                 <td>
                   {processEditable ? (
-                    <input key={`${stage}:in:${entry?.in_quantity ?? ''}`} className="job-card-process-entry" aria-label={`${stage} In Qty`} inputMode="decimal" defaultValue={entry?.in_quantity ?? ''} disabled={savingProcessKey === `${stage}:in_quantity`} onBlur={(event) => onProcessValueChange?.(stage, 'in_quantity', event.target.value)} />
+                    <input key={`${stage}:in:${entry?.in_quantity ?? ''}`} className="job-card-process-entry" aria-label={`${stage} In Qty`} inputMode="decimal" defaultValue={entry?.in_quantity ?? (stage === 'Paper Cutting' || stage === 'Corrugation' ? 0 : '')} disabled={savingProcessKey === `${stage}:in_quantity`} onBlur={(event) => onProcessValueChange?.(stage, 'in_quantity', event.target.value)} />
                   ) : numberText(entry?.in_quantity)}
                 </td>
                 <td>

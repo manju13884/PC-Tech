@@ -124,6 +124,8 @@ async function completeProcess(db: D1Database, jobCardId: number, processName: s
           : null,
       ].filter((value): value is NonNullable<typeof value> => value !== null)
     : [];
+  if (processName === 'Corrugation' && selected.length < 2)
+    return { error: 'Corrugation requires 2 reels. Please select both reels before completing this process.', status: 400 };
   if (reelProcesses.includes(processName) && !selected.length)
     return {
       error: `Select Reel No. for ${processName} before completing the Process.`,
@@ -675,9 +677,10 @@ export async function onRequestPatch(context: Context): Promise<Response> {
       409,
     );
   }
+  if (status === 'COMPLETED' && currentJob.status === 'COMPLETED') return json({ success: true, ...(await trackedJobsAndReels(db, user)) });
   if (status === 'COMPLETED') {
     const completionJob = await db.prepare(`
-      SELECT card.job_number, spec.attributes_json,
+      SELECT card.job_number, spec.attributes_json, card.quality_name, card.dispatch_name, card.manufactured_quantity,
         COALESCE((SELECT json_group_array(json_object(
           'process_entry_id', entry.id, 'process_name', entry.process_name, 'process_status', entry.process_status
         )) FROM job_card_process_entries entry WHERE entry.job_card_id=card.id), '[]') AS process_entries_json
@@ -685,7 +688,7 @@ export async function onRequestPatch(context: Context): Promise<Response> {
       INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
       LEFT JOIN product_specification_records spec ON spec.id=line.approved_specification_revision_id
       WHERE card.id=?
-    `).bind(jobCardId).first<{ job_number: string; attributes_json: string | null; process_entries_json: string }>();
+    `).bind(jobCardId).first<{ job_number: string; quality_name: string | null; dispatch_name: string | null; manufactured_quantity: number | null; attributes_json: string | null; process_entries_json: string }>();
     if (!completionJob) return json({ error: 'Job Card was not found.' }, 404);
     const completionError = jobCompletionError(completionJob);
     if (completionError) return json({ error: completionError }, 409);
