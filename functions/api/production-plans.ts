@@ -1,4 +1,5 @@
 import { getZohoSalesOrderById } from '../../lib/salesOrders'
+import { cachedSalesOrder } from '../../lib/salesOrderCache'
 import type { ZohoEnv } from '../../lib/zoho'
 import {
   getAuthenticatedUser,
@@ -16,6 +17,7 @@ interface SubmittedLine {
   salesOrderId?: unknown
   lineItemId?: unknown
   productionQuantity?: unknown
+  topSheetQuantity?: unknown
   twoPlyQuantity?: unknown
   deckleSize?: unknown
   cutLengthCm?: unknown
@@ -200,7 +202,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
       `SELECT line.id, plan.id AS plan_id, plan.plan_number, plan.plan_date,
        CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS plan_status,
        line.customer_name, line.sales_order_number, line.delivery_date, line.item_name, line.item_description,
-       line.production_quantity, line.two_ply_quantity, line.deckle_size, line.cut_length_cm, line.uom, line.product_type, line.ply,
+       line.production_quantity, line.top_sheet_quantity, line.two_ply_quantity, line.deckle_size, line.cut_length_cm, line.uom, line.product_type, line.ply,
        spec.polar_canvas_item_code AS specification_code, spec.length_mm, spec.width_mm, spec.height_mm, spec.attributes_json
        FROM production_plan_lines line
        INNER JOIN production_plans plan ON plan.id = line.production_plan_id
@@ -279,6 +281,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const quantities = new Map<string, number>()
   const productionDates = new Map<string, string>()
   const deliveryDates = new Map<string, string>()
+  const topSheetQuantities = new Map<string, number>()
   const twoPlyQuantities = new Map<string, number | null>()
   const deckleSizes = new Map<string, string>()
   const cutLengthsCm = new Map<string, number>()
@@ -289,6 +292,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
     const lineId =
       typeof entry.lineItemId === 'string' ? entry.lineItemId.trim() : ''
     const quantity = Number(entry.productionQuantity)
+    const topSheetQuantity = Number(entry.topSheetQuantity)
+    if (!Number.isFinite(topSheetQuantity) || topSheetQuantity <= 0)
+      return json({ error: 'Every included row requires a valid positive Top Sheet quantity.' }, 400)
     const twoPlyQuantity = entry.twoPlyQuantity == null || entry.twoPlyQuantity === '' ? null : Number(entry.twoPlyQuantity)
     const deckleSizeCm = typeof entry.deckleSize === 'string' ? Number(entry.deckleSize.trim()) : Number.NaN
     const deckleSize = Number.isFinite(deckleSizeCm) && deckleSizeCm >= 0
@@ -325,6 +331,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
       )
     }
     quantities.set(lineId, quantity)
+    topSheetQuantities.set(lineId, topSheetQuantity)
     twoPlyQuantities.set(lineId, Number.isFinite(twoPlyQuantity) && twoPlyQuantity! >= 0 ? twoPlyQuantity : null)
     deckleSizes.set(lineId, deckleSize)
     cutLengthsCm.set(lineId, cutLengthCm)
@@ -336,7 +343,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   try {
     const orders = (
       await Promise.all(
-        [...orderIds].map((id) => getZohoSalesOrderById(id, context.env)),
+        [...orderIds].map((id) => cachedSalesOrder(context.env, id, () => getZohoSalesOrderById(id, context.env), true)),
       )
     ).filter((order): order is NonNullable<typeof order> => Boolean(order))
     if (orders.length !== orderIds.size)
@@ -502,8 +509,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
             `INSERT INTO production_plan_lines (production_plan_id, zoho_customer_id, customer_name, zoho_sales_order_id,
          sales_order_number, sales_order_date, zoho_sales_order_line_item_id, zoho_item_id, item_name, item_description,
          customer_po_number, delivery_date, ordered_quantity, previously_planned_quantity, balance_quantity,
-         production_quantity, two_ply_quantity, deckle_size, cut_length_cm, uom, customer_product_specification_id, approved_specification_revision_id, product_type, ply)
-         VALUES ((SELECT id FROM production_plans WHERE plan_number = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         production_quantity, top_sheet_quantity, two_ply_quantity, deckle_size, cut_length_cm, uom, customer_product_specification_id, approved_specification_revision_id, product_type, ply)
+         VALUES ((SELECT id FROM production_plans WHERE plan_number = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .bind(
             planNumber,
@@ -522,6 +529,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
             previous,
             Math.max(0, line.quantity - line.quantity_invoiced - previous),
             quantity,
+            topSheetQuantities.get(lineId),
             twoPlyQuantities.get(lineId),
             deckleSizes.get(lineId),
             cutLengthsCm.get(lineId),

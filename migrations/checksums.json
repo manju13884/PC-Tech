@@ -52,5 +52,7 @@
   "0051_add_so_production_status_permission.sql": "9c2bddb5f9a08b80152b591fd2a527eb5d27a00c8fff6181e8c7fccaee8f2b0f",
   "0052_create_material_edit_requests.sql": "f0713ff26c48257ba6d613702eada0f1db3d44fb5aa3e0e0aefecf887fd16ed7",
   "0053_create_finished_goods_dispatches.sql": "0077cbeb81ea7b864c3383d7104b8b69233399ed45e50a65571cb44de442902f",
-  "0054_create_finished_goods_adjustments.sql": "0382f090674d30590547d287fa58aace4c0f0b6f7a5e2d96cee5bde888605206"
+  "0054_create_finished_goods_adjustments.sql": "0382f090674d30590547d287fa58aace4c0f0b6f7a5e2d96cee5bde888605206",
+  "0055_create_sales_order_cache.sql": "a15bb1be641ddcb0fc499c36bc096ade076506c3c48548ec71859ec8d39e2bc3",
+  "0056_add_production_top_sheet_quantity.sql": "e2e399aca1f315b9265a535505b1e67f93d283617220925ffcfe0a64e8afe4b1"
 }

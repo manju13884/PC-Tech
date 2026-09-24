@@ -1,4 +1,5 @@
 import { getZohoSalesOrderById, getZohoSalesOrdersByCustomer } from '../../lib/salesOrders'
+import { cachedCustomerSalesOrders, cachedSalesOrder } from '../../lib/salesOrderCache'
 import type { ZohoEnv } from '../../lib/zoho'
 import { getAuthenticatedUser } from '../lib/authenticatedUser'
 
@@ -59,11 +60,11 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const mappings = Array.isArray(body.mappings) ? body.mappings as MappingInput[] : []
   if (!customerId || !salesOrderId) return json({ error: 'Customer and Sales Order are required.' }, 400)
 
-  const customerOrders = await getZohoSalesOrdersByCustomer(customerId, context.env)
+  const customerOrders = await cachedCustomerSalesOrders(context.env, customerId, () => getZohoSalesOrdersByCustomer(customerId, context.env), true)
   if (!customerOrders.some((order) => order.salesorder_id === salesOrderId)) {
     return json({ error: 'The selected Sales Order does not belong to the selected customer.' }, 400)
   }
-  const salesOrder = await getZohoSalesOrderById(salesOrderId, context.env)
+  const salesOrder = await cachedSalesOrder(context.env, salesOrderId, () => getZohoSalesOrderById(salesOrderId, context.env), true)
   if (!salesOrder) return json({ error: 'Sales Order was not found.' }, 404)
   const salesOrderStatus = ((salesOrder.status ?? '').trim().toLowerCase().match(/[a-z]+/g) ?? []).join('')
   if (['closed', 'void', 'voided', 'invoiced'].includes(salesOrderStatus)) {

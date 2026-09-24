@@ -75,8 +75,8 @@ const AdvancedBoxDimensions: React.FC<AdvancedBoxDimensionsProps> = ({
         <AdvancedLabelInput label="Length (mm)" value={length} placeholder="Enter length" onChange={(e) => onLengthChange(e.target.value)} />
         <AdvancedLabelInput label="Breadth (mm)" value={breadth} placeholder="Enter breadth" onChange={(e) => onBreadthChange(e.target.value)} />
         <AdvancedLabelInput label="Height (mm)" value={height} placeholder="Enter height" onChange={(e) => onHeightChange(e.target.value)} />
-        <AdvancedLabelInput label="SIZE (cm)" value={fmt(deckleSize)} onChange={(e) => onDeckleSizeChange(e.target.value)} isBold />
-        <AdvancedLabelInput label="DECKLE L (cm)" value={fmt(deckleLength)} onChange={(e) => onDeckleLengthChange(e.target.value)} isBold />
+        <AdvancedLabelInput label="DECKLE SIZE (cm)" value={fmt(deckleSize)} onChange={(e) => onDeckleSizeChange(e.target.value)} isBold calculated readOnly />
+        <AdvancedLabelInput label="CUT LENGTH (cm)" value={fmt(deckleLength)} onChange={(e) => onDeckleLengthChange(e.target.value)} isBold calculated readOnly />
       </div>
 
       <div className="advanced-box-specifications-results" aria-live="polite" aria-atomic="true">

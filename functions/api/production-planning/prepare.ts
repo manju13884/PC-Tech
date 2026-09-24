@@ -1,4 +1,5 @@
 import { getZohoSalesOrderById } from '../../../lib/salesOrders'
+import { cachedSalesOrder } from '../../../lib/salesOrderCache'
 import type { ZohoEnv } from '../../../lib/zoho'
 import { getAuthenticatedUser } from '../../lib/authenticatedUser'
 
@@ -58,7 +59,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
   try {
     const orders = (
       await Promise.all(
-        salesOrderIds.map((id) => getZohoSalesOrderById(id, context.env)),
+        salesOrderIds.map((id) => cachedSalesOrder(context.env, id, () => getZohoSalesOrderById(id, context.env))),
       )
     ).filter((order): order is NonNullable<typeof order> => Boolean(order))
     if (orders.length !== salesOrderIds.length)

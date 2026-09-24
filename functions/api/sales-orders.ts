@@ -1,9 +1,10 @@
 import { getZohoSalesOrderById, getZohoSalesOrdersByCustomer } from '../../lib/salesOrders'
+import { cachedCustomerSalesOrders, cachedSalesOrder } from '../../lib/salesOrderCache'
 import { ZohoRequestError, type ZohoEnv } from '../../lib/zoho'
 
 interface PagesFunctionContext {
   request: Request
-  env: ZohoEnv
+  env: ZohoEnv & { DB?: D1Database }
 }
 
 export async function onRequestGet(context: PagesFunctionContext): Promise<Response> {
@@ -17,13 +18,13 @@ export async function onRequestGet(context: PagesFunctionContext): Promise<Respo
 
   try {
     if (salesOrderId) {
-      const salesOrder = await getZohoSalesOrderById(salesOrderId, context.env)
+      const salesOrder = await cachedSalesOrder(context.env, salesOrderId, () => getZohoSalesOrderById(salesOrderId, context.env))
       return salesOrder
         ? Response.json(salesOrder, { status: 200 })
         : Response.json({ error: 'Sales Order not found' }, { status: 404 })
     }
 
-    return Response.json(await getZohoSalesOrdersByCustomer(customerId, context.env), { status: 200 })
+    return Response.json(await cachedCustomerSalesOrders(context.env, customerId, () => getZohoSalesOrdersByCustomer(customerId, context.env)), { status: 200 })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to load sales orders'
     const status = error instanceof ZohoRequestError ? error.status : 502

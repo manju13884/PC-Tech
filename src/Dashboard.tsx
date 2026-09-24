@@ -2119,6 +2119,7 @@ export default function Dashboard({
             </span>
           </button>
           {visibleMenuGroups.map((group) => {
+            const isActiveParent = group.items.some((item) => item.key === selectedKey)
             const isExpanded = expandedMenuGroups.has(group.title)
             const groupId = `menu-group-${group.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 
@@ -2126,7 +2127,7 @@ export default function Dashboard({
             <div key={group.title} className={`menu-group${isExpanded ? ' expanded' : ''}`}>
               <button
                 type="button"
-                className="menu-group-toggle"
+                className={`menu-group-toggle${isActiveParent ? ' active-parent' : ''}`}
                 onClick={() => toggleMenuGroup(group.title)}
                 aria-expanded={isExpanded}
                 aria-controls={groupId}

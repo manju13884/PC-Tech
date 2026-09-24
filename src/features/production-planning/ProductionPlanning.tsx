@@ -43,6 +43,7 @@ interface PlanLine {
   previouslyPlannedQuantity: number
   balanceQuantity: number
   productionQuantity: number
+  topSheetQuantity: number | null
   twoPlyQuantity: number | null
   deckleSize: string
   cutLengthCm: number | null
@@ -140,7 +141,7 @@ const PlanningGridHeader = () => (
     </tr>
     <tr className="production-grid-columns">
       <th>Sale Order<br />No.</th><th>PC Item<br />Code <span className="production-required-mark" aria-label="required">*</span></th><th>Customer</th>
-      <th>Production<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Delivery<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Box<br />Qty <span className="production-required-mark" aria-label="required">*</span></th><th>Top<br />Sheet</th><th>2 Ply<br />Qty</th>
+      <th>Production<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Delivery<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Box<br />Qty <span className="production-required-mark" aria-label="required">*</span></th><th>Top<br />Sheet <span className="production-required-mark" aria-label="required">*</span></th><th>2 Ply<br />Qty</th>
       <th>Product Description</th>
       <th>L</th><th>W</th><th>H</th><th>Product<br />Type</th><th>Ply</th>
       <th className="machine-flute-header">Flute<br />Run</th><th className="machine-deckle-header">Deckle Size<br />(CM)</th><th className="machine-cut-length-header">Cut Length<br />(CM)</th><th>Top<br />GSM (G/N)</th><th>Top<br />BF</th>
@@ -236,6 +237,7 @@ export default function ProductionPlanning() {
         setLines(data.lines.map((value) => ({
           ...value,
           productionDate: value.productionDate || todayIso(),
+          topSheetQuantity: value.productionQuantity,
           twoPlyQuantity: calculateTwoPlyQuantity(value.productionQuantity, value.ply),
           deckleSize: preloadedDeckleSize(value),
           cutLengthCm: value.cutLengthCm ?? calculatedCutLengthCm(value.lengthMm, value.widthMm),
@@ -265,6 +267,8 @@ export default function ProductionPlanning() {
         !Number.isFinite(v.productionQuantity) ||
         v.productionQuantity <= 0 ||
         v.productionQuantity > v.balanceQuantity ||
+        !Number.isFinite(v.topSheetQuantity) ||
+        (v.topSheetQuantity ?? 0) <= 0 ||
         !Number.isFinite(v.cutLengthCm) ||
         (v.cutLengthCm ?? 0) <= 0 ||
         !v.productionDate ||
@@ -281,6 +285,7 @@ export default function ProductionPlanning() {
           salesOrderId: v.salesOrderId,
           lineItemId: v.lineItemId,
           productionQuantity: v.productionQuantity,
+          topSheetQuantity: v.topSheetQuantity,
           twoPlyQuantity: v.twoPlyQuantity,
           deckleSize: v.deckleSize,
           cutLengthCm: v.cutLengthCm,
@@ -314,8 +319,8 @@ export default function ProductionPlanning() {
       <td><label className="production-date-control" title="Select Production Date"><span>{formatPlanDate(v.productionDate || todayIso())}</span><input className="production-date" aria-label="Production Date" type="date" min={todayIso()} value={v.productionDate || todayIso()} onClick={(e) => e.currentTarget.showPicker?.()} onChange={(e) => setLines((all) => all.map((x) => ({ ...x, productionDate: e.target.value })))} /></label></td>
       <td><label className="production-date-control" title="Select Delivery Date"><span>{v.deliveryDate ? formatPlanDate(v.deliveryDate) : 'Select date'}</span><input className="production-date" aria-label="Delivery Date" type="date" value={v.deliveryDate || ''} onClick={(e) => e.currentTarget.showPicker?.()} onChange={(e) => setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deliveryDate: e.target.value } : x))} /></label></td>
       <td><input aria-label="Box Qty" title={`Maximum available quantity: ${v.balanceQuantity}`} className="production-quantity" type="number" min="0.001" max={v.balanceQuantity} step="any" value={v.productionQuantity} disabled={!v.included} onChange={(e) => { const productionQuantity = Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, productionQuantity, twoPlyQuantity: calculateTwoPlyQuantity(productionQuantity, x.ply) } : x)) }} /></td>
-      <td className="numeric">{v.productionQuantity}</td>
-      <td><input aria-label="2 Ply Qty" className="production-quantity" type="number" min="0" step="any" value={v.twoPlyQuantity ?? calculateTwoPlyQuantity(v.productionQuantity, v.ply) ?? ''} disabled={!v.included} onChange={(e) => { const twoPlyQuantity = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, twoPlyQuantity } : x)) }} /></td>
+      <td><input aria-label="Top Sheet" className="production-quantity" type="number" min="0.001" step="any" required value={v.topSheetQuantity ?? ''} disabled={!v.included} onChange={(e) => { const topSheetQuantity = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, topSheetQuantity } : x)) }} /></td>
+      <td><input aria-label="2 Ply Qty" className="production-quantity" type="number" min="0" step="any" value={v.twoPlyQuantity ?? ''} disabled={!v.included} onChange={(e) => { const twoPlyQuantity = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, twoPlyQuantity } : x)) }} /></td>
       <td className="production-description" title={v.itemDescription}>{v.itemDescription || v.itemName}</td>
       <td className="numeric">{numberText(v.lengthMm)}</td><td className="numeric">{numberText(v.widthMm)}</td><td className="numeric">{numberText(v.heightMm)}</td>
       <td>{v.productType || '—'}</td><td>{v.ply ? `${v.ply} Ply` : '—'}</td><td>{fluteRun}</td><td><input aria-label="Deckle Size" title="Deckle Size in CM" className="production-quantity" type="text" value={v.deckleSize ?? preloadedDeckleSize(v)} disabled={!v.included} onChange={(e) => { const deckleSize = e.target.value; setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deckleSize } : x)) }} /></td><td><input aria-label="Cut Length in CM" className="production-quantity" type="number" min="0.001" step="any" value={v.cutLengthCm ?? ''} disabled={!v.included} onChange={(e) => { const cutLengthCm = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, cutLengthCm } : x)) }} /></td>

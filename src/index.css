@@ -531,6 +531,21 @@ main.app-shell::after {
   transition: transform 0.18s ease;
 }
 
+.menu-group-toggle.active-parent {
+  background: #dbeafe;
+  color: #1e40af;
+  font-weight: 750;
+  box-shadow: inset 3px 0 0 #152b68;
+}
+
+.menu-group-toggle.active-parent:hover {
+  background: #bfdbfe;
+}
+
+.menu-group-toggle.active-parent .menu-group-chevron {
+  color: inherit;
+}
+
 .menu-group.expanded .menu-group-chevron {
   transform: rotate(90deg);
 }

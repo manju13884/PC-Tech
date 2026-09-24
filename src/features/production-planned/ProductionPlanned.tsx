@@ -28,6 +28,7 @@ interface SavedPlanLine {
   item_name: string;
   item_description: string;
   production_quantity: number;
+  top_sheet_quantity: number | null;
   two_ply_quantity: number | null;
   deckle_size: string;
   cut_length_cm: number | null;
@@ -497,7 +498,7 @@ export default function ProductionPlanned() {
                       {numberText(line.production_quantity)}
                     </td>
                     <td className="numeric">
-                      {numberText(line.production_quantity)}
+                      {numberText(line.top_sheet_quantity ?? line.production_quantity)}
                     </td>
                     <td className="numeric">{numberText(twoPly)}</td>
                     <td>
