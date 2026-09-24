@@ -242,3 +242,7 @@
   }
   .job-card-sheet footer strong { padding: .5mm 1.2mm 1mm; text-align: center; font-size: 10pt; }
 }
+
+.job-card-machine-summary{display:grid;grid-template-columns:1fr .5fr 1fr 1fr;gap:4px;margin:0;text-align:center}
+.job-card-machine-summary dt{font-weight:700}
+.job-card-machine-summary dd{margin:2px 0 0}

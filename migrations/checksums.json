@@ -54,5 +54,7 @@
   "0053_create_finished_goods_dispatches.sql": "0077cbeb81ea7b864c3383d7104b8b69233399ed45e50a65571cb44de442902f",
   "0054_create_finished_goods_adjustments.sql": "0382f090674d30590547d287fa58aace4c0f0b6f7a5e2d96cee5bde888605206",
   "0055_create_sales_order_cache.sql": "a15bb1be641ddcb0fc499c36bc096ade076506c3c48548ec71859ec8d39e2bc3",
-  "0056_add_production_top_sheet_quantity.sql": "e2e399aca1f315b9265a535505b1e67f93d283617220925ffcfe0a64e8afe4b1"
+  "0056_add_production_top_sheet_quantity.sql": "e2e399aca1f315b9265a535505b1e67f93d283617220925ffcfe0a64e8afe4b1",
+  "0057_add_production_ups.sql": "e1cd1266553fa0c5a041d9ac75e39204558c1deb2956ca250d0a39a76208a720",
+  "0058_preserve_unplanned_machine_settings.sql": "a1aab0696c9a0aae027622a293341cc0a22c01eeb7b9a962dd5d3ca70678469c"
 }

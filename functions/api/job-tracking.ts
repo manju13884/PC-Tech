@@ -36,7 +36,7 @@ const selectTrackedJobs = `
     CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS plan_status,
     plan.remarks AS plan_remarks, line.customer_name, line.sales_order_number,
     line.delivery_date, line.item_name, line.item_description, line.customer_po_number, line.production_quantity,
-    line.two_ply_quantity, line.deckle_size, line.cut_length_cm, line.uom, line.product_type, line.ply,
+    line.two_ply_quantity, line.ups, line.flute_run, line.deckle_size, line.cut_length_cm, line.uom, line.product_type, line.ply,
     spec.polar_canvas_item_code AS specification_code, spec.product_name, spec.length_mm, spec.width_mm,
     spec.height_mm, spec.print_required, spec.print_colors, spec.notes AS specification_notes, spec.attributes_json,
     COALESCE((SELECT json_group_array(json_object(

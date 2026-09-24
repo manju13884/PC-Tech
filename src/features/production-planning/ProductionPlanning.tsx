@@ -19,6 +19,8 @@ import {
   type SalesOrder,
 } from '../../salesOrderService'
 import { calculateTwoPlyQuantity } from './productionPlanningCalculations'
+import { dimensionsForProductionLine, formatProductionDimension, initializeProductionMachine, updateProductionUps } from './productionMachineDimensions'
+import { parseProductionUps } from './productionUps'
 import { calculatedCutLengthCm } from './cutLength'
 import { isTwoPlyRoll, twoPlyRollLayers } from './twoPlyRollComposition'
 import '../product-specifications/product-specifications.css'
@@ -45,6 +47,9 @@ interface PlanLine {
   productionQuantity: number
   topSheetQuantity: number | null
   twoPlyQuantity: number | null
+  fluteRun: string
+  restoredMachineSettings?: boolean
+  ups: number | null
   deckleSize: string
   cutLengthCm: number | null
   productionDate: string
@@ -89,7 +94,10 @@ const calculatedDeckleSize = (line: PlanLine) => line.widthMm != null && line.he
   : line.widthMm == null ? '' : millimetresToCentimetres(line.widthMm)
 const preloadedDeckleSize = (line: PlanLine) => {
   const savedDeckle = line.specificationAttributes?.paper_layers?.find((layer) => layer.deckle_size?.trim())?.deckle_size
-  return savedDeckle?.trim() ? millimetresToCentimetres(savedDeckle) : calculatedDeckleSize(line)
+  const savedDeckleMm = Number(savedDeckle)
+  return Number.isFinite(savedDeckleMm) && savedDeckleMm > 0
+    ? millimetresToCentimetres(savedDeckleMm)
+    : calculatedDeckleSize(line)
 }
 const todayIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const customerDisplayName = (customer: Customer) => customer.gst_number
@@ -136,15 +144,15 @@ const PlanningGridHeader = () => (
       <th className="group-production" colSpan={3}>Production</th>
       <th className="group-product" colSpan={1}>Product</th>
       <th className="group-construction" colSpan={5}>Outer Dimensions (OD) in mm &amp; Construction</th>
-      <th className="group-machine" colSpan={3}>Machine Setup</th>
+      <th className="group-machine" colSpan={4}>Machine Setup</th>
       <th className="group-paper" colSpan={12}>Paper Composition</th>
     </tr>
     <tr className="production-grid-columns">
       <th>Sale Order<br />No.</th><th>PC Item<br />Code <span className="production-required-mark" aria-label="required">*</span></th><th>Customer</th>
-      <th>Production<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Delivery<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Box<br />Qty <span className="production-required-mark" aria-label="required">*</span></th><th>Top<br />Sheet <span className="production-required-mark" aria-label="required">*</span></th><th>2 Ply<br />Qty</th>
+      <th>Production<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Delivery<br />Date <span className="production-required-mark" aria-label="required">*</span></th><th>Box<br />Qty <span className="production-required-mark" aria-label="required">*</span></th><th>Top<br />Sheet <span className="production-required-mark" aria-label="required">*</span></th><th>2 Ply<br />Qty <span className="production-required-mark" aria-label="required">*</span></th>
       <th>Product Description</th>
       <th>L</th><th>W</th><th>H</th><th>Product<br />Type</th><th>Ply</th>
-      <th className="machine-flute-header">Flute<br />Run</th><th className="machine-deckle-header">Deckle Size<br />(CM)</th><th className="machine-cut-length-header">Cut Length<br />(CM)</th><th>Top<br />GSM (G/N)</th><th>Top<br />BF</th>
+      <th className="machine-flute-header">Flute<br />Run</th><th className="machine-ups-header">Ups <span className="production-required-mark" aria-label="required">*</span></th><th className="machine-deckle-header">Deckle Size<br />(CM) <span className="production-required-mark" aria-label="required">*</span></th><th className="machine-cut-length-header">Cut Length<br />(CM) <span className="production-required-mark" aria-label="required">*</span></th><th>Top<br />GSM (G/N)</th><th>Top<br />BF</th>
       <th>B Flute<br />GSM (G/N)</th><th>B Flute<br />BF</th><th>B Liner<br />GSM (G/N)</th><th>B Liner<br />BF</th>
       <th>A Flute<br />GSM (G/N)</th><th>A Flute<br />BF</th><th>A Liner<br />GSM (G/N)</th>
       <th>C Flute<br />GSM (G/N)</th><th>C Flute<br />BF</th><th>C Liner<br />GSM (G/N)</th>
@@ -161,7 +169,7 @@ const PlanningGridColumns = () => (
     <col className="col-description" />
     <col className="col-dimension" /><col className="col-dimension" /><col className="col-dimension" />
     <col className="col-product-type" /><col className="col-ply" /><col className="col-flute-run" />
-    <col className="col-deckle" /><col className="col-cut-length" />
+    <col className="col-ups" /><col className="col-deckle" /><col className="col-cut-length" />
     {Array.from({ length: 12 }, (_, index) => <col className="col-paper" key={index} />)}
   </colgroup>
 )
@@ -234,15 +242,20 @@ export default function ProductionPlanning() {
           salesOrderIds: nextSelected.map((value) => value.salesorder_id),
         })
         setSelected(nextSelected)
-        setLines(data.lines.map((value) => ({
-          ...value,
-          productionDate: value.productionDate || todayIso(),
-          topSheetQuantity: value.productionQuantity,
-          twoPlyQuantity: calculateTwoPlyQuantity(value.productionQuantity, value.ply),
-          deckleSize: preloadedDeckleSize(value),
-          cutLengthCm: value.cutLengthCm ?? calculatedCutLengthCm(value.lengthMm, value.widthMm),
-          included: value.productionStatus === 'READY',
-        })))
+        setLines((current) => data.lines.map((value) => {
+          const previous = current.find((line) => line.salesOrderId === value.salesOrderId && line.lineItemId === value.lineItemId)
+          return initializeProductionMachine({
+            ...value,
+            productionDate: value.productionDate || todayIso(),
+            topSheetQuantity: value.productionQuantity,
+            twoPlyQuantity: calculateTwoPlyQuantity(value.productionQuantity, value.ply),
+            fluteRun: value.fluteRun ?? (value.specificationAttributes?.paper_layers ?? []).filter((layer) => layer.flute).map((layer) => layer.flute).join(' + '),
+            ups: parseProductionUps(value.ups) ?? 1,
+            deckleSize: value.deckleSize ?? preloadedDeckleSize(value),
+            cutLengthCm: value.restoredMachineSettings ? value.cutLengthCm : value.cutLengthCm != null && Number.isFinite(value.cutLengthCm) && value.cutLengthCm > 0 ? value.cutLengthCm : calculatedCutLengthCm(value.lengthMm, value.widthMm),
+            included: value.productionStatus === 'READY',
+          }, previous)
+        }))
         setOrderId('')
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : 'Unable to add the Sales Order.')
@@ -269,6 +282,11 @@ export default function ProductionPlanning() {
         v.productionQuantity > v.balanceQuantity ||
         !Number.isFinite(v.topSheetQuantity) ||
         (v.topSheetQuantity ?? 0) <= 0 ||
+        parseProductionUps(v.ups) == null ||
+        !Number.isFinite(v.twoPlyQuantity) ||
+        (v.twoPlyQuantity ?? -1) < 0 ||
+        !Number.isFinite(Number(v.deckleSize)) ||
+        Number(v.deckleSize) <= 0 ||
         !Number.isFinite(v.cutLengthCm) ||
         (v.cutLengthCm ?? 0) <= 0 ||
         !v.productionDate ||
@@ -276,6 +294,10 @@ export default function ProductionPlanning() {
         !v.deliveryDate,
     )
   const submit = async (action: 'draft' | 'generate') => {
+    if (included.some((line) => parseProductionUps(line.ups) == null)) {
+      setError('Ups must be a positive whole number.')
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -287,6 +309,8 @@ export default function ProductionPlanning() {
           productionQuantity: v.productionQuantity,
           topSheetQuantity: v.topSheetQuantity,
           twoPlyQuantity: v.twoPlyQuantity,
+          fluteRun: v.fluteRun,
+          ups: v.ups,
           deckleSize: v.deckleSize,
           cutLengthCm: v.cutLengthCm,
           productionDate: v.productionDate,
@@ -304,6 +328,7 @@ export default function ProductionPlanning() {
     }
   }
   const renderPlanningRow = (v: PlanLine, index: number) => {
+    const isCalculated = dimensionsForProductionLine(v, 1) != null
     const layers = v.specificationAttributes?.paper_layers ?? []
     const twoPlyRoll = isTwoPlyRoll(v.itemName, v.itemDescription, v.productType)
     const rollLayers = twoPlyRollLayers(layers)
@@ -312,7 +337,7 @@ export default function ProductionPlanning() {
     const bLiner = twoPlyRoll ? undefined : linerAfterFlute(v, 'B')
     const aFlute = twoPlyRoll ? undefined : layerForFlute(v, 'A'), aLiner = twoPlyRoll ? undefined : linerAfterFlute(v, 'A')
     const cFlute = twoPlyRoll ? undefined : layerForFlute(v, 'C'), cLiner = twoPlyRoll ? undefined : linerAfterFlute(v, 'C')
-    const fluteRun = (v.specificationAttributes?.paper_layers ?? []).filter((layer) => layer.flute).map((layer) => layer.flute).join(' + ') || '—'
+    const fluteRun = v.fluteRun || '\u2014'
     const cell = (layer: PaperLayer | undefined, key: 'gsm' | 'bf_rct') => layer?.[key] || '—'
     return <tr key={`${v.salesOrderId}-${v.lineItemId}`} className={v.productionStatus === 'SPECIFICATION_MISSING' ? 'is-missing' : ''}>
       <td><span className="production-row-index">{index + 1}<button type="button" className="production-row-remove" aria-label={`Remove ${v.salesOrderNumber} ${v.itemName}`} title="Remove row" onClick={() => removeLine(v)}><X size={12} /></button></span></td><td className="production-text-cell" title={v.salesOrderNumber}>{v.salesOrderNumber}</td><td title={v.specificationCode || 'Specification Missing'}>{v.specificationCode ? <button type="button" className="production-spec-link" onClick={() => setViewingSpecification(v)}>{v.specificationCode}</button> : <span className="production-spec-missing">Specification Missing</span>}</td><td className="production-text-cell" title={v.customerName}>{v.customerName}</td>
@@ -320,10 +345,10 @@ export default function ProductionPlanning() {
       <td><label className="production-date-control" title="Select Delivery Date"><span>{v.deliveryDate ? formatPlanDate(v.deliveryDate) : 'Select date'}</span><input className="production-date" aria-label="Delivery Date" type="date" value={v.deliveryDate || ''} onClick={(e) => e.currentTarget.showPicker?.()} onChange={(e) => setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deliveryDate: e.target.value } : x))} /></label></td>
       <td><input aria-label="Box Qty" title={`Maximum available quantity: ${v.balanceQuantity}`} className="production-quantity" type="number" min="0.001" max={v.balanceQuantity} step="any" value={v.productionQuantity} disabled={!v.included} onChange={(e) => { const productionQuantity = Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, productionQuantity, twoPlyQuantity: calculateTwoPlyQuantity(productionQuantity, x.ply) } : x)) }} /></td>
       <td><input aria-label="Top Sheet" className="production-quantity" type="number" min="0.001" step="any" required value={v.topSheetQuantity ?? ''} disabled={!v.included} onChange={(e) => { const topSheetQuantity = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, topSheetQuantity } : x)) }} /></td>
-      <td><input aria-label="2 Ply Qty" className="production-quantity" type="number" min="0" step="any" value={v.twoPlyQuantity ?? ''} disabled={!v.included} onChange={(e) => { const twoPlyQuantity = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, twoPlyQuantity } : x)) }} /></td>
+      <td><input aria-label="2 Ply Qty" className="production-quantity" type="number" min="0" step="any" required value={v.twoPlyQuantity ?? ''} disabled={!v.included} onChange={(e) => { const twoPlyQuantity = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, twoPlyQuantity } : x)) }} /></td>
       <td className="production-description" title={v.itemDescription}>{v.itemDescription || v.itemName}</td>
       <td className="numeric">{numberText(v.lengthMm)}</td><td className="numeric">{numberText(v.widthMm)}</td><td className="numeric">{numberText(v.heightMm)}</td>
-      <td>{v.productType || '—'}</td><td>{v.ply ? `${v.ply} Ply` : '—'}</td><td>{fluteRun}</td><td><input aria-label="Deckle Size" title="Deckle Size in CM" className="production-quantity" type="text" value={v.deckleSize ?? preloadedDeckleSize(v)} disabled={!v.included} onChange={(e) => { const deckleSize = e.target.value; setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deckleSize } : x)) }} /></td><td><input aria-label="Cut Length in CM" className="production-quantity" type="number" min="0.001" step="any" value={v.cutLengthCm ?? ''} disabled={!v.included} onChange={(e) => { const cutLengthCm = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, cutLengthCm } : x)) }} /></td>
+      <td>{v.productType || '—'}</td><td>{v.ply ? `${v.ply} Ply` : '—'}</td><td>{fluteRun}</td><td className="machine-ups-cell"><input aria-label="Ups" className="production-quantity production-ups" type="number" min="1" step="1" required value={v.ups ?? ''} disabled={!v.included} aria-invalid={v.included && parseProductionUps(v.ups) == null} title="Ups must be a positive whole number" onChange={(e) => { const ups = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? updateProductionUps(x, ups) : x)) }} /></td><td className="machine-deckle-cell"><input aria-label="Deckle Size" readOnly={isCalculated} title={isCalculated ? "Calculated from dimensions and Ups (CM)" : "Deckle Size in CM"} className="production-quantity" required type="text" value={isCalculated ? formatProductionDimension(v.deckleSize === '' ? null : Number(v.deckleSize)) : v.deckleSize ?? preloadedDeckleSize(v)} disabled={!v.included} onBlur={() => setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId && !isCalculated && !x.deckleSize.trim() ? { ...x, deckleSize: calculatedDeckleSize(x) } : x))} onChange={(e) => { const deckleSize = e.target.value; setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, deckleSize } : x)) }} /></td><td className="machine-cut-length-cell"><input aria-label="Cut Length in CM" readOnly={isCalculated} title={isCalculated ? "Calculated from dimensions and Ups (CM)" : "Cut Length in CM"} className="production-quantity" type="number" min="0.001" step="any" required value={isCalculated ? formatProductionDimension(v.cutLengthCm) : v.cutLengthCm ?? ''} disabled={!v.included} onBlur={() => setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId && !isCalculated && x.cutLengthCm == null ? { ...x, cutLengthCm: calculatedCutLengthCm(x.lengthMm, x.widthMm) } : x))} onChange={(e) => { const cutLengthCm = e.target.value === '' ? null : Number(e.target.value); setLines((all) => all.map((x) => x.salesOrderId === v.salesOrderId && x.lineItemId === v.lineItemId ? { ...x, cutLengthCm } : x)) }} /></td>
       {twoPlyRoll ? <td colSpan={12} className="two-ply-roll-composition"><div>
         <span><b>Top GSM</b>{formatLayerGsm(top)}</span><span><b>Top BF</b>{cell(top, 'bf_rct')}</span>
         <span><b>Flute GSM</b>{formatLayerGsm(bFlute)}</span><span><b>Flute BF</b>{cell(bFlute, 'bf_rct')}</span>
@@ -353,6 +378,7 @@ export default function ProductionPlanning() {
           {error}
         </p>
       )}
+      {included.some((line) => parseProductionUps(line.ups) == null) && <p className="production-planning-message is-error" role="alert">Ups must be a positive whole number.</p>}
       {step === 'select' && (
         <>
           <section className="product-spec-filterbar production-planning-filterbar">
@@ -416,7 +442,7 @@ export default function ProductionPlanning() {
                   {lines.map(renderPlanningRow)}
                   {!lines.length && (
                     <tr>
-                      <td colSpan={30} className="production-planning-empty">
+                      <td colSpan={31} className="production-planning-empty">
                         No Sales Orders selected.
                       </td>
                     </tr>

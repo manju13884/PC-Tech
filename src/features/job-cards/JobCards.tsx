@@ -34,6 +34,8 @@ export interface JobCardLine {
   customer_po_number: string;
   production_quantity: number;
   two_ply_quantity: number | null;
+  ups?: number;
+  flute_run?: string | null;
   deckle_size: string;
   cut_length_cm: number | null;
   uom: string;
@@ -123,6 +125,18 @@ const readAttributes = (line: JobCardLine): JobCardAttributes => {
     return {};
   }
 };
+function MachineConfiguration({ line }: { line: JobCardLine }) {
+  const layers = readAttributes(line).paper_layers ?? [];
+  const fluteRun = line.flute_run ?? layers.filter((layer) => layer.flute).map((layer) => layer.flute).join(' + ');
+  const deckleMm = Number(line.deckle_size || layers.find((layer) => layer.deckle_size)?.deckle_size || (line.width_mm ?? 0) + (line.height_mm ?? 0) + 20);
+  return <>
+    <div><dt>Flute Run</dt><dd>{fluteRun || '\u2014'}</dd></div>
+    <div><dt>Ups</dt><dd>{line.ups ?? 1}</dd></div>
+    <div><dt>Deckle Size (CM)</dt><dd>{deckleMm > 0 ? numberText(deckleMm / 10) : '\u2014'}</dd></div>
+    <div><dt>Cut Length (CM)</dt><dd>{formatCutLengthExpression(line.cut_length_cm ?? calculatedCutLengthCm(line.length_mm, line.width_mm))}</dd></div>
+  </>;
+}
+
 const calculated = (line: JobCardLine) => {
   const attributes = readAttributes(line);
   const layers = attributes.paper_layers ?? [];
@@ -536,7 +550,7 @@ function ProductSpecificationDialog({ line, onClose }: { line: JobCardLine; onCl
               <dt>Outer Dimensions (MM)</dt>
               <dd>{[line.length_mm, line.width_mm, line.height_mm].filter((value) => value != null).join(' X ')}</dd>
             </div>
-            <div><dt>Cut Length (CM)</dt><dd>{formatCutLengthExpression(line.cut_length_cm ?? calculatedCutLengthCm(line.length_mm, line.width_mm))}</dd></div>
+            <MachineConfiguration line={line} />
             <div>
               <dt>Ply</dt>
               <dd>{line.ply ? `${line.ply} Ply` : ''}</dd>
@@ -717,6 +731,9 @@ export function JobCard({ line, processEditable = false, reelEditable = processE
             <th>UV / Dripoff / Varnish</th>
             <td colSpan={2}></td>
           </tr>
+          <tr className="job-card-machine-row">
+            <td colSpan={8}><dl className="job-card-machine-summary"><MachineConfiguration line={line} /></dl></td>
+          </tr>
           <tr className="job-card-creasing-row">
             <td colSpan={8}>
               <dl className="job-card-creasing-summary">
@@ -724,7 +741,6 @@ export function JobCard({ line, processEditable = false, reelEditable = processE
                   <dt>Slotting Size</dt>
                   <dd>{slottingSize == null ? '' : `${numberText(slottingSize)} mm`}</dd>
                 </div>
-                <div><dt>Cut Length (CM)</dt><dd>{formatCutLengthExpression(line.cut_length_cm ?? calculatedCutLengthCm(line.length_mm, line.width_mm))}</dd></div>
                 <div>
                   <dt>Board / Creasing Allowance</dt>
                   <dd>{attributes.board_creasing_allowance ? `${attributes.board_creasing_allowance} mm` : ''}</dd>

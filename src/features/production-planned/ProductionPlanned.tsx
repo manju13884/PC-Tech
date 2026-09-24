@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatIstDate } from "../../utils/dateTimeFormatting";
 import { calculateTwoPlyQuantity } from "../production-planning/productionPlanningCalculations";
 import { calculatedCutLengthCm } from "../production-planning/cutLength";
+import { formatProductionDimension } from "../production-planning/productionMachineDimensions";
 import "../production-planning/production-planning.css";
 import "./production-planned.css";
 
@@ -30,6 +31,8 @@ interface SavedPlanLine {
   production_quantity: number;
   top_sheet_quantity: number | null;
   two_ply_quantity: number | null;
+  ups?: number;
+  flute_run?: string | null;
   deckle_size: string;
   cut_length_cm: number | null;
   uom: string;
@@ -109,6 +112,7 @@ const GridColumns = () => (
     <col className="col-product-type" />
     <col className="col-ply" />
     <col className="col-flute-run" />
+    <col className="col-ups" />
     <col className="col-machine" />
     <col className="col-machine" />
     {Array.from({ length: 12 }, (_, index) => (
@@ -135,7 +139,7 @@ const GridHeader = () => (
       <th className="group-construction" colSpan={5}>
         Outer Dimensions (OD) in mm &amp; Construction
       </th>
-      <th className="group-machine" colSpan={3}>
+      <th className="group-machine" colSpan={4}>
         Machine Setup
       </th>
       <th className="group-paper" colSpan={12}>
@@ -168,6 +172,7 @@ const GridHeader = () => (
         <br />
         Run
       </th>
+      <th>Ups</th>
       <th>Deckle Size<br />(CM)</th>
       <th>Cut Length (CM)</th>
       <th>Top GSM (G/N)</th>
@@ -478,7 +483,7 @@ export default function ProductionPlanned() {
                     ? String(line.width_mm + line.height_mm + 20)
                     : numberText(line.width_mm));
                 const deckleMm = deckleSource === "—" || deckleSource === "" ? Number.NaN : Number(deckleSource);
-                const deckle = Number.isFinite(deckleMm) ? numberText(deckleMm / 10) : "—";
+                const deckle = Number.isFinite(deckleMm) ? formatProductionDimension(deckleMm / 10) : "—";
                 const cutLengthCm = line.cut_length_cm ?? calculatedCutLengthCm(line.length_mm, line.width_mm);
                 const twoPly =
                   line.two_ply_quantity ??
@@ -514,9 +519,10 @@ export default function ProductionPlanned() {
                     <td className="numeric">{numberText(line.height_mm)}</td>
                     <td>{line.product_type || "—"}</td>
                     <td>{line.ply ? `${line.ply} Ply` : "—"}</td>
-                    <td>{fluteRun}</td>
+                    <td>{line.flute_run ?? fluteRun}</td>
+                    <td>{line.ups ?? 1}</td>
                     <td>{deckle}</td>
-                    <td className="numeric">{numberText(cutLengthCm)}</td>
+                    <td className="numeric">{formatProductionDimension(cutLengthCm) || '—'}</td>
                     {twoPlyRoll ? <td colSpan={12} className="two-ply-roll-composition"><div>
                       <span><b>Top GSM</b>{formatLayerGsm(top)}</span><span><b>Top BF</b>{cell(top, "bf_rct")}</span>
                       <span><b>Flute GSM</b>{formatLayerGsm(bFlute)}</span><span><b>Flute BF</b>{cell(bFlute, "bf_rct")}</span>
@@ -538,14 +544,14 @@ export default function ProductionPlanned() {
               })}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={32} className="production-planning-empty">
+                  <td colSpan={33} className="production-planning-empty">
                     No saved Production Plans found.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={32} className="production-planning-empty">
+                  <td colSpan={33} className="production-planning-empty">
                     Loading saved Production Plans...
                   </td>
                 </tr>

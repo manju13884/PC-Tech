@@ -1,3 +1,4 @@
+import { parseProductionUps } from '../../src/features/production-planning/productionUps'
 import { getZohoSalesOrderById } from '../../lib/salesOrders'
 import { cachedSalesOrder } from '../../lib/salesOrderCache'
 import type { ZohoEnv } from '../../lib/zoho'
@@ -19,6 +20,8 @@ interface SubmittedLine {
   productionQuantity?: unknown
   topSheetQuantity?: unknown
   twoPlyQuantity?: unknown
+  fluteRun?: unknown
+  ups?: unknown
   deckleSize?: unknown
   cutLengthCm?: unknown
   productionDate?: unknown
@@ -114,6 +117,25 @@ export async function onRequestDelete(context: Context): Promise<Response> {
   }
   statements.push(
     db.prepare(
+      `INSERT INTO production_planning_machine_settings
+        (sales_order_id, sales_order_line_item_id, flute_run, ups, deckle_size, cut_length_cm)
+       SELECT line.zoho_sales_order_id, line.zoho_sales_order_line_item_id,
+         COALESCE(line.flute_run, (
+           SELECT group_concat(json_extract(layer.value, '$.flute'), ' + ')
+           FROM json_each(CASE WHEN json_valid(spec.attributes_json) THEN spec.attributes_json ELSE '{}' END, '$.paper_layers') layer
+           WHERE COALESCE(json_extract(layer.value, '$.flute'), '') <> ''
+         ), ''), COALESCE(line.ups, 1), line.deckle_size, line.cut_length_cm
+       FROM production_plan_lines line
+       INNER JOIN production_plans plan ON plan.id = line.production_plan_id
+       LEFT JOIN product_specification_records spec ON spec.id = line.approved_specification_revision_id
+       WHERE line.id = ? AND line.production_plan_id = ?
+         AND NOT EXISTS (SELECT 1 FROM job_cards card WHERE card.production_plan_line_id = line.id)
+         AND plan.deleted_at IS NULL AND plan.status IN ('PLANNED', 'DRAFT') AND plan.closure_status <> 'CLOSED'
+       ON CONFLICT(sales_order_id, sales_order_line_item_id) DO UPDATE SET
+         flute_run=excluded.flute_run, ups=excluded.ups, deckle_size=excluded.deckle_size,
+         cut_length_cm=excluded.cut_length_cm, updated_at=CURRENT_TIMESTAMP`,
+    ).bind(line.id, line.production_plan_id),
+    db.prepare(
       `DELETE FROM production_plan_lines
        WHERE id = ? AND production_plan_id = ?
          AND NOT EXISTS (SELECT 1 FROM job_cards card WHERE card.production_plan_line_id = production_plan_lines.id)
@@ -150,7 +172,7 @@ export async function onRequestDelete(context: Context): Promise<Response> {
     ),
   )
   const results = await db.batch(statements)
-  const lineDeleteIndex = jobIds.length ? 3 : 0
+  const lineDeleteIndex = jobIds.length ? 4 : 1
   if (!results[lineDeleteIndex].meta.changes)
     return json({ error: 'The Production activity could not be unplanned because its workflow changed.' }, 409)
   if (linkedCards.length) await db.batch(linkedCards.map((card) => db.prepare(`INSERT INTO job_card_status_history (job_card_id,job_number,previous_status,new_status,reason,changed_by_user_id,changed_by_name) VALUES (NULL,?,?, 'REMOVED','Job Card removed during Production activity unplan',?,?)`).bind(card.job_number,card.status,user.id,user.fullName)))
@@ -202,7 +224,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
       `SELECT line.id, plan.id AS plan_id, plan.plan_number, plan.plan_date,
        CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS plan_status,
        line.customer_name, line.sales_order_number, line.delivery_date, line.item_name, line.item_description,
-       line.production_quantity, line.top_sheet_quantity, line.two_ply_quantity, line.deckle_size, line.cut_length_cm, line.uom, line.product_type, line.ply,
+       line.production_quantity, line.top_sheet_quantity, line.two_ply_quantity, line.ups, line.flute_run, line.deckle_size, line.cut_length_cm, line.uom, line.product_type, line.ply,
        spec.polar_canvas_item_code AS specification_code, spec.length_mm, spec.width_mm, spec.height_mm, spec.attributes_json
        FROM production_plan_lines line
        INNER JOIN production_plans plan ON plan.id = line.production_plan_id
@@ -226,7 +248,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
       `SELECT line.id, line.customer_name, line.sales_order_number, line.sales_order_date,
        line.item_name, line.item_description, line.customer_po_number, line.delivery_date,
        line.ordered_quantity, line.previously_planned_quantity, line.balance_quantity,
-       line.production_quantity, line.uom, line.product_type, line.ply, line.line_status,
+       line.production_quantity, line.ups, line.flute_run, line.deckle_size, line.cut_length_cm, line.uom, line.product_type, line.ply, line.line_status,
        spec.polar_canvas_item_code AS specification_code
        FROM production_plan_lines line
        LEFT JOIN product_specification_records spec ON spec.id = line.approved_specification_revision_id
@@ -283,6 +305,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
   const deliveryDates = new Map<string, string>()
   const topSheetQuantities = new Map<string, number>()
   const twoPlyQuantities = new Map<string, number | null>()
+  const fluteRuns = new Map<string, string>()
+  const upsValues = new Map<string, number>()
   const deckleSizes = new Map<string, string>()
   const cutLengthsCm = new Map<string, number>()
   const orderIds = new Set<string>()
@@ -295,11 +319,17 @@ export async function onRequestPost(context: Context): Promise<Response> {
     const topSheetQuantity = Number(entry.topSheetQuantity)
     if (!Number.isFinite(topSheetQuantity) || topSheetQuantity <= 0)
       return json({ error: 'Every included row requires a valid positive Top Sheet quantity.' }, 400)
-    const twoPlyQuantity = entry.twoPlyQuantity == null || entry.twoPlyQuantity === '' ? null : Number(entry.twoPlyQuantity)
+    const twoPlyQuantity = entry.twoPlyQuantity == null || (typeof entry.twoPlyQuantity === 'string' && entry.twoPlyQuantity.trim() === '') ? null : Number(entry.twoPlyQuantity)
+    if (twoPlyQuantity == null || !Number.isFinite(twoPlyQuantity) || twoPlyQuantity < 0)
+      return json({ error: 'Every included row requires a valid non-negative 2 Ply Qty.' }, 400)
+    if (typeof entry.fluteRun !== 'string')
+      return json({ error: 'Flute Run must be carried from Production Planning.' }, 400)
+    const ups = parseProductionUps(entry.ups)
+    if (ups == null) return json({ error: 'Ups must be a positive whole number.' }, 400)
     const deckleSizeCm = typeof entry.deckleSize === 'string' ? Number(entry.deckleSize.trim()) : Number.NaN
-    const deckleSize = Number.isFinite(deckleSizeCm) && deckleSizeCm >= 0
-      ? String(Number((deckleSizeCm * 10).toFixed(3)))
-      : ''
+    if (!Number.isFinite(deckleSizeCm) || deckleSizeCm <= 0)
+      return json({ error: 'Every included row requires a valid positive Deckle Size in CM.' }, 400)
+    const deckleSize = String(Number((deckleSizeCm * 10).toFixed(3)))
     const cutLengthCm = Number(entry.cutLengthCm)
     const productionDate =
       typeof entry.productionDate === 'string' ? entry.productionDate.trim() : ''
@@ -332,7 +362,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
     }
     quantities.set(lineId, quantity)
     topSheetQuantities.set(lineId, topSheetQuantity)
-    twoPlyQuantities.set(lineId, Number.isFinite(twoPlyQuantity) && twoPlyQuantity! >= 0 ? twoPlyQuantity : null)
+    twoPlyQuantities.set(lineId, twoPlyQuantity)
+    fluteRuns.set(lineId, entry.fluteRun)
+    upsValues.set(lineId, ups)
     deckleSizes.set(lineId, deckleSize)
     cutLengthsCm.set(lineId, cutLengthCm)
     productionDates.set(lineId, productionDate)
@@ -374,14 +406,14 @@ export async function onRequestPost(context: Context): Promise<Response> {
         .prepare(
           `SELECT mapping.sales_order_line_item_id AS line_id, mapping.sales_order_line_item_id AS source_line_id,
            mapping.product_specification_id, mapping.customer_id, mapping.customer_name,
-           spec.specification_type, spec.ply, spec.item_id, spec.item_name, spec.product_name,
+           spec.specification_type, spec.ply, spec.attributes_json, spec.item_id, spec.item_name, spec.product_name,
            NULL AS mapped_quantity, 0 AS is_additional
          FROM so_specification_mappings mapping INNER JOIN product_specification_records spec ON spec.id = mapping.product_specification_id
          WHERE mapping.sales_order_line_item_id IN (${placeholders})
          UNION ALL
          SELECT child.sales_order_line_item_id || ':child:' || child.product_specification_id AS line_id,
            child.sales_order_line_item_id AS source_line_id, child.product_specification_id,
-           parent.customer_id, parent.customer_name, spec.specification_type, spec.ply,
+           parent.customer_id, parent.customer_name, spec.specification_type, spec.ply, spec.attributes_json,
            spec.item_id, spec.item_name, spec.product_name, child.quantity AS mapped_quantity, 1 AS is_additional
          FROM so_line_child_specifications child
          INNER JOIN so_specification_mappings parent
@@ -399,6 +431,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
           customer_name: string
           specification_type: string
           ply: number | null
+          attributes_json: string | null
           item_id: string
           item_name: string
           product_name: string
@@ -509,8 +542,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
             `INSERT INTO production_plan_lines (production_plan_id, zoho_customer_id, customer_name, zoho_sales_order_id,
          sales_order_number, sales_order_date, zoho_sales_order_line_item_id, zoho_item_id, item_name, item_description,
          customer_po_number, delivery_date, ordered_quantity, previously_planned_quantity, balance_quantity,
-         production_quantity, top_sheet_quantity, two_ply_quantity, deckle_size, cut_length_cm, uom, customer_product_specification_id, approved_specification_revision_id, product_type, ply)
-         VALUES ((SELECT id FROM production_plans WHERE plan_number = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         production_quantity, top_sheet_quantity, two_ply_quantity, ups, flute_run, deckle_size, cut_length_cm, uom, customer_product_specification_id, approved_specification_revision_id, product_type, ply)
+         VALUES ((SELECT id FROM production_plans WHERE plan_number = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .bind(
             planNumber,
@@ -531,6 +564,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
             quantity,
             topSheetQuantities.get(lineId),
             twoPlyQuantities.get(lineId),
+            upsValues.get(lineId),
+            fluteRuns.get(lineId),
             deckleSizes.get(lineId),
             cutLengthsCm.get(lineId),
             line.unit,
@@ -540,6 +575,14 @@ export async function onRequestPost(context: Context): Promise<Response> {
             mapping.ply,
           ),
       )
+    }
+    for (const [lineId, remote] of remoteLines) {
+      if (!quantities.has(lineId)) continue
+      statements.push(db.prepare(
+        `UPDATE production_planning_machine_settings
+         SET flute_run=?, ups=?, deckle_size=?, cut_length_cm=?, updated_at=CURRENT_TIMESTAMP
+         WHERE sales_order_id=? AND sales_order_line_item_id=?`,
+      ).bind(fluteRuns.get(lineId), upsValues.get(lineId), deckleSizes.get(lineId), cutLengthsCm.get(lineId), remote.order.salesorder_id, lineId))
     }
     statements[0] = db
       .prepare(

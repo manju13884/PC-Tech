@@ -77,7 +77,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
         400,
       )
     const placeholders = lineIds.map(() => '?').join(', ')
-    const [plannedResult, mappingResult] = await Promise.all([
+    const [plannedResult, mappingResult, machineResult] = await Promise.all([
       db
         .prepare(
           `SELECT line.zoho_sales_order_line_item_id AS line_id, SUM(line.production_quantity) AS planned_quantity
@@ -129,7 +129,18 @@ export async function onRequestPost(context: Context): Promise<Response> {
           mapped_quantity: number | null
           is_additional: number
         }>(),
+      db.prepare(
+        `SELECT sales_order_id, sales_order_line_item_id, flute_run, ups, deckle_size, cut_length_cm
+         FROM production_planning_machine_settings
+         WHERE sales_order_id IN (${salesOrderIds.map(() => '?').join(', ')})`,
+      ).bind(...salesOrderIds).all<{
+        sales_order_id: string; sales_order_line_item_id: string; flute_run: string;
+        ups: number; deckle_size: string | null; cut_length_cm: number | null;
+      }>(),
     ])
+    const machineSettings = new Map((machineResult.results ?? []).map((row) => [
+      JSON.stringify([row.sales_order_id, row.sales_order_line_item_id]), row,
+    ]))
     const planned = new Map(
       (plannedResult.results ?? []).map((row) => [
         row.line_id,
@@ -165,6 +176,9 @@ export async function onRequestPost(context: Context): Promise<Response> {
         } catch {
           /* invalid legacy attributes stay empty */
         }
+        const savedMachine = machineSettings.get(JSON.stringify([order.salesorder_id, planningLineId]))
+        const paperLayers = Array.isArray(attributes.paper_layers) ? attributes.paper_layers as Array<{ flute?: string }> : []
+        const fluteRun = savedMachine?.flute_run ?? paperLayers.filter((layer) => layer.flute).map((layer) => layer.flute).join(' + ')
         const ready = orderOpen && balance > 0 && Boolean(mapping)
         return {
           customerId: order.customer_id ?? '',
@@ -186,6 +200,13 @@ export async function onRequestPost(context: Context): Promise<Response> {
           previouslyPlannedQuantity: childPreviouslyPlanned,
           balanceQuantity: balance,
           productionQuantity: balance,
+          fluteRun,
+          ups: savedMachine?.ups ?? 1,
+          ...(savedMachine ? {
+            deckleSize: savedMachine.deckle_size == null ? '' : String(Number(savedMachine.deckle_size) / 10),
+            cutLengthCm: savedMachine.cut_length_cm,
+            restoredMachineSettings: true,
+          } : {}),
           uom: line.unit,
           productSpecificationId: mapping?.product_specification_id ?? null,
           specificationRevisionId: mapping?.product_specification_id ?? null,
