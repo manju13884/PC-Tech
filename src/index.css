@@ -486,7 +486,7 @@ main.app-shell::after {
   min-width: 0;
   height: 100%;
   overflow-y: auto;
-  background: #f3f6fb;
+  background: #e2e8f2;
   border: 0;
   border-right: 1px solid #d7dee9;
   border-radius: 0;
@@ -532,14 +532,14 @@ main.app-shell::after {
 }
 
 .menu-group-toggle.active-parent {
-  background: #dbeafe;
-  color: #1e40af;
+  background: linear-gradient(to right, #79a9e3 0%, #bdd7f7 100%);
+  color: #173b70;
   font-weight: 750;
   box-shadow: inset 3px 0 0 #152b68;
 }
 
 .menu-group-toggle.active-parent:hover {
-  background: #bfdbfe;
+  background: linear-gradient(to right, #6b9cda 0%, #afcdf3 100%);
 }
 
 .menu-group-toggle.active-parent .menu-group-chevron {
