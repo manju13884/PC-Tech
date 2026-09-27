@@ -1,0 +1,306 @@
+/* Visual styling comes from the existing Board Calculator and ERP classes.
+   Only the partition-specific arrangement and responsive table layout live here. */
+.partition-calculator .board-calculator-surface {
+  width: 100%;
+}
+.partition-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+.partition-ply .admin-config-tabs button {
+  min-width: 64px;
+  min-height: 30px;
+}
+.partition-calculator .partition-input-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.partition-calculator .board-specification-grid,
+.partition-calculator .board-rate-grid {
+  align-items: start;
+}
+.partition-calculator .board-rate-grid select {
+  min-height: 34px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.765rem;
+}
+.partition-calculator .board-calculated-input:not(:read-only) {
+  cursor: text;
+}
+.partition-slot-action {
+  justify-content: start;
+  margin-top: 0.25rem;
+}
+.partition-hint {
+  font-size: 0.663rem;
+}
+.partition-table-wrap,
+.partition-detail-summary {
+  margin-top: 0.65rem;
+  min-width: 0;
+}
+.partition-calculator caption {
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+}
+.partition-calculator .partition-composition {
+  min-width: 0;
+  table-layout: fixed;
+}
+.partition-composition .board-field > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.partition-composition td,
+.partition-composition th {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.partition-composition .board-field {
+  text-align: left;
+}
+.partition-calculator .partition-detail-summary summary {
+  cursor: pointer;
+  font-size: 0.697rem;
+  font-weight: 650;
+  padding: 0.4rem 0;
+}
+.partition-summary > div {
+  display: grid;
+  align-content: start;
+  gap: 0.55rem;
+  min-width: 0;
+}
+.partition-detail-summary[open] .partition-summary {
+  margin-top: 0.55rem;
+}
+@media (max-width: 899px) {
+  .partition-calculator .partition-input-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .partition-ply .admin-config-tabs button {
+    min-height: 38px;
+  }
+  .partition-calculator .board-rate-grid select {
+    min-height: 42px;
+    font-size: 0.85rem;
+  }
+  .partition-composition thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .partition-composition,
+  .partition-composition tbody {
+    display: block;
+  }
+  .partition-composition tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .partition-composition th {
+    grid-column: 1 / -1;
+  }
+  .partition-composition td {
+    display: block;
+    min-width: 0;
+    text-align: left;
+  }
+  .partition-composition .board-field > span {
+    position: static;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+  .partition-composition td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.663rem;
+  }
+}
+@media (max-width: 479px) {
+  .partition-calculator .partition-input-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* SVG-only presentation; section, messages and form styling reuse ERP classes. */
+.partition-drawing h4 { margin: .65rem 0 .4rem; font-size: .8rem; }
+.partition-drawing-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; margin: .5rem 0; font-size: .72rem; }
+.partition-drawing-facts dt { font-weight: 600; }
+.partition-drawing-facts dd { margin: .15rem 0 0; }
+.partition-drawing svg { display: block; width: 100%; height: auto; background: white; color: #334155; font-family: inherit; font-size: 12px; overflow: visible; }
+.partition-top-svg { max-width: 760px; margin: .5rem auto; }
+.partition-drawing svg text { fill: currentColor; }
+.partition-drawing .partition-strip { fill: #cbd5e1; }
+.partition-dimension line, .partition-dimension path { stroke: #334155; fill: none; stroke-width: 1; }
+.partition-dimension text { paint-order: stroke; stroke: white; stroke-width: 3px; stroke-linejoin: round; }
+.partition-extension path { stroke: #94a3b8; fill: none; stroke-width: .7; }
+.partition-drawing .partition-cell-number { fill: #64748b; font-size: 12px; }
+.partition-side-layout { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.partition-side-details, .partition-drawing details { font-size: .72rem; overflow-wrap: anywhere; }
+.partition-side-svg { max-width: 520px; margin-bottom: .6rem; }
+@media (max-width: 800px) {
+  .partition-drawing-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .partition-side-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media print {
+  .partition-drawing { background: white !important; color: black !important; }
+  .partition-drawing svg { break-inside: avoid; page-break-inside: avoid; max-width: 170mm; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .partition-side-layout { display: block; }
+  .partition-side-svg { max-width: 120mm !important; }
+  .partition-drawing details > * { display: block !important; }
+}
+/* Compact variant of the shared calculator sections, fields and ERP tables. */
+.partition-calculator { font-variant-numeric: tabular-nums; }
+.partition-calculator .board-calculator-surface { gap: 12px; }
+.partition-calculator .board-section { padding: 10px; border-color: #dbe3ee; border-radius: 3px; box-shadow: none; }
+.partition-calculator .board-section:focus-within { box-shadow: none; }
+.partition-calculator .board-section > header { margin: -10px -10px 8px; padding: 7px 10px; background: #fff; }
+.partition-calculator .board-section > header h3 { font-size: 12px; font-weight: 600; gap: 5px; }
+.partition-calculator .board-section > header h3 svg { width: 15px; height: 15px; padding: 0; border: 0; border-radius: 0; color: #64748b; background: transparent; }
+.partition-calculator .board-section > header p { margin: 3px 0 0; font-size: 10px; }
+.partition-calculator .board-field { gap: 3px; font-size: 11px; font-weight: 500; }
+.partition-calculator .board-field > span { min-height: 14px; line-height: 14px; }
+.partition-calculator .board-field input,
+.partition-calculator .board-field select { height: 33px; min-height: 33px; padding: 4px 7px; border-color: #cbd5e1; border-radius: 4px; background: #fff; font-size: 12px; font-weight: 500; box-shadow: none; }
+.partition-calculator .board-field .board-calculated-input { border-color: #cbd5e1; background: #f8fafc; color: #334155; box-shadow: none; }
+.partition-calculator .board-field input:focus,
+.partition-calculator .board-field select:focus { border-color: #3b82f6; outline: 2px solid #dbeafe; outline-offset: 0; }
+.partition-calculator .board-field input[aria-invalid='true'] { border-color: #dc2626; }
+.partition-calculator .board-specification-grid,
+.partition-calculator .board-rate-grid { gap: 8px 10px; }
+.partition-calculator .partition-dimension-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: 8px; }
+.partition-calculator .board-rate-grid .board-field > span { min-height: 14px; }
+.partition-calculator .board-calculator-actions button,
+.partition-calculator .board-calculator-actions .board-calculator-refresh-button { min-height: 30px; border-radius: 4px; padding: 3px 9px; font-size: 11px; box-shadow: none; }
+.partition-calculator .partition-slot-action button { min-height: 24px; padding: 1px 6px; background: #fff; border-color: #cbd5e1; color: #475569; }
+.partition-calculator .partition-ply { display: flex; align-items: center; gap: 8px; }
+.partition-calculator .partition-ply .admin-config-tabs { margin: 0; padding: 2px; box-shadow: none; border-radius: 4px; }
+.partition-calculator .partition-ply .admin-config-tabs button { min-height: 28px; font-size: 11px; border-radius: 3px; box-shadow: none; }
+.partition-metric { display: grid; gap: 3px; min-width: 0; padding: 4px 0; color: #1e293b; }
+.partition-metric > span { color: #64748b; font-size: 11px; font-weight: 500; line-height: 1.3; }
+.partition-metric > output { font-size: 13px; font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; }
+.partition-cell-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)) minmax(0,1.5fr) repeat(2,minmax(0,1fr)); gap: 10px; }
+.partition-result-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); column-gap: 24px; }
+.partition-result-grid .partition-metric { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid #e2e8f0; }
+.partition-result-grid .partition-metric > output { text-align: right; font-size: 14px; }
+.partition-calculator .board-layer-summary-table-wrap { border-color: #dbe3ee; border-radius: 3px; }
+.partition-calculator .board-layer-summary-table { font-size: 11px; }
+.partition-calculator .board-layer-summary-table th,
+.partition-calculator .board-layer-summary-table td { padding: 3px 6px; height: 32px; }
+.partition-calculator .board-layer-summary-table th { font-size: 10px; font-weight: 600; background: #f1f5f9; }
+.partition-calculator .partition-composition input,
+.partition-calculator .partition-composition select { height: 30px; min-height: 30px; padding: 3px 5px; }
+.partition-calculator .partition-composition select { text-align: center; }
+.partition-calculator .partition-composition tbody th { background: #fff; }
+.partition-calculator .partition-hint,
+.partition-calculator .board-formula-notice { font-size: 10px; line-height: 1.4; margin: 5px 0; }
+.partition-calculator .partition-drawing > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.partition-calculator .partition-match-status { margin: 0; padding: 2px 5px; font-size: 10px; border: 0; background: transparent; border-radius: 3px; }
+.partition-calculator .partition-drawing h4 { font-size: 11px; margin: 6px 0; }
+.partition-calculator .partition-drawing-facts { font-size: 11px; gap: 6px 10px; margin: 6px 0; }
+.partition-calculator .partition-drawing-facts dt { font-weight: 500; color: #64748b; font-size: 10px; }
+.partition-calculator .partition-drawing-facts dd { font-weight: 600; margin-top: 2px; }
+.partition-calculator .partition-top-svg { max-width: 640px; margin: 0 auto; }
+.partition-calculator .partition-drawing svg[role='img'] { font-size: 11px; }
+.partition-calculator .partition-side-layout { grid-template-columns: minmax(0,420px) minmax(0,1fr); gap: 12px; }
+.partition-calculator .partition-side-details { font-size: 11px; }
+.partition-calculator .partition-side-details p { margin: 5px 0; }
+.partition-calculator .partition-dimension-check { padding: 6px 0; border-top: 1px solid #e2e8f0; font-size: 11px; }
+.partition-calculator .partition-dimension-check p { margin: 3px 0; }
+.partition-calculator .partition-detail-summary { margin-top: 5px; font-size: 11px; }
+.partition-calculator .partition-detail-summary summary { padding: 3px 0; font-size: 11px; font-weight: 500; }
+@media(max-width: 1000px) {
+  .partition-calculator .partition-dimension-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .partition-calculator .partition-cell-row { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media(max-width: 700px) {
+  .partition-calculator .partition-dimension-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .partition-calculator .partition-side-layout { grid-template-columns: minmax(0,1fr); }
+  .partition-calculator .partition-result-grid { grid-template-columns: minmax(0,1fr); }
+}
+@media(max-width: 479px) {
+  .partition-calculator .partition-dimension-grid { grid-template-columns: minmax(0,1fr); }
+  .partition-calculator .partition-cell-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+.partition-calculator .partition-dimension-check p,
+.partition-calculator .partition-side-details p,
+.partition-calculator .partition-summary-context { font-size: 11px; line-height: 1.4; margin: 4px 0; }
+.partition-calculator .partition-drawing > header .partition-match-status.success { color: #16834a; }
+.partition-calculator .partition-drawing > header .partition-match-status.board-formula-notice { color: #92400e; }
+.partition-calculator .partition-pdf-actions { align-items: center; flex-wrap: wrap; margin-top: 10px; gap: 10px; }
+.partition-calculator .partition-pdf-actions label { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+.partition-calculator .partition-pdf-actions input { width: 14px; height: 14px; }
+.partition-calculator .partition-pdf-actions button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+/* Final density pass: use the existing ERP typography and separators. */
+.partition-calculator .partition-toolbar { align-items: center; gap: 10px; padding-bottom: 6px; border-bottom: 1px solid #dbe3ee; }
+.partition-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.partition-calculator .board-section { padding: 0 0 10px; border: 0; border-bottom: 1px solid #dbe3ee; border-radius: 0; background: transparent; box-shadow: none; }
+.partition-calculator .board-section > header { margin: 0 0 8px; padding: 0 0 6px; background: transparent; }
+.partition-calculator .board-section > header h3 { font-size: 12px; }
+.partition-calculator .board-section > header h3 svg { display: none; }
+.partition-calculator .partition-dimension-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.partition-calculator .board-rate-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.partition-calculator .board-field > span { display: flex; align-items: center; gap: 4px; }
+.partition-field-help { display: inline-flex; color: #64748b; cursor: help; }
+.partition-field-help:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+.partition-calculator .partition-cell-row { background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 4px 8px; }
+.partition-calculator .partition-metric > output { font-weight: 500; font-size: 13px; }
+.partition-calculator .partition-cell-row .partition-metric > output { font-weight: 600; }
+.partition-calculator .partition-result-grid .partition-metric > output { font-size: 13px; }
+.partition-calculator .partition-result-grid .partition-metric:is([data-label='Total Cost / Set'],[data-label='Selling Price / Set'],[data-label='Total Order Cost'],[data-label='Total Selling Value'],[data-label='Gross Profit']) > output { font-weight: 600; }
+.partition-calculator .partition-strip-details > summary { cursor: pointer; font-size: 11px; font-weight: 600; padding: 3px 0; }
+.partition-calculator .partition-top-svg { width: min(100%, 500px); max-height: 450px; margin: 0 auto; }
+.partition-calculator .partition-side-layout { grid-template-columns: minmax(0,330px) minmax(0,1fr); }
+.partition-calculator .partition-side-svg { max-height: 155px; }
+.partition-calculator .partition-drawing-facts { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px 10px; }
+.partition-calculator .partition-composition td { padding-top: 1px; padding-bottom: 1px; }
+.partition-calculator .partition-composition .board-field input,
+.partition-calculator .partition-composition .board-field select { border-radius: 2px; border-color: #e2e8f0; }
+.partition-calculator .partition-pdf-actions { justify-content: space-between; border-top: 1px solid #dbe3ee; padding-top: 8px; }
+.partition-calculator .partition-pdf-actions label { margin-right: auto; }
+@media(max-width: 1000px) {
+  .partition-calculator .partition-drawing-facts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media(max-width: 899px) {
+  .partition-calculator .partition-dimension-grid,
+  .partition-calculator .board-rate-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media(max-width: 700px) {
+  .partition-calculator .partition-side-layout { grid-template-columns: minmax(0,1fr); }
+  .partition-calculator .partition-side-svg { max-width: 330px; }
+}
+@media(max-width: 640px) {
+  .partition-calculator .partition-composition { display: table; min-width: 790px; table-layout: fixed; }
+  .partition-calculator .partition-composition thead { display: table-header-group; position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+  .partition-calculator .partition-composition tbody { display: table-row-group; }
+  .partition-calculator .partition-composition tr { display: table-row; }
+  .partition-calculator .partition-composition td { display: table-cell; text-align: right; }
+  .partition-calculator .partition-composition td[data-label]::before { display: none; }
+  .partition-calculator .partition-composition .board-field > span { position: absolute; width: 1px; height: 1px; min-height: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); }
+}
+@media(max-width: 479px) {
+  .partition-calculator .partition-dimension-grid,
+  .partition-calculator .board-rate-grid { grid-template-columns: minmax(0,1fr); }
+}
+.dashboard-details .partition-calculator { padding: 10px; background: #fff; }
+.dashboard-details .partition-calculator .board-section { border: 0; border-bottom: 1px solid #dbe3ee; border-radius: 0; background: transparent; box-shadow: none; }
+.dashboard-details .partition-calculator .board-section > header { background: transparent; }
+.partition-calculator .partition-composition .board-field { position: relative; }

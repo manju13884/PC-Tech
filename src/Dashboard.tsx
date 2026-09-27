@@ -22,6 +22,9 @@ import {
 import CardBoxCalculator from './features/corrugated-box-price-calculator/CardBoxCalculator'
 import './features/corrugated-box-price-calculator-compat.css'
 import CorrugatedBoardPriceCalculator from './features/corrugated-board-price-calculator/CorrugatedBoardPriceCalculator'
+import PartitionCalculator from './features/partition-calculator/PartitionCalculator'
+import MasterData from './features/master-data/MasterData'
+import CalculatorMasterData from './features/master-data/CalculatorMasterData'
 import PaperPurchaseRequest from './features/paper-purchase-request/PaperPurchaseRequest'
 import PaperPurchaseRequestApprovals from './features/paper-purchase-request-approvals/PaperPurchaseRequestApprovals'
 import PaperPoCalculation from './features/paper-po-calculation/PaperPoCalculation'
@@ -86,6 +89,12 @@ const menuGroups: MenuGroup[] = [
         title: 'Corrugated Board Price Calculator',
         menuTitle: 'Board Price Calculator',
         description: 'Calculate the weight, manufacturing cost and selling price of 3-ply, 5-ply and 7-ply corrugated boards.',
+        icon: Calculator,
+      },
+      {
+        key: 'partition-calculator',
+        title: 'Partition Calculator',
+        description: 'Calculate interlocking corrugated partition pieces, paper requirements and pricing for 3, 5 and 7 Ply.',
         icon: Calculator,
       },
     ],
@@ -253,9 +262,16 @@ const menuGroups: MenuGroup[] = [
       },
       {
         key: 'data-management',
-        title: 'Data Management',
+        title: 'Data Management (Refresh data from Zoho Books)',
+        menuTitle: 'Data Management',
         description:
           'Manage controlled business data operations and environment-specific data utilities.',
+        icon: Database,
+      },
+      {
+        key: 'master-data',
+        title: 'Master Data',
+        description: 'Central reference data for PC-Tech.',
         icon: Database,
       },
     ],
@@ -274,6 +290,7 @@ const PANEL_HEADING_MENU_KEYS = new Set([
   'corrugated-box-price',
   ADVANCED_BOX_CALCULATOR_ROUTE_KEY,
   'corrugated-board-price',
+  'partition-calculator',
   'paper-purchase-request',
   'production-specifications',
 ])
@@ -2162,7 +2179,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'so-production-status' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' || selectedItem.key === 'job-tracking' ? ' document-form-page' : ''}${INVENTORY_MENU_KEYS.has(selectedItem.key) ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'master-data' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'so-production-status' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' || selectedItem.key === 'job-tracking' ? ' document-form-page' : ''}${INVENTORY_MENU_KEYS.has(selectedItem.key) ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
             {selectedItem.key !== 'home' && (
               <header className="dashboard-page-heading">
                 <h2>
@@ -2189,16 +2206,23 @@ export default function Dashboard({
                   onNavigate={selectMenuItem}
                 />
               )}
-              {selectedItem.key === 'corrugated-box-price' && (
-                <div className="pc-corrugated-calculator-compat">
-                  <CardBoxCalculator />
-                </div>
-              )}
-              {selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY && (
-                <AdvancedCorrugatedBoxCalculatorPage />
-              )}
-              {selectedItem.key === 'corrugated-board-price' && (
-                <CorrugatedBoardPriceCalculator />
+              {menuGroups.find(group => group.title === 'Calculators')?.items.some(item => item.key === selectedItem.key) && (
+                <CalculatorMasterData key={selectedItem.key}>
+                  {selectedItem.key === 'corrugated-box-price' && (
+                    <div className="pc-corrugated-calculator-compat">
+                      <CardBoxCalculator />
+                    </div>
+                  )}
+                  {selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY && (
+                    <AdvancedCorrugatedBoxCalculatorPage />
+                  )}
+                  {selectedItem.key === 'corrugated-board-price' && (
+                    <CorrugatedBoardPriceCalculator />
+                  )}
+                  {selectedItem.key === 'partition-calculator' && (
+                    <PartitionCalculator generatedBy={username} />
+                  )}
+                </CalculatorMasterData>
               )}
               {selectedItem.key === 'paper-purchase-request' && (
                 <PaperPurchaseRequest />
@@ -2262,6 +2286,7 @@ export default function Dashboard({
                   </p>
                 </section>
               )}
+              {selectedItem.key === 'master-data' && <MasterData />}
               {selectedItem.key === 'data-management' && (
                 <div className="coc-form data-management-form">
                   <div className="data-management-utility">

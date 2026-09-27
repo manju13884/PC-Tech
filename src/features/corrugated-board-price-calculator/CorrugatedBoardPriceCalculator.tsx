@@ -1,3 +1,4 @@
+import { useCalculatorMasterData } from '../master-data/CalculatorMasterData'
 import { useMemo, useState } from 'react'
 import { BadgePercent, Layers3, RotateCcw, Ruler, WalletCards } from 'lucide-react'
 import { BOARD_FLUTE_DRAW_RATIOS, BOARD_LAYER_LABELS, BOARD_PLY_LAYER_CONFIG } from './boardCalculatorConfig'
@@ -39,9 +40,10 @@ function NumberField({ label, value, onChange, error, placeholder, readOnly = fa
 }
 
 export default function CorrugatedBoardPriceCalculator() {
-  const [state, setState] = useState(createInitialBoardCalculatorState)
+  const defaults = useCalculatorMasterData()
+  const [state, setState] = useState(() => createInitialBoardCalculatorState(defaults))
   const activeLayers = BOARD_PLY_LAYER_CONFIG[state.boardPly]
-  const result = useMemo(() => calculateCorrugatedBoardPrice(state), [state])
+  const result = useMemo(() => calculateCorrugatedBoardPrice(state, 1 + Number(defaults.wastage) / 100), [state, defaults.wastage])
 
   const setField = (field: 'lengthMm' | 'widthMm' | 'quantity' | 'conversionRatePerKg' | 'printingCostPerBoard' | 'transportCostPerBoard' | 'marginPercent', value: string) => {
     setState((current) => ({ ...current, [field]: value }))
@@ -55,7 +57,7 @@ export default function CorrugatedBoardPriceCalculator() {
   }
 
   const reset = () => {
-    setState(createInitialBoardCalculatorState())
+    setState(createInitialBoardCalculatorState(defaults))
   }
 
   return (

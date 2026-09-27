@@ -1,0 +1,33 @@
+.master-data-form {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 1rem;
+}
+
+.master-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 1rem;
+}
+
+.master-data-grid .coc-form-field + .coc-form-field {
+  margin: 0;
+}
+
+.master-data-form .coc-form-field input {
+  box-sizing: border-box;
+}
+
+.master-data-form .admin-dialog-actions {
+  justify-content: flex-start;
+}
+
+.master-data-form .admin-dialog-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.master-data-form .admin-user-message {
+  padding: 0.75rem 0 0;
+}

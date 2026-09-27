@@ -1,3 +1,4 @@
+import type { MasterDataValues } from '../master-data/masterDataFields'
 import {
   ALL_BOARD_LAYER_KEYS,
   BOARD_DEFAULT_CONVERSION_RATE_PER_KG,
@@ -17,21 +18,22 @@ import type {
 
 const emptyLayer = () => ({ gsm: '', burstingFactor: '', paperRatePerKg: String(BOARD_DEFAULT_PAPER_RATE) })
 
-export const createInitialBoardCalculatorState = (): BoardCalculatorState => ({
+export const createInitialBoardCalculatorState = (defaults?: MasterDataValues): BoardCalculatorState => ({
   boardPly: 3,
   lengthMm: '',
   widthMm: '',
   quantity: '',
   layers: ALL_BOARD_LAYER_KEYS.reduce<BoardLayerInputs>((layers, key) => {
     layers[key] = emptyLayer()
+    if (defaults) layers[key].paperRatePerKg = defaults.paperPrice
     layers[key].gsm = '120'
     layers[key].burstingFactor = '16'
     return layers
   }, {} as BoardLayerInputs),
-  conversionRatePerKg: String(BOARD_DEFAULT_CONVERSION_RATE_PER_KG),
-  printingCostPerBoard: '',
-  transportCostPerBoard: '',
-  marginPercent: String(BOARD_DEFAULT_MARKUP_PERCENT),
+  conversionRatePerKg: defaults?.ratePerKg ?? String(BOARD_DEFAULT_CONVERSION_RATE_PER_KG),
+  printingCostPerBoard: defaults?.printing ?? '',
+  transportCostPerBoard: defaults?.transport ?? '',
+  marginPercent: defaults?.markup ?? String(BOARD_DEFAULT_MARKUP_PERCENT),
 })
 
 export const getActiveBoardLayerKeys = (boardPly: BoardPly) => BOARD_PLY_LAYER_CONFIG[boardPly]
@@ -84,7 +86,7 @@ export const validateBoardCalculator = (state: BoardCalculatorState): BoardCalcu
 
 export const ceilBoardValueToThreeDecimals = (value: number) => Math.ceil(value * 1000) / 1000
 
-export const calculateCorrugatedBoardPrice = (state: BoardCalculatorState): BoardCalculationResult | null => {
+export const calculateCorrugatedBoardPrice = (state: BoardCalculatorState, wastageFactor: number = BOARD_WASTAGE_FACTOR): BoardCalculationResult | null => {
   if (Object.keys(validateBoardCalculator(state)).length > 0) return null
 
   const boardAreaSqM = (Number(state.lengthMm) * Number(state.widthMm)) / 1_000_000
@@ -94,7 +96,7 @@ export const calculateCorrugatedBoardPrice = (state: BoardCalculatorState): Boar
     const rawWeightKg = boardAreaSqM * (effectiveGsm / 1000)
     // The source calculator rounds each wastage-inclusive layer weight upward
     // before using it for paper cost and board-weight totals.
-    const weightWithWastageKg = ceilBoardValueToThreeDecimals(rawWeightKg * BOARD_WASTAGE_FACTOR)
+    const weightWithWastageKg = ceilBoardValueToThreeDecimals(rawWeightKg * wastageFactor)
     const paperCost = ceilBoardValueToThreeDecimals(
       weightWithWastageKg * Number(state.layers[key].paperRatePerKg),
     )

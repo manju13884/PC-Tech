@@ -63,10 +63,11 @@ export const calculateWeightPerReem = (
   deckleSize: number,
   deckleLength: number,
   gsm: number,
-  multiplier: number = 1
+  multiplier: number = 1,
+  wastageFactor: number = FLUTE_MULTIPLIERS.wastage
 ): number => {
   return ceilToThreeDecimals(
-    ((deckleSize / 100) * (deckleLength / 100) * (gsm / 1000) * multiplier) * FLUTE_MULTIPLIERS.wastage
+    ((deckleSize / 100) * (deckleLength / 100) * (gsm / 1000) * multiplier) * wastageFactor
   );
   
 };

@@ -1,3 +1,4 @@
+import { useCalculatorMasterData } from '../../master-data/CalculatorMasterData'
 import { useMemo } from 'react'
 import { BadgeIndianRupee, Layers2, Layers3, Package, Scale, Waves, Weight } from 'lucide-react'
 import { calculateAdvancedPaperWeight } from '../calculations/advancedPaperWeightCalculator'
@@ -54,6 +55,7 @@ export default function AdvancedPaperWeightRequirement({
   liner2RatePerKg,
   quantity,
 }: AdvancedPaperWeightRequirementProps) {
+  const defaults = useCalculatorMasterData()
   const quantityError = validateAdvancedQuantity(quantity)
   const ply: AdvancedPaperWeightPly = boxPly
 
@@ -84,8 +86,9 @@ export default function AdvancedPaperWeightRequirement({
       liner1RatePerKg: numericValue(liner1RatePerKg),
       flute2RatePerKg: numericValue(flute2RatePerKg),
       liner2RatePerKg: numericValue(liner2RatePerKg),
-    }) : null
+    }, 1 + Number(defaults.wastage) / 100) : null
   }, [
+    defaults.wastage,
     breadth,
     flute1Gsm,
     flute1RatePerKg,

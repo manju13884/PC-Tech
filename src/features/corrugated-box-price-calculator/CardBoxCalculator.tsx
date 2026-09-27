@@ -1,3 +1,4 @@
+import { useCalculatorMasterData } from '../master-data/CalculatorMasterData';
 import React, { useEffect, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import BoxDimensions from './BoxDimensions';
@@ -6,7 +7,6 @@ import RatesAndConversion from './RatesAndConversion';
 import {
   ceilToThreeDecimals,
   FLUTE_MULTIPLIERS,
-  DEFAULT_VALUES,
   calculateDeckle,
   calculateWeightPerReem,
   calculateCostPerBox,
@@ -18,6 +18,7 @@ import type { BoxPly, PaperLayerKey } from './utils';
 type N = number | '';
 
 const CardBoxCalculator: React.FC = () => {
+  const defaults = useCalculatorMasterData();
   // Dimensions
   const [length, setLength] = useState<N>('');
   const [breadth, setBreadth] = useState<N>('');
@@ -41,19 +42,19 @@ const CardBoxCalculator: React.FC = () => {
   const [aFluteBF, setAFluteBF] = useState<N>(16);
   const [aLinerGsm, setALinerGsm] = useState<N>(120);
   const [aLinerBF, setALinerBF] = useState<N>(16);
-  const [topPr, setTopPr] = useState<N>(DEFAULT_VALUES.prices.topPr);
-  const [bFlutePr, setBFlutePr] = useState<N>(DEFAULT_VALUES.prices.bFlutePr);
-  const [bLinerPr, setBLinerPr] = useState<N>(DEFAULT_VALUES.prices.bLinerPr);
-  const [cFlutePr, setCFlutePr] = useState<N>(DEFAULT_VALUES.prices.cFlutePr);
-  const [cLinerPr, setCLinerPr] = useState<N>(DEFAULT_VALUES.prices.cLinerPr);
-  const [aFlutePr, setAFlutePr] = useState<N>(DEFAULT_VALUES.prices.aFlutePr);
-  const [aLinerPr, setALinerPr] = useState<N>(DEFAULT_VALUES.prices.aLinerPr);
+  const [topPr, setTopPr] = useState<N>(Number(defaults.paperPrice));
+  const [bFlutePr, setBFlutePr] = useState<N>(Number(defaults.paperPrice));
+  const [bLinerPr, setBLinerPr] = useState<N>(Number(defaults.paperPrice));
+  const [cFlutePr, setCFlutePr] = useState<N>(Number(defaults.paperPrice));
+  const [cLinerPr, setCLinerPr] = useState<N>(Number(defaults.paperPrice));
+  const [aFlutePr, setAFlutePr] = useState<N>(Number(defaults.paperPrice));
+  const [aLinerPr, setALinerPr] = useState<N>(Number(defaults.paperPrice));
 
   // Conversion — pre-filled on page load
-  const [ratePerKg, setRatePerKg] = useState<N>(10);
-  const [printingCharges, setPrintingCharges] = useState<N>('');
-  const [transportCharges, setTransportCharges] = useState<N>('');
-  const [margin, setMargin] = useState<N>(5);
+  const [ratePerKg, setRatePerKg] = useState<N>(Number(defaults.ratePerKg));
+  const [printingCharges, setPrintingCharges] = useState<N>(Number(defaults.printing));
+  const [transportCharges, setTransportCharges] = useState<N>(Number(defaults.transport));
+  const [margin, setMargin] = useState<N>(Number(defaults.margin));
 
   // Results
   const [totalCost, setTotalCost] = useState<number>(0);
@@ -70,13 +71,13 @@ const CardBoxCalculator: React.FC = () => {
   }, [length, breadth, height]);
 
   useEffect(() => {
-    const wprTop = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(topGSM));
-    const wprBF  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(bFluteGsm), FLUTE_MULTIPLIERS.b);
-    const wprBL  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(bLinerGsm));
-    const wprCF  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(cFluteGsm), FLUTE_MULTIPLIERS.c);
-    const wprCL  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(cLinerGsm));
-    const wprAF  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(aFluteGsm), FLUTE_MULTIPLIERS.a);
-    const wprAL  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(aLinerGsm));
+    const wprTop = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(topGSM), 1, 1 + Number(defaults.wastage) / 100);
+    const wprBF  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(bFluteGsm), FLUTE_MULTIPLIERS.b, 1 + Number(defaults.wastage) / 100);
+    const wprBL  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(bLinerGsm), 1, 1 + Number(defaults.wastage) / 100);
+    const wprCF  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(cFluteGsm), FLUTE_MULTIPLIERS.c, 1 + Number(defaults.wastage) / 100);
+    const wprCL  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(cLinerGsm), 1, 1 + Number(defaults.wastage) / 100);
+    const wprAF  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(aFluteGsm), FLUTE_MULTIPLIERS.a, 1 + Number(defaults.wastage) / 100);
+    const wprAL  = calculateWeightPerReem(n(deckleSize), n(deckleLength), n(aLinerGsm), 1, 1 + Number(defaults.wastage) / 100);
 
     const layerWeights: Record<PaperLayerKey, number> = {
       top: wprTop, bFlute: wprBF, bLiner: wprBL, cFlute: wprCF,
@@ -110,7 +111,7 @@ const CardBoxCalculator: React.FC = () => {
     cFluteGsm, cFluteBF, cLinerGsm, cLinerBF,
     aFluteGsm, aFluteBF, aLinerGsm, aLinerBF,
     topPr, bFlutePr, bLinerPr, cFlutePr, cLinerPr, aFlutePr, aLinerPr,
-    ratePerKg, printingCharges, transportCharges, margin, boxPly,
+    ratePerKg, printingCharges, transportCharges, margin, boxPly, defaults.wastage,
   ]);
 
   const resetAll = () => {
@@ -123,15 +124,15 @@ const CardBoxCalculator: React.FC = () => {
     setCLinerGsm(120); setCLinerBF(16);
     setAFluteGsm(120); setAFluteBF(16);
     setALinerGsm(120); setALinerBF(16);
-    setTopPr(DEFAULT_VALUES.prices.topPr);
-    setBFlutePr(DEFAULT_VALUES.prices.bFlutePr);
-    setBLinerPr(DEFAULT_VALUES.prices.bLinerPr);
-    setCFlutePr(DEFAULT_VALUES.prices.cFlutePr);
-    setCLinerPr(DEFAULT_VALUES.prices.cLinerPr);
-    setAFlutePr(DEFAULT_VALUES.prices.aFlutePr);
-    setALinerPr(DEFAULT_VALUES.prices.aLinerPr);
-    setRatePerKg(10); setPrintingCharges('');
-    setTransportCharges(''); setMargin(5);
+    setTopPr(Number(defaults.paperPrice));
+    setBFlutePr(Number(defaults.paperPrice));
+    setBLinerPr(Number(defaults.paperPrice));
+    setCFlutePr(Number(defaults.paperPrice));
+    setCLinerPr(Number(defaults.paperPrice));
+    setAFlutePr(Number(defaults.paperPrice));
+    setALinerPr(Number(defaults.paperPrice));
+    setRatePerKg(Number(defaults.ratePerKg)); setPrintingCharges(Number(defaults.printing));
+    setTransportCharges(Number(defaults.transport)); setMargin(Number(defaults.margin));
   };
 
   const set = (v: string) => v === '' ? '' : Number(v) as N;

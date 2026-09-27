@@ -5,8 +5,8 @@ import type {
   AdvancedPaperWeightResult,
 } from '../types/advancedPaperWeightTypes.ts'
 
-export function calculateAdvancedPaperWeight(input: AdvancedPaperWeightInput): AdvancedPaperWeightResult {
-  const { drawRatioB, drawRatioC, drawRatioA, wastageFactor } = ADVANCED_PAPER_WEIGHT_CONSTANTS
+export function calculateAdvancedPaperWeight(input: AdvancedPaperWeightInput, wastageFactor: number = ADVANCED_PAPER_WEIGHT_CONSTANTS.wastageFactor): AdvancedPaperWeightResult {
+  const { drawRatioB, drawRatioC, drawRatioA } = ADVANCED_PAPER_WEIGHT_CONSTANTS
   const sheetWidthCm = ((2 * input.lengthMm) + (2 * input.breadthMm) + 50) / 10
   const sheetLengthCm = (input.heightMm + input.breadthMm + 20) / 10
   const sheetAreaSqM = (sheetWidthCm / 100) * (sheetLengthCm / 100)

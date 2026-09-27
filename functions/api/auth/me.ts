@@ -29,6 +29,7 @@ const ALL_MENU_KEYS = [
   'corrugated-box-price',
   'corrugated-box-price-advanced',
   'corrugated-board-price',
+  'partition-calculator',
   'so-specification-mapping',
   'so-production-status',
   'product-specifications',
@@ -44,6 +45,7 @@ const ALL_MENU_KEYS = [
   'packing-slip',
   'coa',
   'data-management',
+  'master-data',
   'admin-configurations',
 ]
 const AUTHENTICATION_REQUIRED = 'Authentication required'

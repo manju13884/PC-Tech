@@ -1,3 +1,4 @@
+import { useCalculatorMasterData } from '../../master-data/CalculatorMasterData';
 import React, { useEffect, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import AdvancedBoxDimensions from './AdvancedBoxDimensions';
@@ -7,7 +8,6 @@ import AdvancedRatesAndConversion from './AdvancedRatesAndConversion';
 import {
   advancedCeilToThreeDecimals,
   ADVANCED_FLUTE_MULTIPLIERS,
-  ADVANCED_DEFAULT_VALUES,
   calculateAdvancedDeckle,
   calculateAdvancedWeightPerReem,
   calculateAdvancedCostPerBox,
@@ -18,6 +18,7 @@ import type { AdvancedNumericValue, ProductionBoxPly, ProductionLayerKey } from 
 import { normalizeAdvancedNumber, parseAdvancedNumericValue } from '../validation/advancedBoxCalculatorValidation';
 
 const AdvancedCardBoxCalculator: React.FC = () => {
+  const defaults = useCalculatorMasterData();
   // Dimensions
   const [length, setLength] = useState<AdvancedNumericValue>('');
   const [breadth, setBreadth] = useState<AdvancedNumericValue>('');
@@ -42,19 +43,19 @@ const AdvancedCardBoxCalculator: React.FC = () => {
   const [aFluteBF, setAFluteBF] = useState<AdvancedNumericValue>(16);
   const [aLinerGsm, setALinerGsm] = useState<AdvancedNumericValue>(120);
   const [aLinerBF, setALinerBF] = useState<AdvancedNumericValue>(16);
-  const [topPr, setTopPr] = useState<AdvancedNumericValue>(ADVANCED_DEFAULT_VALUES.prices.topPr);
-  const [bFlutePr, setBFlutePr] = useState<AdvancedNumericValue>(ADVANCED_DEFAULT_VALUES.prices.bFlutePr);
-  const [bLinerPr, setBLinerPr] = useState<AdvancedNumericValue>(ADVANCED_DEFAULT_VALUES.prices.bLinerPr);
-  const [cFlutePr, setCFlutePr] = useState<AdvancedNumericValue>(ADVANCED_DEFAULT_VALUES.prices.cFlutePr);
-  const [cLinerPr, setCLinerPr] = useState<AdvancedNumericValue>(ADVANCED_DEFAULT_VALUES.prices.cLinerPr);
-  const [aFlutePr, setAFlutePr] = useState<AdvancedNumericValue>(ADVANCED_DEFAULT_VALUES.prices.aFlutePr);
-  const [aLinerPr, setALinerPr] = useState<AdvancedNumericValue>(ADVANCED_DEFAULT_VALUES.prices.aLinerPr);
+  const [topPr, setTopPr] = useState<AdvancedNumericValue>(Number(defaults.paperPrice));
+  const [bFlutePr, setBFlutePr] = useState<AdvancedNumericValue>(Number(defaults.paperPrice));
+  const [bLinerPr, setBLinerPr] = useState<AdvancedNumericValue>(Number(defaults.paperPrice));
+  const [cFlutePr, setCFlutePr] = useState<AdvancedNumericValue>(Number(defaults.paperPrice));
+  const [cLinerPr, setCLinerPr] = useState<AdvancedNumericValue>(Number(defaults.paperPrice));
+  const [aFlutePr, setAFlutePr] = useState<AdvancedNumericValue>(Number(defaults.paperPrice));
+  const [aLinerPr, setALinerPr] = useState<AdvancedNumericValue>(Number(defaults.paperPrice));
 
   // Conversion — pre-filled on page load
-  const [ratePerKg, setRatePerKg] = useState<AdvancedNumericValue>(10);
-  const [printingCharges, setPrintingCharges] = useState<AdvancedNumericValue>('');
-  const [transportCharges, setTransportCharges] = useState<AdvancedNumericValue>('');
-  const [margin, setMargin] = useState<AdvancedNumericValue>(5);
+  const [ratePerKg, setRatePerKg] = useState<AdvancedNumericValue>(Number(defaults.ratePerKg));
+  const [printingCharges, setPrintingCharges] = useState<AdvancedNumericValue>(Number(defaults.printing));
+  const [transportCharges, setTransportCharges] = useState<AdvancedNumericValue>(Number(defaults.transport));
+  const [margin, setMargin] = useState<AdvancedNumericValue>(Number(defaults.margin));
 
   // Results
   const [totalCost, setTotalCost] = useState<number>(0);
@@ -71,13 +72,13 @@ const AdvancedCardBoxCalculator: React.FC = () => {
   }, [length, breadth, height]);
 
   useEffect(() => {
-    const wprTop = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(topGSM));
-    const wprBF  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(bFluteGsm), ADVANCED_FLUTE_MULTIPLIERS.b);
-    const wprBL  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(bLinerGsm));
-    const wprCF  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(cFluteGsm), ADVANCED_FLUTE_MULTIPLIERS.c);
-    const wprCL  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(cLinerGsm));
-    const wprAF  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(aFluteGsm), ADVANCED_FLUTE_MULTIPLIERS.a);
-    const wprAL  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(aLinerGsm));
+    const wprTop = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(topGSM), 1, 1 + Number(defaults.wastage) / 100);
+    const wprBF  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(bFluteGsm), ADVANCED_FLUTE_MULTIPLIERS.b, 1 + Number(defaults.wastage) / 100);
+    const wprBL  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(bLinerGsm), 1, 1 + Number(defaults.wastage) / 100);
+    const wprCF  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(cFluteGsm), ADVANCED_FLUTE_MULTIPLIERS.c, 1 + Number(defaults.wastage) / 100);
+    const wprCL  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(cLinerGsm), 1, 1 + Number(defaults.wastage) / 100);
+    const wprAF  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(aFluteGsm), ADVANCED_FLUTE_MULTIPLIERS.a, 1 + Number(defaults.wastage) / 100);
+    const wprAL  = calculateAdvancedWeightPerReem(n(deckleSize), n(deckleLength), n(aLinerGsm), 1, 1 + Number(defaults.wastage) / 100);
 
     const layerWeights: Record<ProductionLayerKey, number> = { top: wprTop, bFlute: wprBF, bLiner: wprBL, cFlute: wprCF, cLiner: wprCL, aFlute: wprAF, aLiner: wprAL };
     const layerPrices: Record<ProductionLayerKey, number> = { top: n(topPr), bFlute: n(bFlutePr), bLiner: n(bLinerPr), cFlute: n(cFlutePr), cLiner: n(cLinerPr), aFlute: n(aFlutePr), aLiner: n(aLinerPr) };
@@ -101,7 +102,7 @@ const AdvancedCardBoxCalculator: React.FC = () => {
     cFluteGsm, cFluteBF, cLinerGsm, cLinerBF,
     aFluteGsm, aFluteBF, aLinerGsm, aLinerBF,
     topPr, bFlutePr, bLinerPr, cFlutePr, cLinerPr, aFlutePr, aLinerPr,
-    ratePerKg, printingCharges, transportCharges, margin, boxPly,
+    ratePerKg, printingCharges, transportCharges, margin, boxPly, defaults.wastage,
   ]);
 
   const resetAll = () => {
@@ -115,15 +116,15 @@ const AdvancedCardBoxCalculator: React.FC = () => {
     setCLinerGsm(120); setCLinerBF(16);
     setAFluteGsm(120); setAFluteBF(16);
     setALinerGsm(120); setALinerBF(16);
-    setTopPr(ADVANCED_DEFAULT_VALUES.prices.topPr);
-    setBFlutePr(ADVANCED_DEFAULT_VALUES.prices.bFlutePr);
-    setBLinerPr(ADVANCED_DEFAULT_VALUES.prices.bLinerPr);
-    setCFlutePr(ADVANCED_DEFAULT_VALUES.prices.cFlutePr);
-    setCLinerPr(ADVANCED_DEFAULT_VALUES.prices.cLinerPr);
-    setAFlutePr(ADVANCED_DEFAULT_VALUES.prices.aFlutePr);
-    setALinerPr(ADVANCED_DEFAULT_VALUES.prices.aLinerPr);
-    setRatePerKg(10); setPrintingCharges('');
-    setTransportCharges(''); setMargin(5);
+    setTopPr(Number(defaults.paperPrice));
+    setBFlutePr(Number(defaults.paperPrice));
+    setBLinerPr(Number(defaults.paperPrice));
+    setCFlutePr(Number(defaults.paperPrice));
+    setCLinerPr(Number(defaults.paperPrice));
+    setAFlutePr(Number(defaults.paperPrice));
+    setALinerPr(Number(defaults.paperPrice));
+    setRatePerKg(Number(defaults.ratePerKg)); setPrintingCharges(Number(defaults.printing));
+    setTransportCharges(Number(defaults.transport)); setMargin(Number(defaults.margin));
   };
 
   const set = parseAdvancedNumericValue;
