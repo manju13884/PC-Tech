@@ -3,10 +3,8 @@ import { appendFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promise
 import { pathToFileURL } from 'node:url'
 import { maintenanceHtml } from '../functions/lib/deploymentMaintenance.ts'
 
-export const targets = Object.freeze({
-  nonproduction: { project: 'pc-tech', branch: 'main', database: '0d749a66-9654-4767-b56a-afd4f8bcd9a1', origins: ['https://pc-tech.pages.dev'] },
-  production: { project: 'pc-tech-production', branch: 'production', database: 'e863e5c3-b60f-48a5-8fdd-862f1ac52eaf', origins: ['https://pc-tech-production.pages.dev', 'https://polarcanvas.in', 'https://www.polarcanvas.in'] },
-})
+import { targets } from '../lib/deploymentTargets.ts'
+export { targets }
 export function targetFor(name) {
   if (!Object.hasOwn(targets, name)) throw new Error('Explicit target must be nonproduction or production.')
   return targets[name]

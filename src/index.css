@@ -22,10 +22,15 @@ main.dashboard-shell {
   padding: 0 0 2.5rem;
   box-sizing: border-box;
   display: grid;
-  gap: 1.5rem;
+}
+
+main.dashboard-shell {
+  --dashboard-header-height: 70px;
+  gap: 0;
 }
 
 main.app-shell {
+  gap: 1.5rem;
   position: relative;
   place-items: center;
   padding: 1rem 1rem 3rem;
@@ -336,8 +341,8 @@ main.app-shell::after {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  min-height: 70px;
-  height: 70px;
+  min-height: var(--dashboard-header-height);
+  height: var(--dashboard-header-height);
   padding: 0.5rem 1.15rem;
   box-sizing: border-box;
   background:
@@ -475,7 +480,7 @@ main.app-shell::after {
   display: grid;
   grid-template-columns: 195px minmax(0, 1fr);
   gap: 0;
-  height: calc(100vh - 70px);
+  height: calc(100vh - var(--dashboard-header-height));
   min-height: 0;
 }
 
@@ -769,6 +774,13 @@ main.app-shell::after {
   border-top: 0;
 }
 
+.data-management-section-title {
+  margin: 0;
+  color: #1e293b;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
 .data-management-utility {
   display: flex;
   align-items: center;
@@ -809,7 +821,8 @@ main.app-shell::after {
   white-space: nowrap;
 }
 
-.data-management-utility button {
+.data-management-utility button,
+.system-usage-header button {
   display: inline-flex;
   min-height: 30px;
   flex: 0 0 auto;
@@ -826,11 +839,13 @@ main.app-shell::after {
   cursor: pointer;
 }
 
-.data-management-utility button:hover {
+.data-management-utility button:hover,
+.system-usage-header button:hover {
   background: #1d4ed8;
 }
 
-.data-management-utility button:disabled {
+.data-management-utility button:disabled,
+.system-usage-header button:disabled {
   cursor: wait;
   opacity: 0.65;
 }
@@ -3305,7 +3320,7 @@ main.app-shell::after {
   .dashboard-grid {
     grid-template-columns: 1fr;
     height: auto;
-    min-height: calc(100vh - 70px);
+    min-height: calc(100vh - var(--dashboard-header-height));
   }
 
   .dashboard-menu,

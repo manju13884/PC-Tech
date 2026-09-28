@@ -24,6 +24,7 @@ import './features/corrugated-box-price-calculator-compat.css'
 import CorrugatedBoardPriceCalculator from './features/corrugated-board-price-calculator/CorrugatedBoardPriceCalculator'
 import PartitionCalculator from './features/partition-calculator/PartitionCalculator'
 import MasterData from './features/master-data/MasterData'
+import SystemUsage from './features/system-usage/SystemUsage'
 import CalculatorMasterData from './features/master-data/CalculatorMasterData'
 import PaperPurchaseRequest from './features/paper-purchase-request/PaperPurchaseRequest'
 import PaperPurchaseRequestApprovals from './features/paper-purchase-request-approvals/PaperPurchaseRequestApprovals'
@@ -262,7 +263,7 @@ const menuGroups: MenuGroup[] = [
       },
       {
         key: 'data-management',
-        title: 'Data Management (Refresh data from Zoho Books)',
+        title: 'Data Management',
         menuTitle: 'Data Management',
         description:
           'Manage controlled business data operations and environment-specific data utilities.',
@@ -2288,7 +2289,10 @@ export default function Dashboard({
               )}
               {selectedItem.key === 'master-data' && <MasterData />}
               {selectedItem.key === 'data-management' && (
+                <>
+                <SystemUsage />
                 <div className="coc-form data-management-form">
+                  <h3 className="data-management-section-title">Refresh data from Zoho Books</h3>
                   <div className="data-management-utility">
                     <div>
                       <strong>Customer Details</strong>
@@ -2394,6 +2398,7 @@ export default function Dashboard({
                     </p>
                   )}
                 </div>
+                </>
               )}
               {selectedItem.key === 'coc' && (
                 <div className="coc-form">
