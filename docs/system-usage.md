@@ -1,79 +1,127 @@
-# System Usage
+# System Usage: diagnosis, sources and configuration
 
-Configurations → Data Management displays System Usage before the existing Zoho refresh section. The five rows load on entry and on manual Refresh only. React StrictMode's effect replay shares the initial request; there is no polling, scheduled task, persistent cache, or usage history.
+The existing Data Management grid, section order and Refresh styling/alignment are preserved. Unavailable cells now offer a small hover/click explanation.
 
-## Endpoint and authorization
+## Confirmed diagnosis
 
-`GET /api/system-usage` uses the existing session authentication and Data Management menu permission. SUPERADMIN automatically has access. Other users require an existing Data Management permission, matching the current menu-access predicate. Unauthenticated requests receive 401, unauthorized requests 403, other methods 405. Responses are `Cache-Control: no-store`. Upstream credentials, identifiers, response bodies and errors are not returned or logged.
+The earlier implementation never inspected Zoho's response headers, suppressed all account monitoring in LOCAL, required unnecessary Pages permission before D1 queries, limited account inventory to one page/40 databases, and collapsed external errors into generic unavailable responses.
 
-The response contains `environment`, `refreshedAt`, and five entries under `metrics`. Each entry contains `current`, `limit`, `remaining`, `asOf`, and optional safe reasons. Unknown numbers and retrieval timestamps are null, rendered as **Unavailable**, never zero. `refreshedAt` is the last completed monitoring request; `asOf` is each successful metric's retrieval time, not a promise of real-time analytics ingestion. A failed refresh displays unavailable values and keeps the prior completed refresh timestamp.
+Local inspection on 28-Sep-2026 confirmed that both `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are missing from `.dev.vars` and the shell environment. Thus no live Cloudflare permission/query failure has been observed yet: missing configuration prevents requests. They are now supported in LOCAL as well as hosted environments, using only explicitly supplied runtime credentials.
 
-## Files
+The configured Zoho IN account returned HTTP 200 with `x-rate-limit-limit`, `x-rate-limit-remaining`, and `x-rate-limit-reset` headers. A subsequent live collector verification at 07:53 UTC reported **85 used / 5,000 limit / 4,915 remaining**. These are verification observations, not application constants. The earlier unsupported-source assumption was incorrect.
 
-- `src/Dashboard.tsx`: inserts the section above existing content.
-- `src/features/system-usage/SystemUsage.tsx`: grid and initial/manual refresh behavior.
-- `src/features/system-usage/system-usage.css`: scoped compact styling.
-- `src/features/system-usage/systemUsageTypes.ts`: sanitized response contract.
-- `src/features/system-usage/systemUsageFormatting.ts`: counts, storage and IST timestamps.
-- `functions/api/system-usage.ts`: authenticated read-only endpoint.
-- `functions/lib/systemUsage.ts`: metadata/analytics collection and safe fallbacks.
-- `lib/deploymentTargets.ts` and `scripts/deployment-maintenance.mjs`: share the existing deployment map unchanged.
-- `tests/systemUsage.test.mjs`: monitoring regression tests.
-- `docs/system-usage.md`: operation, availability and verification notes.
+Current local D1 size still returned **1,024,000 bytes (1.02 MB)** from runtime metadata. The constant query reported zero rows read, zero rows written and no database change. No D1 limits are currently configured; none are guessed.
 
-The earlier shared header-gap and Data Management heading edits remain in the working tree; System Usage does not alter them.
+## Sources and minimum permissions
 
-## Sources and support
-
-| Metric | Source | Availability |
+| Metric | Authoritative source | Access |
 | --- | --- | --- |
-| Zoho Books API – Today | No verified daily-usage API in the existing Books integration | Unavailable. No speculative API requests or counters are added. |
-| PC-Tech D1 Database Size | Current runtime `DB` binding, `SELECT 1` result's `meta.size_after` | Actual size in bytes, including local D1 when metadata is returned. Constant query, no business table scan. |
-| Total D1 Database Size | Cloudflare REST list databases, then database `file_size` metadata | Available with a verified account/target and complete metadata. Sum includes every database in the configured account. |
-| D1 Rows Read – Today | Cloudflare GraphQL `d1AnalyticsAdaptiveGroups.sum.rowsRead` | Account-wide aggregate for the current UTC date, subject to analytics permissions and ingestion delay. |
-| D1 Rows Written – Today | Cloudflare GraphQL `d1AnalyticsAdaptiveGroups.sum.rowsWritten` | Same scope and window as reads. |
+| Zoho Books API - Today | One `GET /books/v3/contacts?organization_id=...&per_page=1`; quota response headers | Existing OAuth credentials, organization context, `ZohoBooks.contacts.READ` |
+| Current D1 database size | Current runtime `DB.prepare('SELECT 1').all().meta.size_after` | Existing DB binding |
+| Total D1 storage | Paginated `GET /client/v4/accounts/{account}/d1/database`; `file_size` from listing or `GET .../d1/database/{uuid}` | Account > D1 > Read |
+| D1 rows read today | `POST /client/v4/graphql`, `d1AnalyticsAdaptiveGroups.sum.rowsRead` | Account > Account Analytics > Read |
+| D1 rows written today | Same GraphQL query, `sum.rowsWritten` | Account > Account Analytics > Read |
 
-All limits and remaining values are currently **Unavailable**: the configured sources do not confirm the applicable subscription/entitlements. Free-tier examples and paid included allowances are not treated as confirmed limits. Do not insert guessed plan limits. Zoho's usage page is available in its own web UI, but is not used as an undocumented scraping/API source here.
+The monitoring token needs **D1 Read** and **Account Analytics Read**, restricted to the intended account. Monitoring does **not** need Pages Read or write permissions. Uploading secrets/deploying is a separate administrator operation using the existing deployment login.
 
-Total storage never reports a partial sum. The full account inventory must fit in one metadata listing and contain no duplicate/missing database identifiers or missing sizes. Work is bounded to 40 databases, four simultaneous detail requests and a shared ten-second external deadline; larger/incomplete inventories display Unavailable. Empty analytics responses are unavailable rather than assumed zero. An explicit numeric zero is valid. Metadata and analytics tasks run concurrently and fail independently of current-binding size.
+Zoho monitoring reuses `getAccessToken` and the existing region selection. Contact bodies are discarded and never returned. Optional OAuth diagnostic suppression applies only to monitoring; existing callers retain their behavior. The monitoring request itself consumes one Books API request; token refresh occurs only when the existing OAuth cache requires it.
 
-## Environments and credentials
+Usage is calculated directly from provider headers as `limit - remaining`. Integer/range checks require remaining <= limit and a reset within 24 hours. Books documents a separate 100-per-minute throttle; headers at or below that limit are not labelled as daily usage. The live IN headers were verified, although their complete semantics are not specified in the Books introduction documentation. Missing or unrecognized headers fail closed rather than producing a guessed value. No plan is inferred from the observed limit.
 
-The pre-existing release target map has been moved without value changes from `scripts/deployment-maintenance.mjs` to `lib/deploymentTargets.ts`. Both the release script and monitoring use that single map. No new environment selector or database identifier configuration is introduced.
+D1 analytics use `Time` variables with `datetimeHour_geq` at UTC midnight and `datetimeHour_leq` at retrieval start, matching the D1 filter mechanism in Cloudflare's Wrangler implementation. No dimensions/database filter are selected, yielding an account-wide aggregate. The current hour contains data ingested so far; analytics may lag. An explicit numeric zero is valid; missing analytics is not assumed zero.
 
-- Loopback/private-network local hosts display LOCAL and never make remote monitoring calls, even if remote credentials are present.
-- The configured nonproduction canonical origin displays STAGING; configured production origins display PRODUCTION.
-- Unmapped custom/preview hosts display environment Unavailable and do not query a remote account. Add a properly validated deployment target to the shared configuration before supporting a new environment; do not infer production from an unknown hostname.
-- Current database size always uses the actual `DB` runtime binding, never a REST request to a selected remote database.
-- Before any account inventory or analytics query, monitoring checks the configured Cloudflare account's Pages project, canonical branch and production binding against the existing release target. A mismatch disables account monitoring.
-- Account totals can include multiple environments **in the same account**, as requested; the UI identifies this scope. A staging call validates the staging target and does not fall back to the production target or credentials.
+Storage inventory is paginated and UUID-deduplicated. Listing sizes are reused; only missing sizes trigger detail requests, with at most four concurrent requests. Incomplete/changing inventories or missing sizes never produce a partial total. There is no 40-database cap. Cloudflare requests share a ten-second deadline.
 
-For hosted account metrics, configure **server-side Pages runtime** secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` for that deployment environment. Existing GitHub Actions secrets are not automatically runtime secrets. Use a token scoped to the intended account with:
+## Environment and server-side settings
 
-- Cloudflare Pages Read (validate project/branch/binding).
-- D1 Read (database inventory and size metadata).
-- Account Analytics Read (daily read/write aggregates).
+The badge uses the existing shared deployment map. Current database size always uses the actual runtime binding, including LOCAL. Account metrics independently use that runtime's explicit credentials. Hostnames never select account credentials or substitute production values. Unmapped hosts keep an Unavailable badge, but can read their explicitly configured account metrics.
 
-No new Zoho scopes or credentials are needed. Local `.dev.vars` currently has no Cloudflare monitoring token/account, and local mode would suppress remote calls regardless. This change does not provision secrets, change account permissions or deploy the application.
+Required Cloudflare keys:
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
 
-## Read-only guarantees
+Optional verified limits, non-negative whole numbers only:
+- `D1_DATABASE_LIMIT_BYTES` - current bound database hard limit.
+- `D1_ACCOUNT_STORAGE_LIMIT_BYTES` - account-wide storage hard limit.
+- `D1_DAILY_ROWS_READ_LIMIT` - daily row-read hard limit.
+- `D1_DAILY_ROWS_WRITTEN_LIMIT` - daily row-write hard limit.
 
-No tables, migrations, schema changes, counters, snapshots, histories or stored timestamps are introduced. System Usage issues existing auth/permission SELECTs and one constant D1 SELECT, with no D1 writes. The existing maintenance middleware also performs its existing read. All external operations read metadata/analytics; GraphQL uses HTTP POST for a query, never a mutation. Existing Data Management refresh operations are unchanged and remain separate from monitoring.
+Leave unknown/nonfinite limits blank. A paid plan's included monthly allowance is not a daily hard limit. No defaults are assumed. Remaining requires usage and limit and is clamped at zero. These settings are never stored in D1.
+
+Zoho uses the existing `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_ORG_ID`, and `ZOHO_REGION=in`; no new Zoho credential or scope is needed. No `VITE_` credentials are permitted. GitHub Actions secrets do not automatically become Pages runtime secrets.
+
+### Local commands
+
+Wrangler reads local secrets from ignored `.dev.vars`; `wrangler secret put` does not set local secrets. Consult `.dev.vars.example` and edit the existing file without overwriting Zoho settings:
+
+```powershell
+notepad .dev.vars
+npm run dev
+```
+
+Add the required keys/verified limits and restart the local backend. Never commit `.dev.vars` or copy production secrets into it automatically.
+
+### Hosted Dev / STAGING
+
+The existing project is `pc-tech`, branch `main`. Its canonical deployment uses the Pages **production** secret slot; this is still PC-Tech Dev, not the separate production application. Commands prompt for values:
+
+```powershell
+npx wrangler pages secret put CLOUDFLARE_ACCOUNT_ID --project-name pc-tech --env production
+npx wrangler pages secret put CLOUDFLARE_API_TOKEN --project-name pc-tech --env production
+```
+
+For each verified finite limit, as applicable:
+
+```powershell
+npx wrangler pages secret put D1_DATABASE_LIMIT_BYTES --project-name pc-tech --env production
+npx wrangler pages secret put D1_ACCOUNT_STORAGE_LIMIT_BYTES --project-name pc-tech --env production
+npx wrangler pages secret put D1_DAILY_ROWS_READ_LIMIT --project-name pc-tech --env production
+npx wrangler pages secret put D1_DAILY_ROWS_WRITTEN_LIMIT --project-name pc-tech --env production
+```
+
+Preview deployments use the same project with `--env preview`. The current release map has no separate staging project. Pages secret commands do not accept `--env staging` or `--env nonproduction`.
+
+### Production
+
+Only when configuring the separate production application:
+
+```powershell
+npx wrangler pages secret put CLOUDFLARE_ACCOUNT_ID --project-name pc-tech-production --env production
+npx wrangler pages secret put CLOUDFLARE_API_TOKEN --project-name pc-tech-production --env production
+```
+
+For optional verified limits, use the corresponding commands above with `--project-name pc-tech-production --env production`. Redeploy through the appropriate gated workflow after changing runtime secrets. This implementation does not provision credentials or invent limits.
+
+## API and safe diagnostics
+
+`GET /api/system-usage` retains existing session/Data Management permissions, automatic SUPERADMIN access, no-store responses, and rejection of other methods. Each metric returns `available`, `current`, `limit`, `remaining`, `asOf`, and optional `code`, `reason`, `limitReason`. Storage values are bytes. The existing response keys are preserved.
+
+Categories distinguish configuration, authentication (401), permission (403), rate_limit (429), timeout, network, invalid_response, invalid_metadata, incomplete, no_data, unsupported, graphql_query and graphql_error. A GraphQL leaf error does not hide a successful sibling field. UI explanations are fixed sanitized messages.
+
+Logs contain only metric key, fixed category and optional numeric HTTP status. External bodies, messages, URLs, account IDs and credentials are not logged or returned. Provider tasks run concurrently. The client allows 35 seconds for the existing OAuth helper plus the Books request; Cloudflare has its own shorter deadline.
+
+One initial request (deduplicated during React StrictMode effect replay) plus manual Refresh; no polling or persistent snapshots. Failed refreshes retain the previous completed refresh timestamp and show unavailable values.
+
+## Files changed for this correction
+
+- `functions/lib/systemUsage.ts`: collectors, configuration, pagination, limits and safe diagnostics.
+- `lib/zoho.ts`: quota-header reader using existing OAuth and optional diagnostic suppression.
+- `src/features/system-usage/systemUsageTypes.ts`: availability/category fields.
+- `src/features/system-usage/SystemUsage.tsx`: accessible explanations and request timeout.
+- `src/features/system-usage/system-usage.css`: explanation affordance only; grid design unchanged.
+- `.dev.vars.example`: key reference without credentials.
+- `tests/systemUsage.test.mjs`: provider, security, permission and limit regressions.
+- `docs/system-usage.md`: diagnosis and setup instructions.
+
+## Read-only guarantees and verification
+
+No D1 tables, migrations, schema changes, counters, stored usage statistics, scheduled snapshots or persistent timestamps. No business-table writes. Existing refresh actions remain separate and unchanged. Cloudflare POST requests are GraphQL queries, not mutations.
+
+Checks: focused monitoring tests, existing deployment-maintenance/customer-cache regressions, frontend production build/type checking, backend type checking, browser refresh/diagnostic/responsive checks, live Zoho headers, and actual local D1 metadata. Live Cloudflare account metrics still require missing runtime credentials; provider-fixture tests are not live-account verification.
 
 ## References
 
-- [D1 return metadata](https://developers.cloudflare.com/d1/worker-api/return-object/) — `size_after`.
-- [D1 REST list](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/list/) and [database metadata](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/get/) — inventory and `file_size`.
-- [D1 analytics](https://developers.cloudflare.com/d1/observability/metrics-analytics/) and [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) — aggregates and UTC daily windows.
-- [Analytics token permissions](https://developers.cloudflare.com/analytics/graphql-api/getting-started/authentication/api-token-auth/).
-- [Zoho Books usage UI](https://www.zoho.com/ca/books/help/settings/developer-and-data/api-usage.html) and [API introduction](https://www.zoho.com/books/api/v3/introduction/).
-
-## Checks
-
-- `node --test tests/systemUsage.test.mjs`: authorization, read-only queries, environments, credential containment, complete account sums, partial source failures, unavailable vs zero, formatting.
-- `node --experimental-strip-types --test tests/deploymentMaintenance.test.ts`: shared deployment-target extraction preserves release behavior.
-- `npm run build`: frontend type checking and production bundle.
-- Backend type check with the existing Cloudflare Workers types.
-- Local browser check with mocked source responses: five rows and placement, original refresh controls, desktop/mobile widths, StrictMode single fetch, manual refresh, timestamp updates, failed refresh and recovery, duplicate-click protection, no automatic refresh.
-- Local Miniflare runtime binding check returned `size_after: 1024000`, `rows_read: 0`, `rows_written: 0`, `changed_db: false`. Wrangler's CLI strips this metadata, so the runtime binding was checked directly. The running local endpoint also returned 401 without a session.
-- Remote Cloudflare/Zoho metrics cannot be live-verified without runtime monitoring credentials and a documented Zoho usage endpoint respectively.
+- [Zoho Books API limits](https://www.zoho.com/books/api/v3/introduction/) and [Books usage UI](https://www.zoho.com/ca/books/help/settings/developer-and-data/api-usage.html).
+- [D1 metadata](https://developers.cloudflare.com/d1/worker-api/return-object/), [database listing](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/list/) and [database details](https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/get/).
+- [D1 analytics](https://developers.cloudflare.com/d1/observability/metrics-analytics/) and [Wrangler D1 source](https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/src/d1).
+- [Analytics token permissions](https://developers.cloudflare.com/analytics/graphql-api/getting-started/authentication/api-token-auth/) and [Pages secret commands](https://developers.cloudflare.com/workers/wrangler/commands/pages/).

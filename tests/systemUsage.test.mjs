@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { mock } from 'node:test'
 import { build } from 'esbuild'
 
 async function load(entry) {
@@ -7,7 +7,7 @@ async function load(entry) {
   return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`)
 }
 const api = await load('functions/api/system-usage.ts')
-const { collectSystemUsage, usageEnvironment } = await load('functions/lib/systemUsage.ts')
+const { collectSystemUsage, usageEnvironment, zohoMetricFromHeaders } = await load('functions/lib/systemUsage.ts')
 const { formatUsage, formatUsageTime } = await load('src/features/system-usage/systemUsageFormatting.ts')
 const account = 'a'.repeat(32)
 const stagingId = '0d749a66-9654-4767-b56a-afd4f8bcd9a1'
@@ -41,144 +41,224 @@ function fixture({ role = 'SUPERADMIN', permission = false, size = 24600000, bro
 function request(host = 'http://localhost', method = 'GET', authenticated = true) {
   return new Request(`${host}/api/system-usage`, { method, headers: authenticated ? { Cookie: 'pc_tech_session=test' } : {} })
 }
-function cloudflare({ production = false, denyProject = false, denyStorage = false, denyAnalytics = false, incomplete = false, wrongBinding = false, reads = 1210000, writes = 12420, emptyAnalytics = false } = {}) {
-  const calls = []
-  const id = production ? productionId : stagingId
-  const otherId = '12345678-1234-1234-1234-123456789abc'
-  const fetcher = async (url, init) => {
-    calls.push({ url, init })
-    assert.ok(url.startsWith('https://api.cloudflare.com/client/v4/'))
-    assert.equal(init.headers.Authorization, `Bearer ${envCredentials.CLOUDFLARE_API_TOKEN}`)
-    assert.equal(init.redirect, 'error')
-    const ok = result => Response.json({ success: true, result })
-    if (url.includes('/pages/projects/')) {
-      if (denyProject) return new Response('secret upstream failure', { status: 403 })
-      return ok({ production_branch: production ? 'production' : 'main', deployment_configs: { production: { d1_databases: { DB: { id: wrongBinding ? productionId : id } } } } })
-    }
-    if (url.endsWith('/graphql')) {
-      if (denyAnalytics) return Response.json({ errors: [{ message: 'secret upstream failure' }] })
-      const body = JSON.parse(init.body)
-      assert.match(body.query, /^query /)
-      assert.equal(body.variables.day, new Date().toISOString().slice(0, 10))
-      assert.equal(body.variables.accountTag, account)
-      assert.ok(!body.query.includes('databaseId'), 'Daily totals cover the account quota scope')
-      return Response.json({ data: { viewer: { accounts: [{ d1AnalyticsAdaptiveGroups: emptyAnalytics ? [] : [{ sum: { rowsRead: reads, rowsWritten: writes } }] }] } } })
-    }
-    if (denyStorage) return new Response('secret upstream failure', { status: 403 })
-    if (url.includes('?')) return Response.json({ success: true, result: [{ uuid: id }, { uuid: otherId }], result_info: { total_count: incomplete ? 3 : 2 } })
-    if (url.endsWith(id)) return ok({ file_size: 24600000 })
-    if (url.endsWith(otherId)) return ok({ file_size: 103800000 })
-    throw new Error('Unexpected external call')
-  }
-  return { calls, fetcher }
-}
 
-test('anonymous, expired, forbidden and non-GET requests are rejected before monitoring', async () => {
-  for (const [options, req, status] of [
-    [{}, request('http://localhost', 'GET', false), 401],
-    [{ expired: true }, request(), 401],
-    [{ role: 'SALES' }, request(), 403],
-    [{}, request('http://localhost', 'POST'), 405],
-  ]) {
-    const f = fixture(options)
-    const response = await api.onRequest({ request: req, env: { DB: f.DB } })
-    assert.equal(response.status, status)
+const diagnostics = []
+mock.method(console, 'warn', (...args) => diagnostics.push(args))
+const zohoEnv = { ZOHO_ORG_ID: '1234567', ZOHO_CLIENT_ID: 'client-secret', ZOHO_CLIENT_SECRET: 'secret', ZOHO_REFRESH_TOKEN: 'refresh-secret', ZOHO_REGION: 'in' }
+const headers = (limit='5000', remaining='4916', reset='38000') => new Headers({'x-rate-limit-limit':limit,'x-rate-limit-remaining':remaining,'x-rate-limit-reset':reset})
+function cloudflare({ storageStatus, analyticsStatus, incomplete=false, reads=1210000, writes=12420, errors=[], emptyAnalytics=false } = {}) {
+  const calls=[]
+  const fetcher=async(url,init)=>{
+    calls.push({url,init})
+    assert.ok(url.startsWith('https://api.cloudflare.com/client/v4/'))
+    assert.equal(init.headers.Authorization,'Bearer '+envCredentials.CLOUDFLARE_API_TOKEN)
+    assert.equal(init.redirect,'error')
+    assert.ok(!url.includes('/pages/'),'No extra Pages permission required')
+    if(url.endsWith('/graphql')){
+      if(analyticsStatus)return new Response('sensitive-body',{status:analyticsStatus})
+      const body=JSON.parse(init.body)
+      assert.match(body.query,/datetimeHour_geq: \$start/)
+      assert.match(body.query,/datetimeHour_leq: \$end/)
+      assert.equal(body.variables.start,body.variables.end.slice(0,10)+'T00:00:00.000Z')
+      assert.ok(Date.parse(body.variables.end)<=Date.now())
+      assert.equal(body.variables.accountTag,account)
+      assert.ok(!body.query.includes('databaseId'))
+      return Response.json({errors,data:{viewer:{accounts:[{d1AnalyticsAdaptiveGroups:emptyAnalytics?[]:[{sum:{rowsRead:reads,rowsWritten:writes}}]}]}}})
+    }
+    if(storageStatus)return new Response('sensitive-body',{status:storageStatus})
+    if(url.includes('?'))return Response.json({success:true,result:[{uuid:stagingId},{uuid:productionId}],result_info:{total_count:incomplete?3:2}})
+    return Response.json({success:true,result:{file_size:url.endsWith(stagingId)?24600000:103800000}})
+  }
+  return {calls,fetcher}
+}
+const collect = (f,cf,extra={},host='http://localhost') => collectSystemUsage(request(host),{DB:f.DB,...envCredentials,...extra},cf.fetcher)
+
+test('anonymous, expired, forbidden and non-GET requests are rejected before monitoring',async()=>{
+  for(const [options,req,status] of [[{},request('http://localhost','GET',false),401],[{expired:true},request(),401],[{role:'SALES'},request(),403],[{},request('http://localhost','POST'),405]]){
+    const f=fixture(options)
+    assert.equal((await api.onRequest({request:req,env:{DB:f.DB}})).status,status)
     assert.ok(!f.sql.includes('SELECT 1'))
   }
 })
-
-test('SUPERADMIN and existing Data Management permission can read all five rows', async () => {
-  for (const options of [{}, { role: 'SALES', permission: true }]) {
-    const f = fixture(options)
-    const response = await api.onRequest({ request: request(), env: { DB: f.DB } })
-    assert.equal(response.status, 200)
-    assert.equal(response.headers.get('Cache-Control'), 'no-store')
-    const body = await response.json()
-    assert.equal(body.environment, 'LOCAL')
-    assert.equal(Object.keys(body.metrics).length, 5)
-    assert.equal(body.metrics.d1Database.current, 24600000)
-    assert.equal(body.metrics.zohoApi.current, null)
-    assert.equal(body.metrics.d1Database.limit, null)
-    assert.equal(body.metrics.d1Database.remaining, null)
+test('SUPERADMIN and existing Data Management permission can read all five rows',async()=>{
+  for(const options of [{},{role:'SALES',permission:true}]){
+    const f=fixture(options)
+    const response=await api.onRequest({request:request(),env:{DB:f.DB}})
+    assert.equal(response.status,200)
+    assert.equal(response.headers.get('Cache-Control'),'no-store')
+    const body=await response.json()
+    assert.equal(body.environment,'LOCAL')
+    assert.equal(Object.keys(body.metrics).length,5)
+    assert.equal(body.metrics.d1Database.current,24600000)
+    assert.equal(body.metrics.d1Database.available,true)
+    assert.equal(body.metrics.zohoApi.code,'configuration')
+    assert.equal(body.metrics.totalD1.reason,'Cloudflare Account ID not configured.')
     assert.ok(Date.parse(body.refreshedAt))
   }
 })
-
-test('local and unknown hosts never contact remote accounts even with credentials', async () => {
-  for (const origin of ['http://localhost', 'http://127.0.0.1:8788', 'http://192.168.1.5:5173', 'https://preview.pc-tech-production.pages.dev', 'https://polarcanvas.in.attacker.test']) {
-    const f = fixture()
-    const body = await collectSystemUsage(request(origin), { DB: f.DB, ...envCredentials }, async () => { assert.fail('Remote call from unmapped or local environment') })
-    assert.equal(body.metrics.d1Database.current, 24600000)
-    assert.equal(body.metrics.totalD1.current, null)
-    assert.equal(usageEnvironment(origin).target, null)
+test('local current binding and configured account metrics are independent',async()=>{
+  const cf=cloudflare(),f=fixture({size:1024000})
+  const result=await collect(f,cf)
+  assert.equal(result.environment,'LOCAL')
+  assert.equal(result.metrics.d1Database.current,1024000)
+  assert.equal(result.metrics.totalD1.current,128400000)
+  assert.equal(result.metrics.d1RowsRead.current,1210000)
+  assert.equal(result.metrics.d1RowsWritten.current,12420)
+  assert.equal(cf.calls.length,4)
+})
+test('hostnames never select alternate credentials or production database bindings',async()=>{
+  for(const [host,label] of [['https://pc-tech.pages.dev','STAGING'],['https://polarcanvas.in','PRODUCTION'],['https://unmapped.example','UNAVAILABLE']]){
+    const cf=cloudflare()
+    const result=await collect(fixture(),cf,{},host)
+    assert.equal(result.environment,label)
+    assert.ok(cf.calls.every(c=>!c.url.includes('/pages/')))
+    assert.equal(result.metrics.totalD1.current,128400000)
+  }
+  assert.equal(usageEnvironment('http://192.168.1.5').environment,'LOCAL')
+})
+test('missing and invalid configuration have precise reasons and make no network calls',async()=>{
+  for(const [values,reason] of [[{},'Cloudflare Account ID not configured.'],[{CLOUDFLARE_ACCOUNT_ID:account},'Cloudflare API token not configured.'],[{CLOUDFLARE_ACCOUNT_ID:'invalid'},'Cloudflare Account ID is invalid.']]){
+    const result=await collectSystemUsage(request(),{DB:fixture().DB,...values},async()=>assert.fail('No external call without explicit credentials'))
+    assert.equal(result.metrics.totalD1.reason,reason)
+    assert.equal(result.metrics.d1RowsRead.reason,reason)
   }
 })
-
-test('staging and production reuse the correct deployment target; actual API values only', async () => {
-  for (const production of [false, true]) {
-    const f = fixture(), cf = cloudflare({ production })
-    const body = await collectSystemUsage(request(production ? 'https://polarcanvas.in' : 'https://pc-tech.pages.dev'), { DB: f.DB, ...envCredentials }, cf.fetcher)
-    assert.equal(body.environment, production ? 'PRODUCTION' : 'STAGING')
-    assert.equal(body.metrics.totalD1.current, 128400000)
-    assert.equal(body.metrics.d1RowsRead.current, 1210000)
-    assert.equal(body.metrics.d1RowsWritten.current, 12420)
-    assert.ok(cf.calls[0].url.endsWith(production ? '/pc-tech-production' : '/pc-tech'))
-    assert.ok(!JSON.stringify(body).includes('secret'))
-    assert.ok(!JSON.stringify(body).includes(account))
-    for (const metric of Object.values(body.metrics)) {
-      assert.equal(metric.limit, null, 'No assumed subscription limits')
-      assert.equal(metric.remaining, null)
-      if (metric.current !== null) assert.ok(Date.parse(metric.asOf))
-    }
+test('all five metrics load with authoritative fixtures, configured limits and no persisted counters',async()=>{
+  const cf=cloudflare()
+  const result=await collectSystemUsage(request(),{DB:fixture().DB,...envCredentials,...zohoEnv,D1_DATABASE_LIMIT_BYTES:'500000000',D1_ACCOUNT_STORAGE_LIMIT_BYTES:'5000000000',D1_DAILY_ROWS_READ_LIMIT:'5000000',D1_DAILY_ROWS_WRITTEN_LIMIT:'100000'},cf.fetcher,async()=>headers())
+  assert.equal(result.metrics.zohoApi.current,84)
+  assert.equal(result.metrics.zohoApi.limit,5000)
+  assert.equal(result.metrics.zohoApi.remaining,4916)
+  assert.equal(result.metrics.d1Database.remaining,475400000)
+  assert.equal(result.metrics.totalD1.remaining,4871600000)
+  assert.equal(result.metrics.d1RowsRead.remaining,3790000)
+  assert.equal(result.metrics.d1RowsWritten.remaining,87580)
+  for(const metric of Object.values(result.metrics))assert.ok(Date.parse(metric.asOf))
+  assert.ok(!JSON.stringify(result).includes('secret'))
+  assert.ok(!JSON.stringify(result).includes(account))
+})
+test('unknown/invalid limits never become fake numbers and over-limit remaining clamps to zero',async()=>{
+  const cf=cloudflare()
+  const result=await collect(fixture(),cf,{D1_DATABASE_LIMIT_BYTES:'1',D1_ACCOUNT_STORAGE_LIMIT_BYTES:'-10',D1_DAILY_ROWS_READ_LIMIT:'500.5'})
+  assert.equal(result.metrics.d1Database.remaining,0)
+  assert.equal(result.metrics.totalD1.limit,null)
+  assert.equal(result.metrics.d1RowsRead.limit,null)
+  assert.match(result.metrics.d1RowsRead.limitReason,/invalid/)
+  assert.equal(result.metrics.d1RowsWritten.limit,null)
+})
+test('inventory pagination deduplicates UUIDs and reuses authoritative listing sizes',async()=>{
+  const ids=[stagingId,productionId,'12345678-1234-1234-1234-123456789abc']
+  const cf=cloudflare(),pages=[]
+  const fetcher=async(url,init)=>{
+    if(url.endsWith('/graphql'))return cf.fetcher(url,init)
+    assert.ok(url.includes('?'),'Listing metadata must avoid duplicate detail requests')
+    const page=Number(new URL(url).searchParams.get('page'));pages.push(page)
+    return Response.json({success:true,result:page===1?[{uuid:ids[0],file_size:100},{uuid:ids[1],file_size:200}]:[{uuid:ids[1].toUpperCase(),file_size:200},{uuid:ids[2],file_size:300}],result_info:{total_count:3,per_page:2}})
+  }
+  const result=await collectSystemUsage(request(),{DB:fixture().DB,...envCredentials},fetcher)
+  assert.deepEqual(pages,[1,2])
+  assert.equal(result.metrics.totalD1.current,600)
+})
+test('more than 40 databases with sizes from listing are fully supported',async()=>{
+  const entries=Array.from({length:55},(_,i)=>({uuid:'12345678-1234-1234-1234-'+String(i).padStart(12,'0'),file_size:100}))
+  const cf=cloudflare()
+  const result=await collectSystemUsage(request(),{DB:fixture().DB,...envCredentials},async(url,init)=>url.endsWith('/graphql')?cf.fetcher(url,init):Response.json({success:true,result:entries,result_info:{total_count:55}}))
+  assert.equal(result.metrics.totalD1.current,5500)
+})
+test('incomplete inventory never returns a partial total',async()=>{
+  const result=await collect(fixture(),cloudflare({incomplete:true}))
+  assert.equal(result.metrics.totalD1.current,null)
+  assert.equal(result.metrics.totalD1.code,'incomplete')
+  assert.equal(result.metrics.d1RowsRead.current,1210000)
+})
+test('HTTP 401/403/429/500 errors are classified and isolated by source',async()=>{
+  for(const [status,code] of [[401,'authentication'],[403,'permission'],[429,'rate_limit'],[500,'provider_error']]){
+    let result=await collect(fixture(),cloudflare({storageStatus:status}))
+    assert.equal(result.metrics.totalD1.code,code)
+    assert.equal(result.metrics.d1RowsRead.current,1210000)
+    result=await collect(fixture(),cloudflare({analyticsStatus:status}))
+    assert.equal(result.metrics.d1RowsRead.code,code)
+    assert.equal(result.metrics.totalD1.current,128400000)
+    assert.ok(!JSON.stringify(result).includes('sensitive-body'))
   }
 })
-
-test('wrong deployment binding or denied project metadata prevents account calls', async () => {
-  for (const options of [{ wrongBinding: true }, { denyProject: true }]) {
-    const f = fixture(), cf = cloudflare(options)
-    const body = await collectSystemUsage(request('https://pc-tech.pages.dev'), { DB: f.DB, ...envCredentials }, cf.fetcher)
-    assert.equal(cf.calls.length, 1)
-    assert.equal(body.metrics.totalD1.current, null)
-    assert.equal(body.metrics.d1Database.current, 24600000)
+test('GraphQL failures preserve safe categories and successful sibling fields',async()=>{
+  for(const [message,code] of [['token SECRET has no permission','permission'],['Cannot query field SECRET','graphql_query'],['rate limit SECRET','rate_limit'],['failure SECRET','graphql_error']]){
+    const result=await collect(fixture(),cloudflare({reads:null,errors:[{message,path:['viewer','accounts',0,'d1AnalyticsAdaptiveGroups',0,'sum','rowsRead']}]}))
+    assert.equal(result.metrics.d1RowsRead.code,code)
+    assert.equal(result.metrics.d1RowsWritten.current,12420)
+    assert.ok(!JSON.stringify(result).includes('SECRET'))
   }
 })
-
-test('storage and analytics failures are isolated; incomplete storage never appears as a total', async () => {
-  for (const options of [{ denyStorage: true }, { incomplete: true }, { denyAnalytics: true }, { emptyAnalytics: true }]) {
-    const f = fixture(), cf = cloudflare(options)
-    const body = await collectSystemUsage(request('https://pc-tech.pages.dev'), { DB: f.DB, ...envCredentials }, cf.fetcher)
-    const storageFailed = options.denyStorage || options.incomplete
-    assert.equal(body.metrics.totalD1.current, storageFailed ? null : 128400000)
-    assert.equal(body.metrics.d1RowsRead.current, storageFailed ? 1210000 : null)
-    assert.equal(body.metrics.d1Database.current, 24600000)
-    assert.ok(!JSON.stringify(body).includes('secret upstream'))
+test('timeouts, malformed JSON and absent analytics do not hide current D1 size',async()=>{
+  for(const [fetcher,code] of [[async()=>{throw new DOMException('secret','TimeoutError')},'timeout'],[async()=>new Response('not json'),'invalid_response']]){
+    const result=await collectSystemUsage(request(),{DB:fixture().DB,...envCredentials},fetcher)
+    assert.equal(result.metrics.totalD1.code,code)
+    assert.equal(result.metrics.d1RowsRead.code,code)
+    assert.equal(result.metrics.d1Database.current,24600000)
+  }
+  const result=await collect(fixture(),cloudflare({emptyAnalytics:true}))
+  assert.equal(result.metrics.d1RowsRead.current,null)
+  assert.equal(result.metrics.d1RowsRead.code,'no_data')
+})
+test('Zoho provider headers and resets are validated without guessing a plan',()=>{
+  assert.equal(zohoMetricFromHeaders(headers()).current,84)
+  assert.equal(zohoMetricFromHeaders(headers('12000','11000','1')).limit,12000)
+  for(const h of [new Headers(),headers('100','90','60'),headers('5000','5001'),headers('5000','-1'),headers('5000','abc'),headers('5000','4000','999999')]){
+    assert.throws(()=>zohoMetricFromHeaders(h),/cannot be verified/)
   }
 })
-
-test('bad size metadata does not hide other metrics and missing analytics is not zero', async () => {
-  const f = fixture({ brokenSize: true }), cf = cloudflare({ reads: null, writes: 0 })
-  const body = await collectSystemUsage(request('https://pc-tech.pages.dev'), { DB: f.DB, ...envCredentials }, cf.fetcher)
-  assert.equal(body.metrics.d1Database.current, null)
-  assert.equal(body.metrics.totalD1.current, 128400000)
-  assert.equal(body.metrics.d1RowsRead.current, null)
-  assert.equal(body.metrics.d1RowsWritten.current, 0)
-})
-
-test('malformed or negative metadata is unavailable, never guessed', async () => {
-  for (const size of [null, undefined, '12345', -5, NaN, Infinity]) {
-    const f = fixture({ size: size === undefined ? null : size })
-    const body = await collectSystemUsage(request(), { DB: f.DB })
-    assert.equal(body.metrics.d1Database.current, null)
+test('Zoho auth, scope, rate-limit and unsupported headers fail independently',async()=>{
+  for(const [fn,code] of [[async()=>{throw {status:401,message:'SECRET'}},'authentication'],[async()=>{throw {status:403}},'permission'],[async()=>{throw {status:429}},'rate_limit'],[async()=>new Headers(),'unsupported']]){
+    const result=await collectSystemUsage(request(),{DB:fixture().DB,...envCredentials,...zohoEnv},cloudflare().fetcher,fn)
+    assert.equal(result.metrics.zohoApi.code,code)
+    assert.equal(result.metrics.totalD1.current,128400000)
+    assert.ok(!JSON.stringify(result).includes('SECRET'))
   }
 })
-
-test('counts, storage and second-resolution IST times use readable formatting', () => {
-  assert.equal(formatUsage(12420), '12,420')
-  assert.equal(formatUsage(0, true), '0 Bytes')
-  assert.equal(formatUsage(24600000, true), '24.6 MB')
-  assert.equal(formatUsage(1250000000, true), '1.25 GB')
-  assert.equal(formatUsage(null), 'Unavailable')
-  assert.equal(formatUsage(-1), 'Unavailable')
-  assert.equal(formatUsageTime('2026-09-28T06:13:20Z'), '28-Sep-2026 11:43:20 AM')
-  assert.equal(formatUsageTime('invalid'), 'Unavailable')
+test('working bound database size survives all remote errors, invalid metadata is not zero',async()=>{
+  const result=await collect(fixture({size:1024000}),cloudflare({storageStatus:403,analyticsStatus:403}))
+  assert.equal(result.metrics.d1Database.current,1024000)
+  for(const size of [null,-5,'1234']){
+    const body=await collectSystemUsage(request(),{DB:fixture({size}).DB})
+    assert.equal(body.metrics.d1Database.current,null)
+  }
+  const zero=await collect(fixture(),cloudflare({reads:0,writes:0}))
+  assert.equal(zero.metrics.d1RowsRead.current,0)
+})
+test('diagnostics contain only category, metric and optional numeric HTTP status',()=>{
+  assert.ok(diagnostics.length>0)
+  for(const [prefix,entry] of diagnostics){
+    assert.equal(prefix,'[system-usage]')
+    assert.ok(Object.keys(entry).every(k=>['metric','code','status'].includes(k)))
+    assert.ok(!JSON.stringify(entry).includes('SECRET'))
+    assert.ok(!JSON.stringify(entry).includes(account))
+  }
+})
+test('counts, storage and second-resolution IST times remain unchanged',()=>{
+  assert.equal(formatUsage(12420),'12,420')
+  assert.equal(formatUsage(1024000,true),'1.02 MB')
+  assert.equal(formatUsage(0,true),'0 Bytes')
+  assert.equal(formatUsage(null),'Unavailable')
+  assert.equal(formatUsageTime('2026-09-28T06:13:20Z'),'28-Sep-2026 11:43:20 AM')
+})
+test('Zoho monitoring reuses OAuth and configured organization, returns only quota headers',async()=>{
+  const zoho=await load('lib/zoho.ts')
+  const calls=[]
+  const original=globalThis.fetch
+  globalThis.fetch=async(url,init)=>{
+    calls.push({url:String(url),init})
+    if(String(url).includes('/oauth/'))return Response.json({access_token:'private-access-token',expires_in:3600})
+    assert.equal(init.headers.Authorization,'Zoho-oauthtoken private-access-token')
+    assert.equal(new URL(url).searchParams.get('organization_id'),zohoEnv.ZOHO_ORG_ID)
+    assert.equal(new URL(url).searchParams.get('per_page'),'1')
+    return new Response('private-contact-payload',{headers:{'x-rate-limit-limit':'5000','x-rate-limit-remaining':'4000','x-rate-limit-reset':'10000','set-cookie':'private-cookie'}})
+  }
+  try{
+    const result=await zoho.getZohoUsageHeaders(zohoEnv)
+    assert.equal(result.get('x-rate-limit-remaining'),'4000')
+    assert.equal(result.get('set-cookie'),null)
+    assert.equal(calls.length,2)
+    assert.ok(![...result.values()].some(v=>v.includes('private')))
+  }finally{globalThis.fetch=original}
 })

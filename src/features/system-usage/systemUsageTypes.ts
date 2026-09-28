@@ -1,5 +1,7 @@
 export type UsageKey = 'zohoApi' | 'd1Database' | 'totalD1' | 'd1RowsRead' | 'd1RowsWritten'
 export interface UsageMetric {
+  available?: boolean
+  code?: string
   current: number | null
   limit: number | null
   remaining: number | null

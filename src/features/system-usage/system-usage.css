@@ -39,3 +39,8 @@
 .system-usage thead th:nth-child(2), .system-usage thead th:nth-child(3), .system-usage thead th:nth-child(4) { text-align: right; }
 .system-usage .system-usage-error { margin: 0.4rem 0; color: #b91c1c; font-size: 0.65rem; }
 .system-usage button:focus-visible, .system-usage-scroll:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.system-usage-reason { display: inline-block; }
+.system-usage-reason summary { list-style: none; cursor: help; }
+.system-usage-reason summary::-webkit-details-marker { display: none; }
+.system-usage-reason summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.system-usage-reason > span { display: block; max-width: 210px; padding-top: 0.25rem; white-space: normal; line-height: 1.4; color: #52647a; }

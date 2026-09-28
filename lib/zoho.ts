@@ -140,7 +140,8 @@ let tokenExpiryTime = 0
  * Retrieve a fresh Zoho access token using the configured refresh-token grant.
  * The result is cached briefly so repeated calls reuse a still-valid token.
  */
-export async function getAccessToken(env?: ZohoEnv): Promise<string> {
+export async function getAccessToken(env?: ZohoEnv, options: { diagnostics?: boolean } = {}): Promise<string> {
+  const report = options.diagnostics === false ? () => {} : logZohoDiagnostic
   const clientId = getEnv('ZOHO_CLIENT_ID', env)
   const clientSecret = getEnv('ZOHO_CLIENT_SECRET', env)
   const refreshToken = getEnv('ZOHO_REFRESH_TOKEN', env)
@@ -150,7 +151,7 @@ export async function getAccessToken(env?: ZohoEnv): Promise<string> {
   }
 
   if (cachedAccessToken && Date.now() < tokenExpiryTime) {
-    logZohoDiagnostic('access-token request skipped; cached token is valid', {
+    report('access-token request skipped; cached token is valid', {
       tokenEndpointHostname: new URL(getZohoUrls(env).tokenUrl).hostname,
       accessTokenRequestSucceeded: true,
       zohoOrgIdNumericOnly: isZohoOrgIdNumeric(env),
@@ -165,7 +166,7 @@ export async function getAccessToken(env?: ZohoEnv): Promise<string> {
   body.append('refresh_token', refreshToken)
   body.append('grant_type', 'refresh_token')
 
-  logTokenRequestDiagnostic(tokenUrl, body, env)
+  if (options.diagnostics !== false) logTokenRequestDiagnostic(tokenUrl, body, env)
 
   const response = await zohoFetch(tokenUrl, {
     method: 'POST',
@@ -181,7 +182,7 @@ export async function getAccessToken(env?: ZohoEnv): Promise<string> {
   try {
     payload = responseText ? JSON.parse(responseText) : {}
   } catch {
-    logZohoDiagnostic('access-token request failed', {
+    report('access-token request failed', {
       tokenEndpointHostname: new URL(tokenUrl).hostname,
       accessTokenRequestSucceeded: false,
       zohoHttpStatus: response.status,
@@ -198,7 +199,7 @@ export async function getAccessToken(env?: ZohoEnv): Promise<string> {
 
   if (!response.ok || !payload.access_token) {
     const details = getZohoOAuthErrorDetails(response.status, payload)
-    logZohoDiagnostic('access-token request failed', {
+    report('access-token request failed', {
       tokenEndpointHostname: new URL(tokenUrl).hostname,
       accessTokenRequestSucceeded: false,
       zohoHttpStatus: response.status,
@@ -209,7 +210,7 @@ export async function getAccessToken(env?: ZohoEnv): Promise<string> {
     throw new ZohoRequestError(formatZohoOAuthError(details), details)
   }
 
-  logZohoDiagnostic('access-token request succeeded', {
+  report('access-token request succeeded', {
     tokenEndpointHostname: new URL(tokenUrl).hostname,
     accessTokenRequestSucceeded: true,
     zohoHttpStatus: response.status,
@@ -222,6 +223,29 @@ export async function getAccessToken(env?: ZohoEnv): Promise<string> {
   tokenExpiryTime = Date.now() + ((payload.expires_in ?? 3600) * 1000 - 60000)
 
   return cachedAccessToken
+}
+
+/** Read provider quota headers without retaining contact data or tracking requests. */
+export async function getZohoUsageHeaders(env: ZohoEnv): Promise<Headers> {
+  const accessToken = await getAccessToken(env, { diagnostics: false })
+  const url = new URL(`${getZohoUrls(env).booksUrl}/contacts`)
+  url.searchParams.set('organization_id', env.ZOHO_ORG_ID?.trim() ?? '')
+  url.searchParams.set('per_page', '1')
+  const response = await fetch(url, {
+    method: 'GET', redirect: 'error', signal: AbortSignal.timeout(10000),
+    headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
+  })
+  // Never expose the contact payload or raw error body to the monitoring caller.
+  await response.body?.cancel()
+  if (!response.ok) throw new ZohoRequestError('Zoho usage request failed.', {
+    status: response.status, code: 'usage_request_failed', message: 'Zoho usage request failed.',
+  })
+  return new Headers({
+    'x-rate-limit-limit': response.headers.get('x-rate-limit-limit') ?? '',
+    'x-rate-limit-remaining': response.headers.get('x-rate-limit-remaining') ?? '',
+    'x-rate-limit-reset': response.headers.get('x-rate-limit-reset') ?? '',
+    date: response.headers.get('date') ?? '',
+  })
 }
 
 async function zohoRequest(endpoint: string, env?: ZohoEnv): Promise<unknown> {

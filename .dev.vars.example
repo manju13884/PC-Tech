@@ -1,0 +1,18 @@
+# Copy needed values into the git-ignored .dev.vars. Never use VITE_ names.
+# Keep each environment's credentials separate; do not copy production secrets.
+CLOUDFLARE_ACCOUNT_ID=
+CLOUDFLARE_API_TOKEN=
+
+# Optional verified limits only; bytes for storage, row counts for daily quotas.
+# Leave blank if unknown or the account has no finite daily hard limit.
+D1_DATABASE_LIMIT_BYTES=
+D1_ACCOUNT_STORAGE_LIMIT_BYTES=
+D1_DAILY_ROWS_READ_LIMIT=
+D1_DAILY_ROWS_WRITTEN_LIMIT=
+
+# Existing Zoho integration variables; already configured locally.
+ZOHO_CLIENT_ID=
+ZOHO_CLIENT_SECRET=
+ZOHO_REFRESH_TOKEN=
+ZOHO_ORG_ID=
+ZOHO_REGION=in

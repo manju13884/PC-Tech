@@ -13,11 +13,19 @@ const rows: { key: UsageKey; label: string; storage?: boolean }[] = [
 ]
 
 async function fetchUsage(): Promise<UsageResponse> {
-  const response = await fetch('/api/system-usage', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(15000) })
+  const response = await fetch('/api/system-usage', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(35000) })
   if (!response.ok) throw new Error('System Usage is unavailable. Please try Refresh again.')
   const payload = await response.json() as UsageResponse
   if (!payload.metrics || !rows.every(row => payload.metrics[row.key]) || !payload.refreshedAt) throw new Error('System Usage is unavailable.')
   return payload
+}
+
+function UsageValue({ text, reason }: { text: string; reason?: string }) {
+  if (text !== 'Unavailable' || !reason) return <>{text}</>
+  return <details className="system-usage-reason">
+    <summary title={reason}>Unavailable <span aria-hidden="true">ⓘ</span></summary>
+    <span>{reason}</span>
+  </details>
 }
 
 export default function SystemUsage() {
@@ -67,8 +75,8 @@ export default function SystemUsage() {
             const unavailableReason = error ? 'Monitoring request failed.' : metric?.reason
             return <tr key={row.key}>
               <th scope="row">{row.label}</th>
-              <td data-unavailable={metric?.current == null} title={unavailableReason}>{!data && loading ? 'Loading…' : formatUsage(metric?.current, row.storage)}</td>
-              <td data-unavailable={metric?.limit == null} title={metric?.limitReason ?? unavailableReason}>{!data && loading ? 'Loading…' : formatUsage(metric?.limit, row.storage)}</td>
+              <td data-unavailable={metric?.current == null}><UsageValue text={!data && loading ? 'Loading…' : formatUsage(metric?.current, row.storage)} reason={unavailableReason} /></td>
+              <td data-unavailable={metric?.limit == null}><UsageValue text={!data && loading ? 'Loading…' : formatUsage(metric?.limit, row.storage)} reason={metric?.limitReason ?? unavailableReason} /></td>
               <td data-unavailable={metric?.remaining == null} title={metric?.limitReason ?? unavailableReason}>{!data && loading ? 'Loading…' : formatUsage(metric?.remaining == null ? null : Math.max(0, metric.remaining), row.storage)}</td>
               <td data-unavailable={!metric?.asOf}>{!data && loading ? 'Loading…' : formatUsageTime(metric?.asOf)}</td>
             </tr>
