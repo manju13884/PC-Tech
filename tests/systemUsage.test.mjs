@@ -92,7 +92,7 @@ test('SUPERADMIN and existing Data Management permission can read all five rows'
     assert.equal(body.metrics.d1Database.current,24600000)
     assert.equal(body.metrics.d1Database.available,true)
     assert.equal(body.metrics.zohoApi.code,'configuration')
-    assert.equal(body.metrics.totalD1.reason,'Cloudflare Account ID not configured.')
+    assert.equal(body.metrics.totalD1.reason,'Cloudflare Account ID and API token are not configured.')
     assert.ok(Date.parse(body.refreshedAt))
   }
 })
@@ -117,7 +117,7 @@ test('hostnames never select alternate credentials or production database bindin
   assert.equal(usageEnvironment('http://192.168.1.5').environment,'LOCAL')
 })
 test('missing and invalid configuration have precise reasons and make no network calls',async()=>{
-  for(const [values,reason] of [[{},'Cloudflare Account ID not configured.'],[{CLOUDFLARE_ACCOUNT_ID:account},'Cloudflare API token not configured.'],[{CLOUDFLARE_ACCOUNT_ID:'invalid'},'Cloudflare Account ID is invalid.']]){
+  for(const [values,reason] of [[{},'Cloudflare Account ID and API token are not configured.'],[{CLOUDFLARE_ACCOUNT_ID:account},'Cloudflare API token not configured.'],[{CLOUDFLARE_ACCOUNT_ID:'invalid'},'Cloudflare Account ID is invalid.']]){
     const result=await collectSystemUsage(request(),{DB:fixture().DB,...values},async()=>assert.fail('No external call without explicit credentials'))
     assert.equal(result.metrics.totalD1.reason,reason)
     assert.equal(result.metrics.d1RowsRead.reason,reason)
@@ -145,6 +145,43 @@ test('unknown/invalid limits never become fake numbers and over-limit remaining 
   assert.equal(result.metrics.d1RowsRead.limit,null)
   assert.match(result.metrics.d1RowsRead.limitReason,/invalid/)
   assert.equal(result.metrics.d1RowsWritten.limit,null)
+})
+
+test('explicit Free plan supplies server-side limits; unknown plans do not assume quotas',async()=>{
+  const free=await collect(fixture(),cloudflare(),{D1_PLAN:'free'})
+  assert.equal(free.metrics.d1Database.limit,500000000)
+  assert.equal(free.metrics.totalD1.limit,5000000000)
+  assert.equal(free.metrics.d1RowsRead.limit,5000000)
+  assert.equal(free.metrics.d1RowsWritten.limit,100000)
+  assert.equal(free.metrics.d1RowsWritten.remaining,87580)
+  const override=await collect(fixture(),cloudflare(),{D1_PLAN:'free',D1_DAILY_ROWS_READ_LIMIT:'1'})
+  assert.equal(override.metrics.d1RowsRead.remaining,0)
+  for(const plan of ['paid','unknown','']) {
+    const result=await collect(fixture(),cloudflare(),{D1_PLAN:plan})
+    assert.equal(result.metrics.d1RowsRead.limit,null)
+  }
+})
+
+test('explicit remote identity reuses REST size and preserves binding fallback on failure',async()=>{
+  const cf=cloudflare()
+  const remote=await collect(fixture(),cf,{D1_DATABASE_ID:productionId},'https://polarcanvas.in')
+  assert.equal(remote.metrics.d1Database.current,103800000)
+  assert.equal(cf.calls.length,4,'No extra storage API request')
+  for(const extra of [{D1_DATABASE_ID:'not-a-database'},{D1_DATABASE_ID:productionId}]) {
+    const result=await collect(fixture({size:1160000}),cloudflare({storageStatus:403}),extra)
+    assert.equal(result.metrics.d1Database.current,1160000)
+    assert.equal(result.metrics.totalD1.reason,'Cloudflare D1 Read permission required.')
+  }
+  const result=await collect(fixture(),cloudflare({analyticsStatus:403}))
+  assert.equal(result.metrics.d1RowsRead.reason,'Cloudflare Account Analytics Read permission required.')
+})
+
+test('Zoho OAuth error diagnostics do not expose external messages',async()=>{
+  for(const code of ['invalid_client','invalid_client_secret','invalid_code','invalid_token','invalid_scope']) {
+    const result=await collectSystemUsage(request(),{DB:fixture().DB,...zohoEnv},undefined,async()=>{throw Object.assign(new Error('sensitive-provider-payload'),{code,status:400})})
+    assert.equal(result.metrics.zohoApi.code,code==='invalid_scope'?'permission':'authentication')
+    assert.ok(!JSON.stringify(result).includes('sensitive-provider-payload'))
+  }
 })
 test('inventory pagination deduplicates UUIDs and reuses authoritative listing sizes',async()=>{
   const ids=[stagingId,productionId,'12345678-1234-1234-1234-123456789abc']

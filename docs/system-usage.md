@@ -34,7 +34,7 @@ Storage inventory is paginated and UUID-deduplicated. Listing sizes are reused; 
 
 ## Environment and server-side settings
 
-The badge uses the existing shared deployment map. Current database size always uses the actual runtime binding, including LOCAL. Account metrics independently use that runtime's explicit credentials. Hostnames never select account credentials or substitute production values. Unmapped hosts keep an Unavailable badge, but can read their explicitly configured account metrics.
+The badge uses the existing shared deployment map. Current database size uses the actual runtime binding, including LOCAL, unless `D1_DATABASE_ID` explicitly identifies the current remote database: then the collector reuses that database's REST `file_size` from the account inventory. Binding metadata remains the fallback on API failure. Omit `D1_DATABASE_ID` locally. Account metrics independently use that runtime's explicit credentials. Hostnames never select account credentials or substitute production values. Unmapped hosts keep an Unavailable badge, but can read their explicitly configured account metrics.
 
 Required Cloudflare keys:
 - `CLOUDFLARE_ACCOUNT_ID`
@@ -46,7 +46,7 @@ Optional verified limits, non-negative whole numbers only:
 - `D1_DAILY_ROWS_READ_LIMIT` - daily row-read hard limit.
 - `D1_DAILY_ROWS_WRITTEN_LIMIT` - daily row-write hard limit.
 
-Leave unknown/nonfinite limits blank. A paid plan's included monthly allowance is not a daily hard limit. No defaults are assumed. Remaining requires usage and limit and is clamped at zero. These settings are never stored in D1.
+Leave unknown/nonfinite limits blank. A paid plan's included monthly allowance is not a daily hard limit. No defaults are assumed unless `D1_PLAN=free` is explicitly set server-side after confirming Workers Free. That preset supplies 500 MB per database, 5 GB account storage, 5,000,000 rows read/day and 100,000 rows written/day. Explicit limit variables override the preset. Remaining requires usage and limit and is clamped at zero. These settings are never stored in D1.
 
 Zoho uses the existing `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_ORG_ID`, and `ZOHO_REGION=in`; no new Zoho credential or scope is needed. No `VITE_` credentials are permitted. GitHub Actions secrets do not automatically become Pages runtime secrets.
 

@@ -2,6 +2,10 @@
 # Keep each environment's credentials separate; do not copy production secrets.
 CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_API_TOKEN=
+# Optional explicit remote database identity (omit for local binding metadata).
+D1_DATABASE_ID=
+# Set to free only after verifying Workers Free; otherwise set limits explicitly.
+D1_PLAN=
 
 # Optional verified limits only; bytes for storage, row counts for daily quotas.
 # Leave blank if unknown or the account has no finite daily hard limit.
