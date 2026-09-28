@@ -2150,7 +2150,9 @@ export default function Dashboard({
                 aria-expanded={isExpanded}
                 aria-controls={groupId}
               >
-                <ChevronRight className="menu-group-chevron" size={14} aria-hidden="true" />
+                <span className="menu-group-chevron-wrapper" aria-hidden="true">
+                  <ChevronRight className="menu-group-chevron" size={14} strokeWidth={1.8} />
+                </span>
                 <span>{group.title}</span>
               </button>
               <ul id={groupId} className="menu-list" hidden={!isExpanded}>
@@ -2168,7 +2170,6 @@ export default function Dashboard({
                         </span>
                         <span>{item.menuTitle ?? item.title}</span>
                       </span>
-                      <ChevronRight className="menu-item-chevron" size={16} aria-hidden="true" />
                     </button>
                     {item.key === selectedKey && <span>✓</span>}
                   </li>
