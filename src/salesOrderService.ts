@@ -2,6 +2,7 @@ export interface SalesOrder {
   salesorder_id: string
   salesorder_number: string
   status?: string
+  order_status?: string
 }
 
 export interface SalesOrderLineItem {

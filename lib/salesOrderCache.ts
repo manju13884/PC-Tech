@@ -43,6 +43,7 @@ function isOrder(value: unknown): value is SalesOrderSummary {
   const order = value as SalesOrderSummary
   return typeof order.salesorder_id === 'string' && typeof order.customer_id === 'string'
     && typeof order.salesorder_number === 'string' && typeof order.status === 'string'
+    && typeof order.order_status === 'string'
 }
 
 export function cachedSalesOrder(

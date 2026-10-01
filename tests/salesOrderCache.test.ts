@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { DatabaseSync } from 'node:sqlite'
 import { cachedSalesOrder, cachedCustomerSalesOrders, SALES_ORDER_CACHE_TTL_MS } from '../lib/salesOrderCache.ts'
 
-const order = { salesorder_id: 'so1', salesorder_number: 'SO-1', customer_id: 'c1', status: 'open', total: 100, line_items: [
+const order = { salesorder_id: 'so1', salesorder_number: 'SO-1', customer_id: 'c1', status: 'open', order_status: 'open', total: 100, line_items: [
   { line_item_id: 'l1', item_id: 'i1', name: 'Box', description: '', quantity: 10, quantity_invoiced: 0, unit: 'Nos', rate: 10, amount: 100 },
 ] }
 
@@ -54,6 +54,20 @@ test('expired, malformed, mismatched and incomplete cache entries fetch live dat
     assert.deepEqual(await cachedSalesOrder(env, 'so1', async () => { calls++; return order }), order)
     assert.equal(calls, 1)
   }
+})
+
+test('older cached customer lists without order_status refresh before reuse', async () => {
+  const { env, rows } = database()
+  const { order_status, ...legacyOrder } = order
+  rows.set('org1:customer:c1', {
+    payload_json: JSON.stringify([legacyOrder]), refreshed_at: new Date().toISOString(),
+  })
+  const liveOrder = { ...order, status: 'invoiced', order_status: 'closed' }
+  let calls = 0
+  const load = async () => { calls++; return [liveOrder] }
+  assert.deepEqual(await cachedCustomerSalesOrders(env, 'c1', load), [liveOrder])
+  assert.deepEqual(await cachedCustomerSalesOrders(env, 'c1', load), [liveOrder])
+  assert.equal(calls, 1)
 })
 
 test('save validation forces a live read and updates the cache', async () => {

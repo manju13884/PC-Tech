@@ -1,6 +1,26 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { isMappableSalesOrder } from '../src/features/so-specification-mapping/salesOrderEligibility.ts'
+
+test('mapping dropdown excludes Closed, Draft, and Void API statuses', () => {
+  for (const status of ['open', 'confirmed', ' OPEN ', 'Confirmed', 'cancelled', 'canceled', 'invoiced', 'partially_invoiced', 'overdue', 'pending_approval', 'unknown', '', undefined]) {
+    assert.equal(isMappableSalesOrder({ status }), true, String(status))
+  }
+  for (const status of ['draft', 'closed', ' Draft ', 'CLOSED', 'void', 'voided', ' VOID ', 'Voided']) {
+    assert.equal(isMappableSalesOrder({ status }), false, String(status))
+  }
+})
+
+test('mapping uses order status rather than invoice or overdue status', () => {
+  assert.equal(isMappableSalesOrder({ status: 'invoiced', order_status: 'closed' }), false)
+  assert.equal(isMappableSalesOrder({ status: 'open', order_status: ' Draft ' }), false)
+  assert.equal(isMappableSalesOrder({ status: 'overdue', order_status: 'open' }), true)
+  assert.equal(isMappableSalesOrder({ status: 'invoiced', order_status: 'open' }), true)
+  assert.equal(isMappableSalesOrder({ status: 'void', order_status: 'void' }), false)
+  assert.equal(isMappableSalesOrder({ status: 'open', order_status: ' VOID ' }), false)
+  assert.equal(isMappableSalesOrder({ status: 'open', order_status: 'voided' }), false)
+})
 
 test('SO Specification Mapping follows customer, Sales Order, display flow', async () => {
   const [component, dashboard, api, migration, childMigration, childQuantityMigration] = await Promise.all([
@@ -17,8 +37,8 @@ test('SO Specification Mapping follows customer, Sales Order, display flow', asy
   assert.match(component, /customer\.customer_name} - \$\{customer\.gst_number}/)
   assert.match(component, />\{customerDisplayName\(customer\)}<\/option>/)
   assert.match(component, /orders\.filter\(isMappableSalesOrder\)/)
-  assert.match(component, /new Set\(\['closed', 'void', 'voided', 'invoiced'\]\)/)
-  assert.match(component, /match\(\/\[a-z\]\+\/g\)/)
+  assert.match(component, /import \{ isMappableSalesOrder \} from '\.\/salesOrderEligibility'/)
+  assert.match(component, /No Sales Orders available other than Closed, Draft, or Void\./)
   assert.match(component, /getSalesOrderById\(salesOrderId\)/)
   assert.match(component, /Sales Order Number/)
   assert.match(component, /detail\.line_items\.map/)

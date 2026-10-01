@@ -9,6 +9,7 @@ import {
 } from '../../salesOrderService'
 import '../product-specifications/product-specifications.css'
 import './so-specification-mapping.css'
+import { isMappableSalesOrder } from './salesOrderEligibility'
 
 interface ProductSpecificationOption {
   id: number
@@ -39,9 +40,6 @@ async function readApiPayload<T>(response: Response): Promise<T> {
   }
 }
 
-const excludedSalesOrderStatuses = new Set(['closed', 'void', 'voided', 'invoiced'])
-const normalizedSalesOrderStatus = (status?: string) => ((status ?? '').trim().toLowerCase().match(/[a-z]+/g) ?? []).join('')
-const isMappableSalesOrder = (order: SalesOrder) => !excludedSalesOrderStatuses.has(normalizedSalesOrderStatus(order.status))
 const customerDisplayName = (customer: Customer) => customer.gst_number
   ? `${customer.customer_name} - ${customer.gst_number}`
   : customer.customer_name
@@ -272,7 +270,7 @@ export default function SoSpecificationMapping() {
         {customerError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{customerError}</p>}
         {salesOrderError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{salesOrderError}</p>}
         {specificationError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{specificationError}</p>}
-        {!salesOrdersLoading && customerId && !salesOrderError && salesOrders.length === 0 && <p className="so-mapping-empty">No Sales Orders are available for this customer.</p>}
+        {!salesOrdersLoading && customerId && !salesOrderError && salesOrders.length === 0 && <p className="so-mapping-empty">No Sales Orders available other than Closed, Draft, or Void.</p>}
       </section>
 
       {detailLoading && <section className="product-spec-panel so-mapping-empty">Loading Sales Order details…</section>}

@@ -9,6 +9,7 @@ export interface SalesOrderSummary {
   reference_number?: string
   shipment_date?: string
   status?: string
+  order_status?: string
 }
 
 export interface SalesOrderLineItem {
@@ -38,6 +39,7 @@ interface ZohoSalesOrder {
   balance?: string | number
   amount_invoiced?: string | number
   status?: string
+  order_status?: string
   customer_name?: string
   invoices?: unknown[]
   line_items?: unknown[]
@@ -173,6 +175,7 @@ function mapSalesOrder(
     reference_number: normalizeText(salesOrder.reference_number),
     shipment_date: normalizeText(salesOrder.shipment_date),
     status: normalizeText(salesOrder.status),
+    order_status: normalizeText(salesOrder.order_status),
   }
 }
 
@@ -388,6 +391,7 @@ export async function getZohoSalesOrderById(
     reference_number: normalizeText(value.reference_number),
     shipment_date: normalizeText(value.shipment_date),
     status: normalizeText(value.status),
+    order_status: normalizeText(value.order_status),
     total: Number.isFinite(Number(value.total)) ? Number(value.total) : 0,
     line_items: Array.isArray(value.line_items)
       ? value.line_items
