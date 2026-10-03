@@ -3,7 +3,7 @@ import { getMenuPermission } from '../lib/superadminAccess'
 
 interface Env { DB?: D1Database }
 interface Context { request: Request; env: Env }
-interface ActivityRow { id:number; so_line_item_id:string; production_quantity:number; job_card_id:number|null; job_number:string|null; job_status:string|null; attributes_json:string|null }
+interface ActivityRow { id:number; so_line_item_id:string; production_quantity:number; plan_date:string|null; delivery_date:string|null; job_card_id:number|null; job_number:string|null; job_status:string|null; attributes_json:string|null }
 interface ProcessRow { job_card_id:number; process_name:string; process_status:string }
 
 const json = (payload: unknown, status = 200) => Response.json(payload, { status, headers: { 'Cache-Control': 'no-store' } })
@@ -30,7 +30,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   if (!salesOrderId || salesOrderId.length > 100) return json({ error: 'A valid Sales Order is required.' }, 400)
 
   const activityResult = await db.prepare(
-    `SELECT line.id, line.zoho_sales_order_line_item_id AS so_line_item_id, line.production_quantity,
+    `SELECT line.id, line.zoho_sales_order_line_item_id AS so_line_item_id, line.production_quantity, plan.plan_date, line.delivery_date,
       card.id AS job_card_id, card.job_number, card.status AS job_status, spec.attributes_json
      FROM production_plan_lines line
      INNER JOIN production_plans plan ON plan.id=line.production_plan_id
@@ -59,6 +59,8 @@ export async function onRequestGet(context: Context): Promise<Response> {
       id: row.id,
       soLineItemId: row.so_line_item_id,
       quantity: row.production_quantity,
+      productionDate: row.plan_date,
+      deliveryDate: row.delivery_date,
       jobs: row.job_card_id && row.job_number ? [{
         id: row.job_card_id,
         jobNumber: row.job_number,

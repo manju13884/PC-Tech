@@ -16,6 +16,8 @@ export interface ProductionActivityStatus {
   id: number
   soLineItemId: string
   quantity: number
+  productionDate: string | null
+  deliveryDate: string | null
   jobs: ProductionJobStatus[]
 }
 

@@ -7,6 +7,8 @@ const activity = (jobStatus?: string, statuses: Array<'NOT_STARTED' | 'IN_PROGRE
   id: 1,
   soLineItemId: 'line-1',
   quantity: 500,
+  productionDate: '2026-10-03',
+  deliveryDate: '2026-10-10',
   jobs: jobStatus ? [{ id: 1, jobNumber: 'JC-000001', status: jobStatus, processes: statuses.map((status, index) => ({ name: `Stage ${index + 1}`, status })) }] : [],
 })
 
