@@ -1,3 +1,4 @@
+import DeckleCalculator from './features/deckle-calculator/DeckleCalculator'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
 import { ArrowLeftRight, Ban, BarChart3, Calculator, ChevronRight, CircleCheck, ClipboardList, Database, FileCheck2, FileDown, FlaskConical, Home, KeyRound, Package, PackageCheck, Pencil, Printer, RefreshCw, Save, Settings, ShieldCheck, ShoppingCart, SlidersHorizontal, UserPlus, Users, X, type LucideIcon } from 'lucide-react'
@@ -92,6 +93,7 @@ const menuGroups: MenuGroup[] = [
         description: 'Calculate the weight, manufacturing cost and selling price of 3-ply, 5-ply and 7-ply corrugated boards.',
         icon: Calculator,
       },
+      { key: 'deckle-calculator', title: 'Deckle Calculator', description: 'Find a production deckle and Ups within the configured machine capacity.', icon: Calculator },
       {
         key: 'partition-calculator',
         title: 'Partition Calculator',
@@ -292,6 +294,7 @@ const PANEL_HEADING_MENU_KEYS = new Set([
   ADVANCED_BOX_CALCULATOR_ROUTE_KEY,
   'corrugated-board-price',
   'partition-calculator',
+  'deckle-calculator',
   'paper-purchase-request',
   'production-specifications',
 ])
@@ -2209,7 +2212,7 @@ export default function Dashboard({
                 />
               )}
               {menuGroups.find(group => group.title === 'Calculators')?.items.some(item => item.key === selectedItem.key) && (
-                <CalculatorMasterData key={selectedItem.key}>
+                <CalculatorMasterData key={selectedItem.key} live={selectedItem.key === 'deckle-calculator'}>
                   {selectedItem.key === 'corrugated-box-price' && (
                     <div className="pc-corrugated-calculator-compat">
                       <CardBoxCalculator />
@@ -2221,6 +2224,7 @@ export default function Dashboard({
                   {selectedItem.key === 'corrugated-board-price' && (
                     <CorrugatedBoardPriceCalculator />
                   )}
+                  {selectedItem.key === 'deckle-calculator' && <DeckleCalculator />}
                   {selectedItem.key === 'partition-calculator' && (
                     <PartitionCalculator generatedBy={username} />
                   )}

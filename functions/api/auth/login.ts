@@ -39,6 +39,7 @@ const ALL_MENU_KEYS = [
   'corrugated-box-price-advanced',
   'corrugated-board-price',
   'partition-calculator',
+  'deckle-calculator',
   'so-specification-mapping',
   'so-production-status',
   'product-specifications',

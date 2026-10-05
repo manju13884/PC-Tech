@@ -79,14 +79,14 @@ test('Master Data requires authentication and edit permission to save', async ()
 
 test('Wastage, Margin, Markup and Transport use defaults, persist, and validate before saving', async () => {
   const f = fixture()
-  assert.deepEqual(await (await f.call()).json(), {paperPrice:'37', wastage:'6', margin:'12', markup:'12', transport:'1', ratePerKg:'12', printing:'2', canEdit:true})
+  assert.deepEqual(await (await f.call()).json(), {maximumMachineDeckle:'', paperPrice:'37', wastage:'6', margin:'12', markup:'12', transport:'1', ratePerKg:'12', printing:'2', canEdit:true})
   const values = {paperPrice:'40', wastage:'7.5', margin:'15', markup:'20', transport:'2.5', ratePerKg:'18', printing:'4'}
   assert.equal((await f.call('PUT', values)).status, 200)
-  assert.deepEqual(await (await f.call()).json(), {...values, canEdit:true})
+  assert.deepEqual(await (await f.call()).json(), {...values, maximumMachineDeckle:'', canEdit:true})
   assert.equal((await f.call('PUT', {...values, paperPrice:'99', markup:'bad'})).status, 400)
-  assert.deepEqual(await (await f.call()).json(), {...values, canEdit:true})
+  assert.deepEqual(await (await f.call()).json(), {...values, maximumMachineDeckle:'', canEdit:true})
   await f.call('PUT', {paperPrice:'40', wastage:'', margin:' ', markup:'', transport:'', ratePerKg:'', printing:''})
-  assert.deepEqual(await (await f.call()).json(), {paperPrice:'40', wastage:'6', margin:'12', markup:'12', transport:'1', ratePerKg:'12', printing:'2', canEdit:true})
+  assert.deepEqual(await (await f.call()).json(), {maximumMachineDeckle:'', paperPrice:'40', wastage:'6', margin:'12', markup:'12', transport:'1', ratePerKg:'12', printing:'2', canEdit:true})
   assert.equal((await f.call('PUT', {...values, transport:'-1'})).status, 400)
   await f.call('PUT', '45')
   assert.equal((await (await f.call()).json()).transport, '1')
@@ -100,7 +100,20 @@ test('calculator users can read shared defaults without permission to edit Maste
   f.setRole('SALES')
   assert.equal((await f.calculatorCall()).status, 403)
   f.setCalculatorAccess(true)
-  assert.deepEqual(await (await f.calculatorCall()).json(), {paperPrice:'49', wastage:'8', margin:'14', markup:'16', transport:'3', ratePerKg:'18', printing:'4'})
+  assert.deepEqual(await (await f.calculatorCall()).json(), {maximumMachineDeckle:'', paperPrice:'49', wastage:'8', margin:'14', markup:'16', transport:'3', ratePerKg:'18', printing:'4'})
   assert.equal((await f.call('PUT', '99')).status, 403)
   assert.equal((await f.calculatorCall(false)).status, 401)
+})
+
+test('machine maximum is optional in old payloads but must be positive when supplied, and persists decimals', async () => {
+  const f = fixture()
+  assert.equal((await (await f.call()).json()).maximumMachineDeckle, '')
+  assert.equal((await f.call('PUT', {paperPrice:'37', maximumMachineDeckle:'132.25'})).status, 200)
+  for (const maximumMachineDeckle of ['', '0', '-2', 'NaN', 'Infinity', '1e4', 120]) {
+    assert.equal((await f.call('PUT', {paperPrice:'99', maximumMachineDeckle})).status, 400)
+  }
+  const data = await (await f.call()).json()
+  assert.equal(data.maximumMachineDeckle, '132.25')
+  assert.equal(data.paperPrice, '37')
+  assert.equal((await (await f.calculatorCall()).json()).maximumMachineDeckle, '132.25')
 })

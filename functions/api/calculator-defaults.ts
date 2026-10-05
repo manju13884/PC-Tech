@@ -9,7 +9,7 @@ export async function onRequestGet(context: { request: Request; env: { DB?: D1Da
   if (!user) return json({ error: 'Authentication required.' }, 401)
   if (user.roleName !== 'SUPERADMIN') {
     const allowed = await db.prepare(`SELECT 1 AS allowed FROM role_menu_permissions
-      WHERE role_id = ? AND menu_key IN ('corrugated-box-price', 'corrugated-box-price-advanced', 'corrugated-board-price', 'partition-calculator')
+      WHERE role_id = ? AND menu_key IN ('corrugated-box-price', 'corrugated-box-price-advanced', 'corrugated-board-price', 'partition-calculator', 'deckle-calculator')
       AND (can_full = 1 OR can_view = 1 OR can_create = 1 OR can_edit = 1 OR can_delete = 1 OR can_approve = 1) LIMIT 1`).bind(user.roleId).first()
     if (!allowed) return json({ error: 'Calculator access is required.' }, 403)
   }

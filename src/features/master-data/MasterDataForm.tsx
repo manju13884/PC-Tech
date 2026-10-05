@@ -20,9 +20,9 @@ export default function MasterDataForm({
   async function save(event: FormEvent) {
     event.preventDefault()
     const normalized = resolveMasterData(values)
-    const invalid = masterDataFields.find(field => !validMasterDataValue(normalized[field.name]))
+    const invalid = masterDataFields.find(field => !validMasterDataValue(normalized[field.name], field.name))
     if (invalid) {
-      setError(`Enter a valid, non-negative ${invalid.label}.`)
+      setError(invalid.name === 'maximumMachineDeckle' ? 'Maximum Machine Deckle must be greater than zero.' : `Enter a valid, non-negative ${invalid.label}.`)
       return
     }
     setSaving(true)
@@ -49,6 +49,7 @@ export default function MasterDataForm({
               id={`master-${field.key}`}
               type="text"
               inputMode="decimal"
+              required={field.name === 'maximumMachineDeckle'}
               value={values[field.name]}
               disabled={saving || !canEdit}
               onChange={event => {

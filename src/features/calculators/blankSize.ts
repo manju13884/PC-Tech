@@ -25,12 +25,19 @@ export interface BlankSizeInput {
   ply: BlankSizePly
 }
 
-export function calculateBlankSize({ length, breadth, height, ply }: BlankSizeInput, allowances = BLANK_SIZE_ALLOWANCES_MM) {
-  const deckleSizeMm = breadth + height + allowances.deckle
+export function calculateCutLengthBreakdown({ length, breadth, ply }: BlankSizeInput, allowances = BLANK_SIZE_ALLOWANCES_MM) {
+  const creasingMm = ply === 7 ? 0 : allowances.boardCreasing[ply]
+  const jointMm = ply === 7 ? allowances.legacySevenPlyCutLength : allowances.joint
   const cutLengthMm = ply === 7
     ? 2 * length + 2 * breadth + allowances.legacySevenPlyCutLength
     : 2 * (length + allowances.boardCreasing[ply])
       + 2 * (breadth + allowances.boardCreasing[ply]) + allowances.joint
+  return { creasingMm, jointMm, lengthPanelMm: 2 * (length + creasingMm), widthPanelMm: 2 * (breadth + creasingMm), cutLengthMm, cutLengthCm: cutLengthMm / 10 }
+}
+
+export function calculateBlankSize(input: BlankSizeInput, allowances = BLANK_SIZE_ALLOWANCES_MM) {
+  const deckleSizeMm = input.breadth + input.height + allowances.deckle
+  const { cutLengthMm } = calculateCutLengthBreakdown(input, allowances)
 
   return {
     deckleSizeMm,

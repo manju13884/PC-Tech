@@ -31,7 +31,7 @@ async function handle(context: Context, save: boolean): Promise<Response> {
       if (!(field.name in body)) continue
       if (typeof body[field.name] !== 'string') return json({ error: `${field.label} must be a number.` }, 400)
       const value = (body[field.name] as string).trim() || field.defaultValue
-      if (!validMasterDataValue(value)) return json({ error: `Enter a valid, non-negative ${field.label}.` }, 400)
+      if (!validMasterDataValue(value, field.name)) return json({ error: field.name === 'maximumMachineDeckle' ? 'Maximum Machine Deckle must be greater than zero.' : `Enter a valid, non-negative ${field.label}.` }, 400)
       values[field.name] = value
     }
     await db.batch(masterDataFields.filter(field => field.name in values).map(field =>
