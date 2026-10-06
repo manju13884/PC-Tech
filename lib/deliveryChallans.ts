@@ -5,6 +5,8 @@ interface ZohoDeliveryChallan {
   delivery_challan_id?: string | number
   deliverychallan_number?: string
   delivery_challan_number?: string
+  customer_id?: string | number
+  status?: string
   customer_name?: string
   reference_number?: string
   po_number?: string
@@ -27,6 +29,8 @@ interface ZohoDeliveryChallansResponse {
 }
 
 export interface DeliveryChallanSummary {
+  customer_id: string
+  status: string
   delivery_challan_id: string
   delivery_challan_number: string
 }
@@ -47,7 +51,7 @@ function mapSummary(value: unknown): DeliveryChallanSummary | null {
   const row = value as ZohoDeliveryChallan
   const id = String(row.deliverychallan_id ?? row.delivery_challan_id ?? '').trim()
   const number = text(row.deliverychallan_number) || text(row.delivery_challan_number)
-  return id && number ? { delivery_challan_id: id, delivery_challan_number: number } : null
+  return id && number ? { delivery_challan_id: id, delivery_challan_number: number, customer_id: String(row.customer_id ?? '').trim(), status: text(row.status) } : null
 }
 
 function mapDetail(value: unknown): DeliveryChallanDetail | null {

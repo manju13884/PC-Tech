@@ -36,6 +36,7 @@ function fixture(beforeMigration = () => {}) {
   sqlite.exec(remoteMigration('migrations/0053_create_finished_goods_dispatches.sql'));
   beforeMigration(sqlite);
   sqlite.exec(remoteMigration('migrations/0054_create_finished_goods_adjustments.sql'));
+  sqlite.exec(readFileSync('migrations/0061_add_fg_dispatch_delivery_challan.sql', 'utf8'));
   let beforeWrite = async () => {};
   const db = { prepare(sql) {
     let args = [];
@@ -54,7 +55,16 @@ function fixture(beforeMigration = () => {}) {
     { invoice_id: '103', invoice_number: 'INV-103', customer_id: 'OTHER', status: 'sent' },
     { invoice_id: '104', invoice_number: 'INV-104', customer_id: 'C1', status: 'void' },
   ];
+  const challans = [
+    { delivery_challan_id: '201', delivery_challan_number: 'DC-201', customer_id: 'C1', status: 'open' },
+    { delivery_challan_id: '202', delivery_challan_number: 'DC-202', customer_id: 'OTHER', status: 'open' },
+    { delivery_challan_id: '203', delivery_challan_number: 'DC-203', customer_id: 'C1', status: 'void' },
+  ];
   const imports = {
+    '../../lib/deliveryChallans': {
+      getZohoDeliveryChallansByCustomer: async id => { assert.equal(id, 'C1'); return challans; },
+      getZohoDeliveryChallanById: async id => { await beforeInvoice(); return challans.find(doc => doc.delivery_challan_id === id); },
+    },
     '../lib/authenticatedUser': { getAuthenticatedUser: async () => user },
     '../../lib/invoices': {
       getZohoInvoicesByCustomer: async id => { invoiceCalls.push(id); return invoices; },
@@ -259,4 +269,32 @@ test('adjustment migration preserves historical dispatches without rewriting the
   const row=(await f.report()).rows[0];assert.equal(row.dispatched_quantity,200);assert.equal(row.closing_stock,800);
   assert.equal((await f.adjust(f.adjustment({previous_closing_stock:800}))).status,200);
   assert.equal((await f.report()).rows[0].closing_stock,850);
+});
+
+
+test('delivery challans are customer scoped, validated, recorded separately and share invoice stock', async () => {
+  const f = fixture();
+  const docs = await f.get('challans');
+  assert.equal(docs.status, 200);
+  assert.deepEqual(docs.body.challans.map(doc => doc.delivery_challan_id), ['201']);
+  for (const id of ['202', '203', 'unknown', '']) {
+    assert.equal((await f.post(f.payload({ document_type: 'DELIVERY_CHALLAN', zoho_delivery_challan_id: id }))).status, 400);
+  }
+  const payload = f.payload({ document_type: 'DELIVERY_CHALLAN', zoho_delivery_challan_id: '201' });
+  assert.equal((await f.post(payload)).status, 200);
+  assert.equal((await f.post(payload)).status, 200);
+  assert.equal((await f.post({ ...payload, document_type: 'INVOICE' })).status, 409);
+  const history = (await f.get()).body;
+  assert.equal(history.history[0].invoice_number, '');
+  assert.equal(history.history[0].delivery_challan_number, 'DC-201');
+  assert.equal(history.transactions[1].reference, 'Delivery Challan: DC-201');
+  assert.equal((await f.post(f.payload({ dispatch_quantity: 400, previous_dispatched_quantity: 600 }))).status, 200);
+  assert.equal((await f.report()).rows[0].closing_stock, 0);
+});
+
+test('delivery challan listing requires dispatch permission and unknown document types are rejected', async () => {
+  const f = fixture();
+  assert.equal((await f.post(f.payload({ document_type: 'OTHER' }))).status, 400);
+  f.setUser(null);
+  assert.equal((await f.get('challans')).status, 401);
 });

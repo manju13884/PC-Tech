@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from '../lib/authenticatedUser'
 import { getZohoInvoiceById, getZohoInvoicesByCustomer } from '../../lib/invoices'
+import { getZohoDeliveryChallanById, getZohoDeliveryChallansByCustomer } from '../../lib/deliveryChallans'
 import type { ZohoEnv } from '../../lib/zoho'
 import { fgAllowed as allowed, fgStock as stock, fgBalance } from '../lib/finishedGoodsStock'
 
@@ -18,22 +19,26 @@ export async function onRequestGet({ request, env }: Context): Promise<Response>
     if (!Number.isSafeInteger(id) || id <= 0) return json({ error: 'Select a valid Job Card.' }, 400)
     const row = await stock(db, id)
     if (!row) return json({ error: 'FG Stock record not found.' }, 404)
-    if (url.searchParams.get('action') === 'invoices') {
+    if (['invoices', 'challans'].includes(url.searchParams.get('action') || '')) {
       if (!await allowed(db, user, 'dispatch')) return json({ error: 'FG Stock create access is required to dispatch.' }, 403)
       if (row.status !== 'COMPLETED' || available(row) <= 0 || !row.customer_id) return json({ error: 'No completed FG stock is available to dispatch.' }, 409)
+      if (url.searchParams.get('action') === 'challans') {
+        const challans = (await getZohoDeliveryChallansByCustomer(row.customer_id, env)).filter(doc => doc.customer_id === row.customer_id && !['void', 'deleted'].includes(doc.status.toLowerCase()))
+        return json({ challans, ...fgBalance(row) })
+      }
       const invoices = (await getZohoInvoicesByCustomer(row.customer_id, env)).filter(invoice => invoice.customer_id === row.customer_id && !['void', 'deleted'].includes(invoice.status.toLowerCase()))
       // Prefer exact Zoho Sales Order references; retain other customer invoices when references are absent.
       invoices.sort((left, right) => Number(Boolean(right.sales_order_numbers?.includes(row.sales_order_number))) - Number(Boolean(left.sales_order_numbers?.includes(row.sales_order_number))))
       return json({ invoices, ...fgBalance(row) })
     }
-    const history = await db.prepare(`SELECT invoice_number,dispatch_quantity,dispatch_date,created_by_name,created_at FROM finished_goods_dispatches WHERE job_card_id=? ORDER BY id DESC`).bind(id).all()
+    const history = await db.prepare(`SELECT document_type,delivery_challan_number,invoice_number,dispatch_quantity,dispatch_date,created_by_name,created_at FROM finished_goods_dispatches WHERE job_card_id=? ORDER BY id DESC`).bind(id).all()
     const transactions = await db.prepare(`SELECT * FROM (
       SELECT 0 AS sort_order,0 AS transaction_id,'PRODUCTION' AS type,card.job_number AS reference,card.manufactured_quantity AS quantity,
         COALESCE((SELECT MAX(completed_at) FROM job_card_process_entries WHERE job_card_id=card.id AND process_status='COMPLETED'),card.updated_at,card.created_at) AS occurred_at,
         '' AS created_by_name,'' AS reason,'' AS remarks
       FROM job_cards card WHERE card.id=? AND card.status='COMPLETED'
       UNION ALL
-      SELECT 1,id,'DISPATCH',invoice_number,-dispatch_quantity,dispatch_date,created_by_name,'',''
+      SELECT 1,id,'DISPATCH',CASE WHEN document_type='DELIVERY_CHALLAN' THEN 'Delivery Challan: ' || delivery_challan_number ELSE invoice_number END,-dispatch_quantity,dispatch_date,created_by_name,'',''
       FROM finished_goods_dispatches WHERE job_card_id=?
       UNION ALL
       SELECT 1,id,'ADJUSTMENT_' || adjustment_type,'FG-ADJ-' || id,
@@ -56,24 +61,30 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
     if (!await allowed(db, user, 'dispatch')) return json({ error: 'FG Stock create access is required to dispatch.' }, 403)
     const body = await request.json() as Record<string, unknown>
     const id = Number(body.job_card_id), qty = Number(body.dispatch_quantity), previous = Number(body.previous_dispatched_quantity), previousClosing = Number(body.previous_closing_stock)
-    const invoiceId = String(body.zoho_invoice_id ?? '').trim(), date = String(body.dispatch_date ?? ''), requestId = String(body.request_id ?? '')
-    if (!Number.isSafeInteger(id) || id <= 0 || !Number.isFinite(qty) || qty <= 0 || !Number.isFinite(previous) || previous < 0 || body.previous_dispatched_quantity == null || !Number.isFinite(previousClosing) || previousClosing < 0 || body.previous_closing_stock == null || !invoiceId || !/^[\w-]{16,100}$/.test(requestId) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0,10) !== date)
-      return json({ error: 'Select an invoice, a valid dispatch date, and Dispatch Qty greater than 0.' }, 400)
-    const existing = await db.prepare('SELECT job_card_id,zoho_invoice_id,dispatch_quantity,dispatch_date,created_by_user_id FROM finished_goods_dispatches WHERE request_id=?').bind(requestId).first<{job_card_id:number;zoho_invoice_id:string;dispatch_quantity:number;dispatch_date:string;created_by_user_id:number}>()
+    const documentType = body.document_type ?? 'INVOICE'
+    if (documentType !== 'INVOICE' && documentType !== 'DELIVERY_CHALLAN') return json({ error: 'Select Invoice or Delivery Challan.' }, 400)
+    const invoiceId = documentType === 'INVOICE' ? String(body.zoho_invoice_id ?? '').trim() : ''
+    const challanId = documentType === 'DELIVERY_CHALLAN' ? String(body.zoho_delivery_challan_id ?? '').trim() : ''
+    const date = String(body.dispatch_date ?? ''), requestId = String(body.request_id ?? '')
+    if (!Number.isSafeInteger(id) || id <= 0 || !Number.isFinite(qty) || qty <= 0 || !Number.isFinite(previous) || previous < 0 || body.previous_dispatched_quantity == null || !Number.isFinite(previousClosing) || previousClosing < 0 || body.previous_closing_stock == null || !(invoiceId || challanId) || !/^[\w-]{16,100}$/.test(requestId) || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0,10) !== date)
+      return json({ error: 'Select an invoice or delivery challan, a valid dispatch date, and Dispatch Qty greater than 0.' }, 400)
+    const existing = await db.prepare('SELECT job_card_id,document_type,zoho_delivery_challan_id,zoho_invoice_id,dispatch_quantity,dispatch_date,created_by_user_id FROM finished_goods_dispatches WHERE request_id=?').bind(requestId).first<{document_type:string;zoho_delivery_challan_id:string;job_card_id:number;zoho_invoice_id:string;dispatch_quantity:number;dispatch_date:string;created_by_user_id:number}>()
     if (existing) {
-      if (existing.job_card_id !== id || existing.zoho_invoice_id !== invoiceId || existing.dispatch_quantity !== qty || existing.dispatch_date !== date || existing.created_by_user_id !== user.id) return json({ error: 'This dispatch request has already been used.' }, 409)
+      if (existing.document_type !== documentType || existing.zoho_delivery_challan_id !== challanId || existing.job_card_id !== id || existing.zoho_invoice_id !== invoiceId || existing.dispatch_quantity !== qty || existing.dispatch_date !== date || existing.created_by_user_id !== user.id) return json({ error: 'This dispatch request has already been used.' }, 409)
       return json({ success: true })
     }
     const row = await stock(db, id)
     if (!row) return json({ error: 'FG Stock record not found.' }, 404)
     if (row.status !== 'COMPLETED') return json({ error: 'Complete the Production Job before dispatching FG stock.' }, 409)
     if (qty > available(row) || previous !== Number(row.dispatched_quantity) || previousClosing !== available(row)) return json({ error: `Dispatch Qty cannot exceed available FG stock of ${available(row)} ${row.uom || 'Nos'}. Stock may have changed; review and retry.`, ...fgBalance(row) }, 409)
-    const invoice = await getZohoInvoiceById(invoiceId, env)
-    if (!invoice || invoice.customer_id !== row.customer_id || !invoice.invoice_number || ['void','deleted'].includes(invoice.status.toLowerCase())) return json({ error: 'Select a valid invoice belonging to this FG stock customer.' }, 400)
+    const invoice = documentType === 'INVOICE' ? await getZohoInvoiceById(invoiceId, env) : null
+    const challan = documentType === 'DELIVERY_CHALLAN' ? await getZohoDeliveryChallanById(challanId, env) : null
+    if (documentType === 'DELIVERY_CHALLAN' && (!challan || challan.delivery_challan_id !== challanId || challan.customer_id !== row.customer_id || !challan.delivery_challan_number || ['void','deleted'].includes(challan.status.toLowerCase()))) return json({ error: 'Select a valid delivery challan belonging to this FG stock customer.' }, 400)
+    if (documentType === 'INVOICE' && (!invoice || invoice.customer_id !== row.customer_id || !invoice.invoice_number || ['void','deleted'].includes(invoice.status.toLowerCase()))) return json({ error: 'Select a valid invoice belonging to this FG stock customer.' }, 400)
     try {
       await db.prepare(`INSERT INTO finished_goods_dispatches
-        (request_id,job_card_id,production_plan_line_id,customer_id,customer_name,sales_order_id,sales_order_number,item_id,job_number,zoho_invoice_id,invoice_number,dispatch_quantity,previous_dispatched_quantity,uom,dispatch_date,created_by_user_id,created_by_name,previous_closing_stock)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(requestId,id,row.production_plan_line_id,row.customer_id,row.customer_name,row.sales_order_id || '',row.sales_order_number || '',row.item_id || '',row.job_number,invoice.invoice_id,invoice.invoice_number,qty,previous,row.uom || 'Nos',date,user.id,user.fullName,previousClosing).run()
+        (request_id,job_card_id,production_plan_line_id,customer_id,customer_name,sales_order_id,sales_order_number,item_id,job_number,zoho_invoice_id,invoice_number,dispatch_quantity,previous_dispatched_quantity,uom,dispatch_date,created_by_user_id,created_by_name,previous_closing_stock,document_type,zoho_delivery_challan_id,delivery_challan_number)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(requestId,id,row.production_plan_line_id,row.customer_id,row.customer_name,row.sales_order_id || '',row.sales_order_number || '',row.item_id || '',row.job_number,invoice?.invoice_id || '',invoice?.invoice_number || '',qty,previous,row.uom || 'Nos',date,user.id,user.fullName,previousClosing,documentType,challan?.delivery_challan_id || '',challan?.delivery_challan_number || '').run()
     } catch (error) {
       if (String(error).includes('fg_stock_changed')) {
         const current = await stock(db, id)

@@ -134,7 +134,8 @@ def integrations():
                 writers.add(path.relative_to(ROOT).as_posix())
     require(writers == {'lib/zoho.ts', 'functions/lib/email.ts'}, 'External integration entry points changed; review before copying.')
     zoho = (ROOT / 'lib/zoho.ts').read_text(encoding='utf-8')
-    require(re.findall(r"method:\s*['\"]([A-Z]+)['\"]", zoho) == ['POST', 'GET'], 'Zoho integration verbs changed; review before copying.')
+    # Reviewed quota-header probe adds a read-only contacts GET before the Books GET.
+    require(re.findall(r"method:\s*['\"]([A-Z]+)['\"]", zoho) == ['POST', 'GET', 'GET'], 'Zoho integration verbs changed; review before copying.')
     require("zohoFetch(tokenUrl, {\n    method: 'POST'" in zoho.replace('\r\n', '\n'), 'Zoho POST must only refresh OAuth credentials.')
     return {str(path): sha(path) for path in env_files}
 

@@ -58,5 +58,6 @@
   "0057_add_production_ups.sql": "e1cd1266553fa0c5a041d9ac75e39204558c1deb2956ca250d0a39a76208a720",
   "0058_preserve_unplanned_machine_settings.sql": "a1aab0696c9a0aae027622a293341cc0a22c01eeb7b9a962dd5d3ca70678469c",
   "0059_create_master_data.sql": "e66a1203769b52ae55a374923c8a9f2826250ff346be636ce0b5112078b8eac4",
-  "0060_add_deckle_calculator.sql": "e12730f3b973f29c0c16ae23c5901066c59b8269e78fb4b1d7bae99135a29f6e"
+  "0060_add_deckle_calculator.sql": "e12730f3b973f29c0c16ae23c5901066c59b8269e78fb4b1d7bae99135a29f6e",
+  "0061_add_fg_dispatch_delivery_challan.sql": "2f243c88bb3ab382ddb56aa6374b26b5927041a72f717475cfc506dd764e67c3"
 }
