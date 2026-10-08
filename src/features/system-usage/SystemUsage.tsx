@@ -7,7 +7,7 @@ import './system-usage.css'
 const rows: { key: UsageKey; label: string; storage?: boolean }[] = [
   { key: 'zohoApi', label: 'Zoho Books API – Today' },
   { key: 'd1Database', label: 'PC-Tech D1 Database Size', storage: true },
-  { key: 'totalD1', label: 'Total D1 Database Size', storage: true },
+  { key: 'totalD1', label: 'Cloudflare Account D1 Storage (All Databases)', storage: true },
   { key: 'd1RowsRead', label: 'D1 Rows Read – Today' },
   { key: 'd1RowsWritten', label: 'D1 Rows Written – Today' },
 ]
@@ -35,6 +35,13 @@ export default function SystemUsage() {
   const initialRequest = useRef<Promise<UsageResponse> | null>(null)
   const active = useRef(false)
   const busy = useRef(true)
+  const environmentLabel = data?.environment === 'LOCAL' ? 'Local'
+    : data?.environment === 'STAGING' ? 'Dev'
+    : data?.environment === 'PRODUCTION' ? 'Production'
+    : null
+  const databaseLabel = environmentLabel
+    ? `PC-Tech ${environmentLabel} Database Size`
+    : 'PC-Tech Database Size (Environment Unknown)'
 
   useEffect(() => {
     active.current = true
@@ -60,7 +67,7 @@ export default function SystemUsage() {
     <section className="system-usage" aria-labelledby="system-usage-title" aria-busy={loading}>
       <div className="system-usage-header">
         <h3 id="system-usage-title">System Usage</h3>
-        <span className="system-usage-environment">Environment: {data?.environment === 'UNAVAILABLE' ? 'Unavailable' : data?.environment ?? (loading ? 'Loading…' : 'Unavailable')}</span>
+        <span className="system-usage-environment">Environment: {environmentLabel ?? (loading ? 'Loading…' : 'Unavailable')}</span>
         <button type="button" onClick={() => void refresh()} disabled={loading} aria-label="Refresh System Usage">
           <RefreshCw size={14} className={loading ? 'is-spinning' : ''} /> {loading ? 'Refreshing...' : 'Refresh'}
         </button>
@@ -74,7 +81,7 @@ export default function SystemUsage() {
             const metric = !error ? data?.metrics[row.key] : undefined
             const unavailableReason = error ? 'Monitoring request failed.' : metric?.reason
             return <tr key={row.key}>
-              <th scope="row">{row.label}</th>
+              <th scope="row">{row.key === 'd1Database' ? databaseLabel : row.label}</th>
               <td data-unavailable={metric?.current == null}><UsageValue text={!data && loading ? 'Loading…' : formatUsage(metric?.current, row.storage)} reason={unavailableReason} /></td>
               <td data-unavailable={metric?.limit == null}><UsageValue text={!data && loading ? 'Loading…' : formatUsage(metric?.limit, row.storage)} reason={metric?.limitReason ?? unavailableReason} /></td>
               <td data-unavailable={metric?.remaining == null} title={metric?.limitReason ?? unavailableReason}>{!data && loading ? 'Loading…' : formatUsage(metric?.remaining == null ? null : Math.max(0, metric.remaining), row.storage)}</td>
@@ -83,7 +90,7 @@ export default function SystemUsage() {
           })}</tbody>
         </table>
       </div>
-      <p className="system-usage-note">D1 daily totals use the UTC day. Total storage and daily row totals cover the configured Cloudflare account. Times shown in IST; analytics may be delayed.</p>
+      <p className="system-usage-note">PC-Tech database size is for the environment shown above. Cloudflare account storage includes all hosted D1 databases, including Dev and Production when in that account; it excludes Local. Daily row totals also cover that account and use the UTC day. Times shown in IST; analytics may be delayed.</p>
     </section>
   )
 }
