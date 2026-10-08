@@ -8,8 +8,8 @@ const rows: { key: UsageKey; label: string; storage?: boolean }[] = [
   { key: 'zohoApi', label: 'Zoho Books API – Today' },
   { key: 'd1Database', label: 'PC-Tech D1 Database Size', storage: true },
   { key: 'totalD1', label: 'Cloudflare Account D1 Storage (All Databases)', storage: true },
-  { key: 'd1RowsRead', label: 'D1 Rows Read – Today' },
-  { key: 'd1RowsWritten', label: 'D1 Rows Written – Today' },
+  { key: 'd1RowsRead', label: 'Cloudflare Account D1 Rows Read – Today (UTC)' },
+  { key: 'd1RowsWritten', label: 'Cloudflare Account D1 Rows Written – Today (UTC)' },
 ]
 
 async function fetchUsage(): Promise<UsageResponse> {
@@ -20,10 +20,10 @@ async function fetchUsage(): Promise<UsageResponse> {
   return payload
 }
 
-function UsageValue({ text, reason }: { text: string; reason?: string }) {
+function UsageValue({ text, reason, unavailableLabel = 'Unavailable' }: { text: string; reason?: string; unavailableLabel?: string }) {
   if (text !== 'Unavailable' || !reason) return <>{text}</>
   return <details className="system-usage-reason">
-    <summary title={reason}>Unavailable <span aria-hidden="true">ⓘ</span></summary>
+    <summary title={reason}>{unavailableLabel} <span aria-hidden="true">ⓘ</span></summary>
     <span>{reason}</span>
   </details>
 }
@@ -80,12 +80,19 @@ export default function SystemUsage() {
           <tbody>{rows.map(row => {
             const metric = !error ? data?.metrics[row.key] : undefined
             const unavailableReason = error ? 'Monitoring request failed.' : metric?.reason
+            const monitoringNotConfigured = ['totalD1', 'd1RowsRead', 'd1RowsWritten'].includes(row.key)
+              && metric?.code === 'configuration' && metric.reason?.includes('not configured')
+            const monitoringLabel = monitoringNotConfigured ? 'Cloudflare monitoring not configured' : undefined
+            const localDatabase = row.key === 'd1Database' && data?.environment === 'LOCAL'
+            const limitNotConfigured = metric?.limit == null
+              && metric?.limitReason === 'The applicable limit has not been configured for this environment.'
+            const quotaLabel = localDatabase ? 'Not applicable (Local)' : limitNotConfigured ? 'Limit not configured' : null
             return <tr key={row.key}>
               <th scope="row">{row.key === 'd1Database' ? databaseLabel : row.label}</th>
-              <td data-unavailable={metric?.current == null}><UsageValue text={!data && loading ? 'Loading…' : formatUsage(metric?.current, row.storage)} reason={unavailableReason} /></td>
-              <td data-unavailable={metric?.limit == null}><UsageValue text={!data && loading ? 'Loading…' : formatUsage(metric?.limit, row.storage)} reason={metric?.limitReason ?? unavailableReason} /></td>
-              <td data-unavailable={metric?.remaining == null} title={metric?.limitReason ?? unavailableReason}>{!data && loading ? 'Loading…' : formatUsage(metric?.remaining == null ? null : Math.max(0, metric.remaining), row.storage)}</td>
-              <td data-unavailable={!metric?.asOf}>{!data && loading ? 'Loading…' : formatUsageTime(metric?.asOf)}</td>
+              <td data-unavailable={metric?.current == null}><UsageValue text={!data && loading ? 'Loading…' : formatUsage(metric?.current, row.storage)} reason={unavailableReason} unavailableLabel={monitoringLabel} /></td>
+              <td data-unavailable={!localDatabase && metric?.limit == null}>{quotaLabel ?? <UsageValue text={!data && loading ? 'Loading…' : formatUsage(metric?.limit, row.storage)} reason={metric?.limitReason ?? unavailableReason} />}</td>
+              <td data-unavailable={!localDatabase && metric?.remaining == null} title={localDatabase ? undefined : metric?.limitReason ?? unavailableReason}>{quotaLabel ?? (metric?.remaining == null && monitoringLabel ? monitoringLabel : !data && loading ? 'Loading…' : formatUsage(metric?.remaining == null ? null : Math.max(0, metric.remaining), row.storage))}</td>
+              <td data-unavailable={!metric?.asOf}>{monitoringNotConfigured ? 'Not fetched' : !data && loading ? 'Loading…' : formatUsageTime(metric?.asOf)}</td>
             </tr>
           })}</tbody>
         </table>

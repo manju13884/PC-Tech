@@ -169,7 +169,7 @@ export async function collectSystemUsage(
     const timeout = setTimeout(() => controller.abort(), 10000)
     const api = async (path: string, source: Source, body?: unknown) => {
       const response = await fetcher(`https://api.cloudflare.com/client/v4${path}`, {
-        method: body ? 'POST' : 'GET', redirect: 'error', signal: controller.signal,
+        method: body ? 'POST' : 'GET', redirect: 'manual', signal: controller.signal,
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {}),
       })

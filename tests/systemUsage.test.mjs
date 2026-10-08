@@ -52,7 +52,7 @@ function cloudflare({ storageStatus, analyticsStatus, incomplete=false, reads=12
     calls.push({url,init})
     assert.ok(url.startsWith('https://api.cloudflare.com/client/v4/'))
     assert.equal(init.headers.Authorization,'Bearer '+envCredentials.CLOUDFLARE_API_TOKEN)
-    assert.equal(init.redirect,'error')
+    assert.equal(init.redirect,'manual')
     assert.ok(!url.includes('/pages/'),'No extra Pages permission required')
     if(url.endsWith('/graphql')){
       if(analyticsStatus)return new Response('sensitive-body',{status:analyticsStatus})
@@ -287,6 +287,7 @@ test('Zoho monitoring reuses OAuth and configured organization, returns only quo
     calls.push({url:String(url),init})
     if(String(url).includes('/oauth/'))return Response.json({access_token:'private-access-token',expires_in:3600})
     assert.equal(init.headers.Authorization,'Zoho-oauthtoken private-access-token')
+    assert.equal(init.redirect,'manual')
     assert.equal(new URL(url).searchParams.get('organization_id'),zohoEnv.ZOHO_ORG_ID)
     assert.equal(new URL(url).searchParams.get('per_page'),'1')
     return new Response('private-contact-payload',{headers:{'x-rate-limit-limit':'5000','x-rate-limit-remaining':'4000','x-rate-limit-reset':'10000','set-cookie':'private-cookie'}})
@@ -298,4 +299,54 @@ test('Zoho monitoring reuses OAuth and configured organization, returns only quo
     assert.equal(calls.length,2)
     assert.ok(![...result.values()].some(v=>v.includes('private')))
   }finally{globalThis.fetch=original}
+})
+
+test('Zoho monitoring rejects redirects without following the location',async()=>{
+  const zoho=await load('lib/zoho.ts')
+  const original=globalThis.fetch
+  let contactsCalls=0
+  globalThis.fetch=async(url,init)=>{
+    if(String(url).includes('/oauth/'))return Response.json({access_token:'private-access-token',expires_in:3600})
+    contactsCalls++
+    assert.equal(init.redirect,'manual')
+    return new Response(null,{status:302,headers:{location:'https://other.example/'}})
+  }
+  try{
+    await assert.rejects(()=>zoho.getZohoUsageHeaders(zohoEnv),error=>error.status===302)
+    assert.equal(contactsCalls,1)
+  }finally{globalThis.fetch=original}
+})
+
+test('monitoring requests use redirect modes accepted by the Workers runtime',async()=>{
+  const {Miniflare}=await import('miniflare')
+  const result=await build({stdin:{resolveDir:process.cwd(),contents:`
+    import {getZohoUsageHeaders} from './lib/zoho';
+    import {collectSystemUsage} from './functions/lib/systemUsage';
+    export default {async fetch(){
+      globalThis.fetch=async(url,init)=>{
+        const request=new Request(url,init);
+        if(String(url).includes('/oauth/'))return Response.json({access_token:'test',expires_in:3600});
+        if(request.redirect!=='manual')throw new Error('Unsafe redirect mode');
+        return new Response(null,{headers:{'x-rate-limit-limit':'5000','x-rate-limit-remaining':'4900','x-rate-limit-reset':'3600'}});
+      };
+      const env={ZOHO_CLIENT_ID:'test',ZOHO_CLIENT_SECRET:'test',ZOHO_REFRESH_TOKEN:'test',ZOHO_ORG_ID:'123',ZOHO_REGION:'in',CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32),CLOUDFLARE_API_TOKEN:'test'};
+      const headers=await getZohoUsageHeaders(env);
+      const result=await collectSystemUsage(new Request('http://localhost'),env,async(url,init)=>{
+        const request=new Request(url,init);
+        if(request.redirect!=='manual')throw new Error('Unsafe redirect mode');
+        return new Response(null,{status:302,headers:{location:'https://other.example/'}});
+      },async()=>headers);
+      return Response.json(result.metrics);
+    }}
+  `},bundle:true,write:false,format:'esm',platform:'browser'})
+  const mf=new Miniflare({modules:true,script:result.outputFiles[0].text,compatibilityDate:'2026-07-09'})
+  try{
+    const response=await mf.dispatchFetch('http://localhost')
+    assert.equal(response.status,200)
+    const metrics=await response.json()
+    assert.equal(metrics.zohoApi.current,100)
+    assert.equal(metrics.zohoApi.limit,5000)
+    assert.equal(metrics.totalD1.code,'provider_error')
+    assert.equal(metrics.d1RowsRead.code,'provider_error')
+  }finally{await mf.dispose()}
 })

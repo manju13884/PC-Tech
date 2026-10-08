@@ -232,7 +232,7 @@ export async function getZohoUsageHeaders(env: ZohoEnv): Promise<Headers> {
   url.searchParams.set('organization_id', env.ZOHO_ORG_ID?.trim() ?? '')
   url.searchParams.set('per_page', '1')
   const response = await fetch(url, {
-    method: 'GET', redirect: 'error', signal: AbortSignal.timeout(10000),
+    method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(10000),
     headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
   })
   // Never expose the contact payload or raw error body to the monitoring caller.
