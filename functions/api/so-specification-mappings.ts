@@ -1,3 +1,4 @@
+import { isMappableSalesOrder } from '../../src/features/so-specification-mapping/salesOrderEligibility'
 import { getZohoSalesOrderById, getZohoSalesOrdersByCustomer } from '../../lib/salesOrders'
 import { cachedCustomerSalesOrders, cachedSalesOrder } from '../../lib/salesOrderCache'
 import type { ZohoEnv } from '../../lib/zoho'
@@ -66,9 +67,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
   }
   const salesOrder = await cachedSalesOrder(context.env, salesOrderId, () => getZohoSalesOrderById(salesOrderId, context.env), true)
   if (!salesOrder) return json({ error: 'Sales Order was not found.' }, 404)
-  const salesOrderStatus = ((salesOrder.status ?? '').trim().toLowerCase().match(/[a-z]+/g) ?? []).join('')
-  if (['closed', 'void', 'voided', 'invoiced'].includes(salesOrderStatus)) {
-    return json({ error: `Sales Order ${salesOrder.salesorder_number} is ${salesOrder.status} and cannot be mapped.` }, 409)
+  if (!isMappableSalesOrder(salesOrder)) {
+    return json({ error: `Sales Order ${salesOrder.salesorder_number} is ${salesOrder.order_status || salesOrder.status} and cannot be mapped. Only Open or Confirmed Sales Orders can be mapped.` }, 409)
   }
   if (salesOrder.line_items.length === 0) return json({ error: 'The Sales Order has no items to map.' }, 400)
 

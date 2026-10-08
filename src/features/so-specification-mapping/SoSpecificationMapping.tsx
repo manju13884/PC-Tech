@@ -90,7 +90,7 @@ export default function SoSpecificationMapping() {
     }
 
     setSalesOrdersLoading(true)
-    void getSalesOrdersByCustomer(customerId)
+    void getSalesOrdersByCustomer(customerId, { fresh: true })
       .then((orders) => {
         if (requestId === salesOrderRequest.current) setSalesOrders(orders.filter(isMappableSalesOrder))
       })
@@ -148,7 +148,7 @@ export default function SoSpecificationMapping() {
     }
 
     setDetailLoading(true)
-    void getSalesOrderById(salesOrderId)
+    void getSalesOrderById(salesOrderId, { fresh: true })
       .then((salesOrder) => {
         if (requestId === detailRequest.current) setDetail(salesOrder)
       })
@@ -267,10 +267,11 @@ export default function SoSpecificationMapping() {
       <section className="product-spec-filterbar so-mapping-filterbar">
         <label><span>Customer</span><select value={customerId} disabled={customersLoading} onChange={(event) => setCustomerId(event.target.value)}><option value="">{customersLoading ? 'Loading customers…' : 'Select customer'}</option>{customers.map((customer) => <option key={customer.customer_id} value={customer.customer_id}>{customerDisplayName(customer)}</option>)}</select></label>
         <label><span>Sales Order</span><select value={salesOrderId} disabled={!customerId || salesOrdersLoading} onChange={(event) => setSalesOrderId(event.target.value)}><option value="">{!customerId ? 'Select a customer first' : salesOrdersLoading ? 'Loading Sales Orders…' : 'Select Sales Order'}</option>{salesOrders.map((order) => <option key={order.salesorder_id} value={order.salesorder_id}>{order.salesorder_number}</option>)}</select></label>
+        <p className="so-mapping-empty">Only Open or Confirmed Sales Orders are shown.</p>
         {customerError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{customerError}</p>}
         {salesOrderError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{salesOrderError}</p>}
         {specificationError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{specificationError}</p>}
-        {!salesOrdersLoading && customerId && !salesOrderError && salesOrders.length === 0 && <p className="so-mapping-empty">No Sales Orders available other than Closed, Draft, or Void.</p>}
+        {!salesOrdersLoading && customerId && !salesOrderError && salesOrders.length === 0 && <p className="so-mapping-empty">No Open or Confirmed Sales Orders available.</p>}
       </section>
 
       {detailLoading && <section className="product-spec-panel so-mapping-empty">Loading Sales Order details…</section>}

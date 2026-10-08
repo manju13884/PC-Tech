@@ -48,9 +48,10 @@ function isSalesOrder(value: unknown): value is SalesOrder {
     && typeof salesOrder.salesorder_number === 'string'
 }
 
-export async function getSalesOrdersByCustomer(customerId: string): Promise<SalesOrder[]> {
+export async function getSalesOrdersByCustomer(customerId: string, options: { fresh?: boolean } = {}): Promise<SalesOrder[]> {
   const params = new URLSearchParams({ customer_id: customerId })
-  const response = await fetch(`/api/sales-orders?${params.toString()}`)
+  if (options.fresh) params.set('refresh', 'true')
+  const response = await fetch(`/api/sales-orders?${params.toString()}`, { cache: 'no-store' })
 
   if (!response.ok) {
     throw new Error(await getResponseError(response))
@@ -81,9 +82,10 @@ function isSalesOrderLineItem(value: unknown): value is SalesOrderLineItem {
     && typeof item.amount === 'number'
 }
 
-export async function getSalesOrderById(salesOrderId: string): Promise<SalesOrderDetail> {
+export async function getSalesOrderById(salesOrderId: string, options: { fresh?: boolean } = {}): Promise<SalesOrderDetail> {
   const params = new URLSearchParams({ salesorder_id: salesOrderId })
-  const response = await fetch(`/api/sales-orders?${params.toString()}`)
+  if (options.fresh) params.set('refresh', 'true')
+  const response = await fetch(`/api/sales-orders?${params.toString()}`, { cache: 'no-store' })
 
   if (!response.ok) {
     throw new Error(await getResponseError(response))

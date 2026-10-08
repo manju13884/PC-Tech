@@ -3,11 +3,11 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { isMappableSalesOrder } from '../src/features/so-specification-mapping/salesOrderEligibility.ts'
 
-test('mapping dropdown excludes Closed, Draft, and Void API statuses', () => {
-  for (const status of ['open', 'confirmed', ' OPEN ', 'Confirmed', 'cancelled', 'canceled', 'invoiced', 'partially_invoiced', 'overdue', 'pending_approval', 'unknown', '', undefined]) {
+test('mapping dropdown allows only Open and Confirmed order statuses', () => {
+  for (const status of ['open', 'confirmed', ' OPEN ', 'Confirmed']) {
     assert.equal(isMappableSalesOrder({ status }), true, String(status))
   }
-  for (const status of ['draft', 'closed', ' Draft ', 'CLOSED', 'void', 'voided', ' VOID ', 'Voided']) {
+  for (const status of ['cancelled', 'canceled', 'invoiced', 'partially_invoiced', 'overdue', 'pending_approval', 'unknown', '', undefined, 'draft', 'closed', ' Draft ', 'CLOSED', 'void', 'voided', ' VOID ', 'Voided']) {
     assert.equal(isMappableSalesOrder({ status }), false, String(status))
   }
 })
@@ -33,13 +33,13 @@ test('SO Specification Mapping follows customer, Sales Order, display flow', asy
   ])
 
   assert.match(component, /getCustomers\(\)/)
-  assert.match(component, /getSalesOrdersByCustomer\(customerId\)/)
+  assert.match(component, /getSalesOrdersByCustomer\(customerId, \{ fresh: true \}\)/)
   assert.match(component, /customer\.customer_name} - \$\{customer\.gst_number}/)
   assert.match(component, />\{customerDisplayName\(customer\)}<\/option>/)
   assert.match(component, /orders\.filter\(isMappableSalesOrder\)/)
   assert.match(component, /import \{ isMappableSalesOrder \} from '\.\/salesOrderEligibility'/)
-  assert.match(component, /No Sales Orders available other than Closed, Draft, or Void\./)
-  assert.match(component, /getSalesOrderById\(salesOrderId\)/)
+  assert.match(component, /No Open or Confirmed Sales Orders available\./)
+  assert.match(component, /getSalesOrderById\(salesOrderId, \{ fresh: true \}\)/)
   assert.match(component, /Sales Order Number/)
   assert.match(component, /detail\.line_items\.map/)
   assert.match(component, /customer_id: customerId/)
@@ -59,7 +59,7 @@ test('SO Specification Mapping follows customer, Sales Order, display flow', asy
   assert.match(component, /Additional product/)
   assert.match(api, /mandatory for every Sales Order item/)
   assert.match(api, /getZohoSalesOrderById/)
-  assert.match(api, /Sales Order \$\{salesOrder\.salesorder_number\} is \$\{salesOrder\.status\} and cannot be mapped/)
+  assert.match(api, /Sales Order \$\{salesOrder\.salesorder_number\} is \$\{salesOrder\.order_status \|\| salesOrder\.status\} and cannot be mapped/)
   assert.match(api, /ON CONFLICT\(sales_order_id, sales_order_line_item_id\) DO UPDATE/)
   assert.match(api, /SELECT id, customer_name FROM product_specification_records/)
   assert.doesNotMatch(api, /SELECT customer_name FROM customer_cache/)

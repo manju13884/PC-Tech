@@ -16,15 +16,16 @@ export async function onRequestGet(context: PagesFunctionContext): Promise<Respo
     return Response.json({ error: 'salesorder_id or customer_id is required' }, { status: 400 })
   }
 
+  const fresh = searchParams.get('refresh') === 'true'
   try {
     if (salesOrderId) {
-      const salesOrder = await cachedSalesOrder(context.env, salesOrderId, () => getZohoSalesOrderById(salesOrderId, context.env))
+      const salesOrder = await cachedSalesOrder(context.env, salesOrderId, () => getZohoSalesOrderById(salesOrderId, context.env), fresh)
       return salesOrder
-        ? Response.json(salesOrder, { status: 200 })
+        ? Response.json(salesOrder, { status: 200, headers: { 'Cache-Control': 'no-store' } })
         : Response.json({ error: 'Sales Order not found' }, { status: 404 })
     }
 
-    return Response.json(await cachedCustomerSalesOrders(context.env, customerId, () => getZohoSalesOrdersByCustomer(customerId, context.env)), { status: 200 })
+    return Response.json(await cachedCustomerSalesOrders(context.env, customerId, () => getZohoSalesOrdersByCustomer(customerId, context.env), fresh), { status: 200, headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to load sales orders'
     const status = error instanceof ZohoRequestError ? error.status : 502

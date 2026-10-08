@@ -120,3 +120,13 @@ test('migration and cache SQL work together with idempotent creation and upserts
     db.close()
   }
 })
+
+test('fresh customer load replaces cached Draft with current Open and keeps cache reusable', async () => {
+  const { env } = database()
+  const draft = { ...order, status: 'draft', order_status: 'draft' }
+  await cachedCustomerSalesOrders(env, 'c1', async () => [draft])
+  const open = { ...order, status: 'open', order_status: 'open' }
+  assert.deepEqual(await cachedCustomerSalesOrders(env, 'c1', async () => [open], true), [open])
+  assert.deepEqual(await cachedCustomerSalesOrders(env, 'c1', async () => { throw Error('Cache should be reused') }), [open])
+  await assert.rejects(cachedCustomerSalesOrders(env, 'c1', async () => { throw Error('Zoho unavailable') }, true), /Zoho unavailable/)
+})
