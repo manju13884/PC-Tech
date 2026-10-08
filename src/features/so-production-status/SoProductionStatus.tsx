@@ -51,7 +51,7 @@ export default function SoProductionStatus() {
     if (!customerId) return
     let active = true
     setLoadingOrders(true)
-    void getSalesOrdersByCustomer(customerId, { fresh: true }).then((values) => { if (active) setOrders(values) }).catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load Sales Orders.') }).finally(() => { if (active) setLoadingOrders(false) })
+    void getSalesOrdersByCustomer(customerId).then((values) => { if (active) setOrders(values) }).catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load Sales Orders.') }).finally(() => { if (active) setLoadingOrders(false) })
     return () => { active = false }
   }, [customerId])
 
@@ -60,7 +60,7 @@ export default function SoProductionStatus() {
     if (!salesOrderId) return
     let active = true
     setLoadingStatus(true)
-    void Promise.all([getSalesOrderById(salesOrderId, { fresh: true }), getSoProductionStatus(salesOrderId)])
+    void Promise.all([getSalesOrderById(salesOrderId), getSoProductionStatus(salesOrderId)])
       .then(([orderDetail, status]) => { if (active) { setDetail(orderDetail); setActivities(status) } })
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load production status.') })
       .finally(() => { if (active) setLoadingStatus(false) })
