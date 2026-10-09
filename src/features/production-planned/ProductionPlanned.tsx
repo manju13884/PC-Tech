@@ -23,6 +23,7 @@ interface SavedPlanLine {
   plan_number: string;
   plan_date: string;
   plan_status: string;
+  print_required: boolean | number | null;
   customer_name: string;
   sales_order_number: string;
   delivery_date: string;
@@ -105,6 +106,7 @@ const GridColumns = () => (
     <col className="col-quantity" />
     <col className="col-quantity" />
     <col className="col-status" />
+    <col className="col-print" />
     <col className="col-description" />
     <col className="col-dimension" />
     <col className="col-dimension" />
@@ -132,7 +134,7 @@ const GridHeader = () => (
       <th className="group-production" colSpan={2}>
         Schedule
       </th>
-      <th className="group-production" colSpan={4}>
+      <th className="group-production" colSpan={5}>
         Production
       </th>
       <th className="group-product">Product</th>
@@ -157,6 +159,7 @@ const GridHeader = () => (
       <th>Top Sheet</th>
       <th>2 Ply Qty</th>
       <th>Status</th>
+      <th>Print</th>
       <th>Product Description</th>
       <th>L</th>
       <th>W</th>
@@ -511,6 +514,9 @@ export default function ProductionPlanned() {
                         {line.plan_status.replace(/_/g, " ")}
                       </span>
                     </td>
+                    <td className="production-print-cell">
+                      {line.print_required === true || line.print_required === 1 ? "Yes" : "No"}
+                    </td>
                     <td className="production-description">
                       {line.item_description || line.item_name}
                     </td>
@@ -544,14 +550,14 @@ export default function ProductionPlanned() {
               })}
               {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={33} className="production-planning-empty">
+                  <td colSpan={34} className="production-planning-empty">
                     No saved Production Plans found.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={33} className="production-planning-empty">
+                  <td colSpan={34} className="production-planning-empty">
                     Loading saved Production Plans...
                   </td>
                 </tr>

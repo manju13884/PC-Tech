@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from 'node:fs'
 import { pbkdf2Sync } from 'node:crypto'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { getZohoCustomers } from './lib/customers'
 import { getZohoInvoiceById, getZohoInvoicesByCustomer } from './lib/invoices'
 import { getZohoSalesOrderById, getZohoSalesOrdersByCustomer } from './lib/salesOrders'
 
@@ -84,14 +83,8 @@ const apiMiddleware = () => ({
         return
       }
 
-      try {
-        sendJson(res, 200, await getZohoCustomers())
-      } catch (error) {
-        console.error('Unable to load customers from Zoho Books', error)
-        sendJson(res, 502, {
-          error: error instanceof Error ? error.message : 'Unable to load customers',
-        })
-      }
+      // Use the Pages backend's daily customer cache through the /api proxy.
+      next()
     })
 
     server.middlewares.use('/api/invoices', async (req, res, next) => {

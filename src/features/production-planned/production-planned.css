@@ -30,7 +30,9 @@
 .production-planned-workspace .production-planning-message button { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid #fecaca; border-radius: 3px; padding: .2rem .4rem; background: #fff; color: #b42318; font: inherit; font-weight: 700; cursor: pointer; }
 .production-planned-grid-panel { min-height: 0; overflow: hidden; border: 1px solid #cfd8e3; border-radius: 0; background: #fff; box-shadow: none; }
 .production-planned-grid-panel .production-lines-scroll { min-height: 260px; max-height: calc(100vh - 230px); }
-.production-planned-grid-panel .production-planning-grid { min-width: 1594px; }
+.production-planned-grid-panel .production-planning-grid { min-width: 1634px; }
+.production-planned-grid-panel .production-planning-grid .col-print { width: 40px; }
+.production-planned-grid-panel .production-print-cell { text-align: center; vertical-align: middle; }
 .production-planned-grid-panel .production-planning-grid .col-status { width: 90px; }
 .production-planned-grid-panel .production-planning-grid .col-ups { width: 32px; }
 .production-planned-grid-panel .production-planning-grid .col-description { width: 180px; }
@@ -148,6 +150,7 @@
   .production-planned-print-page .production-planning-grid .col-date { width: 11mm; }
   .production-planned-print-page .production-planning-grid .col-quantity { width: 9mm; }
   .production-planned-print-page .production-planning-grid .col-status { width: 8mm; }
+  .production-planned-print-page .production-planning-grid .col-print { width: 6mm; }
   .production-planned-print-page .production-planning-grid .col-description { width: 22mm; }
   .production-planned-print-page .production-planning-grid .col-dimension { width: 6mm; }
   .production-planned-print-page .production-planning-grid .col-product-type { width: 7mm; }
@@ -187,7 +190,7 @@
     color: #111827;
   }
   .production-planned-print-page .production-lines-scroll td.production-description { font-size: 7pt !important; }
-  .production-planned-print-page .production-lines-scroll :is(td.numeric, td:nth-child(5), td:nth-child(6), td:nth-child(n+18):nth-child(-n+32)) {
+  .production-planned-print-page .production-lines-scroll :is(td.numeric, td:nth-child(5), td:nth-child(6), td:nth-child(n+19):nth-child(-n+33)) {
     font-size: 8.5pt !important;
     font-weight: 600;
     font-variant-numeric: tabular-nums;

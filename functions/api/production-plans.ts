@@ -225,7 +225,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
        CASE WHEN plan.closure_status = 'CLOSED' THEN 'CLOSED' ELSE plan.status END AS plan_status,
        line.customer_name, line.sales_order_number, line.delivery_date, line.item_name, line.item_description,
        line.production_quantity, line.top_sheet_quantity, line.two_ply_quantity, line.ups, line.flute_run, line.deckle_size, line.cut_length_cm, line.uom, line.product_type, line.ply,
-       spec.polar_canvas_item_code AS specification_code, spec.length_mm, spec.width_mm, spec.height_mm, spec.attributes_json
+       spec.polar_canvas_item_code AS specification_code, spec.length_mm, spec.width_mm, spec.height_mm, spec.print_required, spec.attributes_json
        FROM production_plan_lines line
        INNER JOIN production_plans plan ON plan.id = line.production_plan_id
        LEFT JOIN product_specification_records spec ON spec.id = line.approved_specification_revision_id

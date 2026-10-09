@@ -1,4 +1,5 @@
 import { getAuthenticatedUser } from '../lib/authenticatedUser'
+import { attachSpecificationLocks } from '../lib/productSpecificationLocks'
 
 interface Env { DB?: D1Database }
 interface Context { request: Request; env: Env }
@@ -59,18 +60,6 @@ async function specificationLock(db: D1Database, specificationId: number): Promi
      ) associations
      GROUP BY specification_id`,
   ).bind(specificationId, specificationId, specificationId).first<SpecificationLock>()
-}
-
-async function attachSpecificationLocks(db: D1Database, rows: unknown[]): Promise<unknown[]> {
-  return Promise.all(rows.map(async (value) => {
-    const record = value as Record<string, unknown>
-    const lock = await specificationLock(db, Number(record.id))
-    return {
-      ...record,
-      locked_sales_orders: lock?.sales_orders ?? '',
-      locked_production_plans: lock?.production_plans ?? '',
-    }
-  }))
 }
 
 export async function onRequestGet(context: Context): Promise<Response> {

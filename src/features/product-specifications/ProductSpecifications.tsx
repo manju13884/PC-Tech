@@ -313,18 +313,14 @@ export default function ProductSpecifications() {
   }
 
   useEffect(() => {
-    Promise.allSettled([getCustomers(), getItems(), loadSpecifications()])
-      .then(([customerResult, itemResult, specificationResult]) => {
-        if (customerResult.status === 'fulfilled') setCustomers(customerResult.value)
-        if (itemResult.status === 'fulfilled') setItems(itemResult.value)
-        const failures = [customerResult, itemResult, specificationResult]
-          .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-        if (failures.length > 0) {
-          const reason = failures[0].reason
-          setError(reason instanceof Error ? reason.message : 'Some product specification data could not be loaded.')
-        }
-      })
-      .finally(() => setLoading(false))
+    let active = true
+    const reportError = (reason: unknown) => {
+      if (active) setError(reason instanceof Error ? reason.message : 'Some product specification data could not be loaded.')
+    }
+    void getCustomers().then(values => { if (active) setCustomers(values) }).catch(reportError)
+    void getItems().then(values => { if (active) setItems(values) }).catch(reportError)
+    void loadSpecifications().catch(reportError).finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
   }, [])
 
   const update = (key: keyof FormState, value: string | boolean) => setForm((current) => ({ ...current, [key]: value }))

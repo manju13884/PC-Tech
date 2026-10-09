@@ -2212,7 +2212,7 @@ export default function Dashboard({
                 />
               )}
               {menuGroups.find(group => group.title === 'Calculators')?.items.some(item => item.key === selectedItem.key) && (
-                <CalculatorMasterData key={selectedItem.key} live={selectedItem.key === 'deckle-calculator'}>
+                <CalculatorMasterData live={selectedItem.key === 'deckle-calculator'}>
                   {selectedItem.key === 'corrugated-box-price' && (
                     <div className="pc-corrugated-calculator-compat">
                       <CardBoxCalculator />
