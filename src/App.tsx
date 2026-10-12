@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import Dashboard, { getDefaultPermittedMenuKey } from './Dashboard'
+import { clearIdleSession, monitorIdleSession } from './idleSession'
 
 interface AuthenticatedUser {
   id: number
@@ -54,6 +55,7 @@ function App() {
   const [checkingSession, setCheckingSession] = useState(true)
   useEffect(() => {
     const handleSessionExpired = () => {
+      clearIdleSession()
       setUser(null)
       setPassword('')
       setMessage('Your sign-in session has expired. Please sign in again.')
@@ -61,6 +63,22 @@ function App() {
     window.addEventListener('pc-tech-session-expired', handleSessionExpired)
     return () => window.removeEventListener('pc-tech-session-expired', handleSessionExpired)
   }, [])
+  useEffect(() => {
+    if (!user) return
+    return monitorIdleSession(() => {
+      setUser(null)
+      setPassword('')
+      setChangePassword('')
+      setChangeConfirmPassword('')
+      setMessage('You were signed out after 5 minutes of inactivity. Please sign in again.')
+      void fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(() => {
+        // The login screen remains visible if the logout service is unavailable.
+      })
+    })
+  }, [user?.id])
   const loginBrand = (
     <div className="login-brand">
       <img
@@ -133,6 +151,7 @@ function App() {
       }
 
       if (data.success && data.user) {
+        clearIdleSession()
         navigateToDefaultAuthenticatedPage(data.user.menuAccess)
         setUser(data.user)
         setEmail(data.user.email)
@@ -147,6 +166,7 @@ function App() {
   }
 
   const handleLogout = async () => {
+    clearIdleSession()
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
