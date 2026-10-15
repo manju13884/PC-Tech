@@ -6,6 +6,15 @@ import { formatProductionDimension, initializeProductionMachine, updateProductio
 const reference = { lengthMm: 355, breadthMm: 385, heightMm: 160, ply: 5, fluteRun: 'B', ups: 1 }
 const line = { ...reference, productType: 'BOX', widthMm: reference.breadthMm, deckleSize: '56.50', cutLengthCm: 154.2, productionQuantity: 1000, twoPlyQuantity: 2000 }
 
+test('previous product dimensions take priority with individual calculation fallbacks', () => {
+  const historical = { ...line, previousDeckleSize: '120.5', previousCutLengthCm: 160.25 }
+  assert.equal(initializeProductionMachine(historical).deckleSize, '120.5')
+  assert.equal(initializeProductionMachine(historical).cutLengthCm, 160.25)
+  assert.equal(initializeProductionMachine({ ...line, previousDeckleSize: '120.5' }).cutLengthCm, 154.2)
+  assert.equal(initializeProductionMachine({ ...line, previousCutLengthCm: 160.25 }).deckleSize, '56.5')
+  assert.equal(initializeProductionMachine({ ...historical, restoredMachineSettings: true }).deckleSize, line.deckleSize)
+})
+
 test('approved 5-ply regression: 1-Up -> 2-Ups -> 1-Up, cut length stays 154.20', () => {
   assert.deepEqual(calculateProductionDimensions(reference), { deckleSizeCm: 56.5, cutLengthCm: 154.2 })
   assert.deepEqual(calculateProductionDimensions({ ...reference, ups: 2 }), { deckleSizeCm: 110, cutLengthCm: 154.2 })

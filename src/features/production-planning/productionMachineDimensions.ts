@@ -11,6 +11,8 @@ export interface ProductionMachineLine {
   deckleSize: string
   cutLengthCm: number | null
   restoredMachineSettings?: boolean
+  previousDeckleSize?: string
+  previousCutLengthCm?: number
 }
 
 export const formatProductionDimension = (value: number | null) => value == null || !Number.isFinite(value)
@@ -39,5 +41,8 @@ export function initializeProductionMachine<T extends ProductionMachineLine>(lin
     return { ...line, fluteRun: previous.fluteRun, ups: previous.ups, deckleSize: previous.deckleSize, cutLengthCm: previous.cutLengthCm }
   }
   // Unplan/replan must first show the exact approved values, even if the specification changed.
-  return line.restoredMachineSettings ? line : updateProductionUps(line, line.ups)
+  if (line.restoredMachineSettings) return line
+  const initialized = updateProductionUps(line, line.ups)
+  return { ...initialized, deckleSize: line.previousDeckleSize ?? initialized.deckleSize,
+    cutLengthCm: line.previousCutLengthCm ?? initialized.cutLengthCm }
 }

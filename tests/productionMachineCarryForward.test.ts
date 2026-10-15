@@ -52,6 +52,22 @@ async function fixture() {
   return { sqlite, input, plan, read, unplan, prepare }
 }
 
+test('new order lines use the latest plan for the same mapped product', async () => {
+  const f = await fixture()
+  try {
+    assert.equal((await f.plan({ ...f.input, productionQuantity: 100 })).status, 201)
+    assert.equal((await f.plan({ ...f.input, productionQuantity: 100, deckleSize: '125.5', cutLengthCm: 170.25 })).status, 201)
+    f.sqlite.exec("UPDATE production_plan_lines SET zoho_sales_order_line_item_id='older-order-line'")
+    const row = (await (await f.prepare()).json()).lines[0]
+    assert.equal(row.previousDeckleSize, '125.5')
+    assert.equal(row.previousCutLengthCm, 170.25)
+    f.sqlite.exec('UPDATE production_plans SET deleted_at=CURRENT_TIMESTAMP')
+    const fallback = (await (await f.prepare()).json()).lines[0]
+    assert.equal(fallback.previousDeckleSize, undefined)
+    assert.equal(fallback.previousCutLengthCm, undefined)
+  } finally { f.sqlite.close() }
+})
+
 test('Planning -> Planned -> Unplan -> Replan carries all four values despite specification changes', async () => {
   const f = await fixture()
   try {

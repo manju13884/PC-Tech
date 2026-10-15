@@ -49,6 +49,8 @@ interface PlanLine {
   twoPlyQuantity: number | null
   fluteRun: string
   restoredMachineSettings?: boolean
+  previousDeckleSize?: string
+  previousCutLengthCm?: number
   ups: number | null
   deckleSize: string
   cutLengthCm: number | null

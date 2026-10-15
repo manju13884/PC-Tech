@@ -148,6 +148,19 @@ export async function onRequestPost(context: Context): Promise<Response> {
       ]),
     )
     const mappingRows = mappingResult.results ?? []
+    const specificationIds = [...new Set(mappingRows.map((row) => row.product_specification_id))]
+    const previousDimensions = specificationIds.length ? await db.prepare(
+      `SELECT line.customer_product_specification_id AS specification_id, line.deckle_size, line.cut_length_cm
+       FROM production_plan_lines line
+       INNER JOIN production_plans plan ON plan.id = line.production_plan_id
+       WHERE line.customer_product_specification_id IN (${specificationIds.map(() => '?').join(', ')})
+         AND plan.deleted_at IS NULL
+       ORDER BY plan.created_at DESC, plan.id DESC, line.id DESC`,
+    ).bind(...specificationIds).all<{ specification_id: number; deckle_size: string | null; cut_length_cm: number | null }>() : { results: [] }
+    const latestDimensions = new Map<number, { deckle_size: string | null; cut_length_cm: number | null }>()
+    for (const row of previousDimensions.results ?? []) {
+      if (!latestDimensions.has(row.specification_id)) latestDimensions.set(row.specification_id, row)
+    }
     const openStatuses = new Set(['open', 'partiallyinvoiced', 'overdue'])
 
     const lines = orders.flatMap((order) => {
@@ -177,6 +190,7 @@ export async function onRequestPost(context: Context): Promise<Response> {
           /* invalid legacy attributes stay empty */
         }
         const savedMachine = machineSettings.get(JSON.stringify([order.salesorder_id, planningLineId]))
+        const previousDimensions = mapping ? latestDimensions.get(mapping.product_specification_id) : undefined
         const paperLayers = Array.isArray(attributes.paper_layers) ? attributes.paper_layers as Array<{ flute?: string }> : []
         const fluteRun = savedMachine?.flute_run ?? paperLayers.filter((layer) => layer.flute).map((layer) => layer.flute).join(' + ')
         const ready = orderOpen && balance > 0 && Boolean(mapping)
@@ -202,6 +216,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
           productionQuantity: balance,
           fluteRun,
           ups: savedMachine?.ups ?? 1,
+          previousDeckleSize: Number(previousDimensions?.deckle_size) > 0 ? String(Number(previousDimensions!.deckle_size) / 10) : undefined,
+          previousCutLengthCm: Number(previousDimensions?.cut_length_cm) > 0 ? Number(previousDimensions!.cut_length_cm) : undefined,
           ...(savedMachine ? {
             deckleSize: savedMachine.deckle_size == null ? '' : String(Number(savedMachine.deckle_size) / 10),
             cutLengthCm: savedMachine.cut_length_cm,
