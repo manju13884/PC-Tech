@@ -1,3 +1,5 @@
+import UserSpecialPermissions from './UserSpecialPermissions'
+import LeadManagement from './features/lead-management/LeadManagement'
 import DeckleCalculator from './features/deckle-calculator/DeckleCalculator'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { renderAsync } from 'docx-preview'
@@ -105,6 +107,7 @@ const menuGroups: MenuGroup[] = [
   {
     title: 'Sales',
     items: [
+      { key: 'lead-management', title: 'Lead Management', description: 'Manage sales leads, follow-ups, and customer conversions.', icon: UserPlus },
       {
         key: 'product-specifications',
         title: 'Product Specifications',
@@ -2037,10 +2040,6 @@ export default function Dashboard({
     return adminAccessByRole[roleId]?.find((access) => access.menuKey === menuKey)?.view ?? false
   }
 
-  function getRoleMenuDeleteAccess(roleId: number, menuKey: string): boolean {
-    return adminAccessByRole[roleId]?.find((access) => access.menuKey === menuKey)?.delete ?? false
-  }
-
   async function toggleRoleMenuAccess(roleId: number, menuKey: string, value: boolean) {
     const updateKey = `${roleId}:${menuKey}`
     setSavingAccessKey(updateKey)
@@ -2073,28 +2072,6 @@ export default function Dashboard({
     }
   }
 
-  async function toggleMaterialStockDeleteAccess(roleId: number, value: boolean) {
-    const menuKey = 'material-stock'
-    const updateKey = `${roleId}:${menuKey}:delete`
-    setSavingAccessKey(updateKey)
-    setRoleActionMessage('')
-    try {
-      const updatedAccess = await updateRoleMenuPermission(roleId, menuKey, 'delete', value)
-      setAdminAccessByRole((accessByRole) => ({
-        ...accessByRole,
-        [roleId]: (accessByRole[roleId] ?? []).some((access) => access.menuKey === menuKey)
-          ? (accessByRole[roleId] ?? []).map((access) => access.menuKey === menuKey ? updatedAccess : access)
-          : [...(accessByRole[roleId] ?? []), updatedAccess],
-      }))
-      setRoleActionMessageType('success')
-      setRoleActionMessage('Material Stock delete access updated.')
-    } catch (caughtError) {
-      setRoleActionMessageType('error')
-      setRoleActionMessage(caughtError instanceof Error ? caughtError.message : 'Unable to update delete access')
-    } finally {
-      setSavingAccessKey('')
-    }
-  }
 
   return (
     <main className="dashboard-shell">
@@ -2184,7 +2161,7 @@ export default function Dashboard({
         </aside>
 
         <section className="dashboard-content">
-          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'master-data' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'so-production-status' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' || selectedItem.key === 'job-tracking' ? ' document-form-page' : ''}${INVENTORY_MENU_KEYS.has(selectedItem.key) ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
+          <div className={`dashboard-card${selectedItem.key === 'home' ? ' home-dashboard-page' : ''}${selectedItem.key === 'coc' || selectedItem.key === 'packing-slip' || selectedItem.key === 'coa' || selectedItem.key === 'data-management' || selectedItem.key === 'master-data' || selectedItem.key === 'admin-configurations' || selectedItem.key === 'product-specifications' || selectedItem.key === 'so-specification-mapping' || selectedItem.key === 'lead-management' || selectedItem.key === 'so-production-status' || selectedItem.key === 'production-planning' || selectedItem.key === 'production-planned' || selectedItem.key === 'job-cards' || selectedItem.key === 'job-tracking' ? ' document-form-page' : ''}${INVENTORY_MENU_KEYS.has(selectedItem.key) ? ' document-form-page' : ''}${selectedItem.key === ADVANCED_BOX_CALCULATOR_ROUTE_KEY ? ' advanced-calculator-dashboard-page' : ''}${PANEL_HEADING_MENU_KEYS.has(selectedItem.key) ? ' dashboard-panel-heading-page' : ''}`}>
             {selectedItem.key !== 'home' && (
               <header className="dashboard-page-heading">
                 <h2>
@@ -2245,6 +2222,7 @@ export default function Dashboard({
               {selectedItem.key === 'so-specification-mapping' && (
                 <SoSpecificationMapping />
               )}
+              {selectedItem.key === 'lead-management' && <LeadManagement />}
               {selectedItem.key === 'so-production-status' && (
                 <SoProductionStatus />
               )}
@@ -3259,26 +3237,9 @@ export default function Dashboard({
                             <details className="admin-access-group" open>
                               <summary>
                                 <span>Special Permissions</span>
-                                <small>1 permission</small>
+                                <small>3 user permissions</small>
                               </summary>
-                              <div className="admin-users-table-wrap">
-                                <table className="admin-users-table admin-access-table">
-                                  <thead><tr><th>Functionality</th>{accessRoles.map((role) => <th key={role.id}>{role.name}</th>)}</tr></thead>
-                                  <tbody><tr><td><strong>Delete Material Stock Rows</strong></td>{accessRoles.map((role) => {
-                                    const checkboxKey = `${role.id}:material-stock:delete`
-                                    const isProtectedSuperadminAccess = role.name === 'SUPERADMIN'
-                                    return <td key={role.id}><input
-                                      className="admin-access-checkbox"
-                                      type="checkbox"
-                                      checked={isProtectedSuperadminAccess || getRoleMenuDeleteAccess(role.id, 'material-stock')}
-                                      onChange={(event) => toggleMaterialStockDeleteAccess(role.id, event.target.checked)}
-                                      disabled={isProtectedSuperadminAccess || savingAccessKey === checkboxKey}
-                                      aria-label={`${role.name} delete Material Stock rows`}
-                                      title={isProtectedSuperadminAccess ? 'SUPERADMIN automatically has this permission.' : 'Grant permission to delete eligible, unused Material Stock rows.'}
-                                    /></td>
-                                  })}</tr></tbody>
-                                </table>
-                              </div>
+                              <UserSpecialPermissions />
                             </details>
                           </div>
                         )}

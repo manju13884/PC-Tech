@@ -42,6 +42,7 @@ const ALL_MENU_KEYS = [
   'deckle-calculator',
   'so-specification-mapping',
   'so-production-status',
+  'lead-management',
   'product-specifications',
   'production-specifications',
   'paper-purchase-request',

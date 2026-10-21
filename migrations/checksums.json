@@ -59,5 +59,11 @@
   "0058_preserve_unplanned_machine_settings.sql": "a1aab0696c9a0aae027622a293341cc0a22c01eeb7b9a962dd5d3ca70678469c",
   "0059_create_master_data.sql": "e66a1203769b52ae55a374923c8a9f2826250ff346be636ce0b5112078b8eac4",
   "0060_add_deckle_calculator.sql": "e12730f3b973f29c0c16ae23c5901066c59b8269e78fb4b1d7bae99135a29f6e",
-  "0061_add_fg_dispatch_delivery_challan.sql": "2f243c88bb3ab382ddb56aa6374b26b5927041a72f717475cfc506dd764e67c3"
+  "0061_add_fg_dispatch_delivery_challan.sql": "2f243c88bb3ab382ddb56aa6374b26b5927041a72f717475cfc506dd764e67c3",
+  "0062_create_lead_management.sql": "da4e8c915aca51bbd8471581f11836ce6bbe57065e83b1dd77f16d68de7d0688",
+  "0063_update_lead_contact_and_assignment.sql": "1342283e18ffd898660b8245148497a9a1cb0cf19cf1b52912446446cc4eb5f8",
+  "0064_create_user_special_permissions.sql": "8c85a4c30eb4541b86062ebc096d85acc16a620b954b9527659d4f925e790d29",
+  "0065_user_material_stock_delete_permissions.sql": "332efe384b6072188a89385a173e4e435651de86f300f3eae48ee6dd967c03d6",
+  "0066_add_lead_hold_and_not_qualified.sql": "8d71556de69f3d7067c84cee8ff53f22f977c5fcca24237d0f99e1728869e573",
+  "0067_add_lead_history_change_details.sql": "38d7240665e99486063c00d55e29bed8b08b2e3744bf011ef5df197d771c4d10"
 }

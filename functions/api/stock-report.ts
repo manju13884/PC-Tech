@@ -13,12 +13,12 @@ async function canView(db: D1Database, roleId: number, roleName: string) {
   return Boolean(permission)
 }
 
-async function canDelete(db: D1Database, roleId: number, roleName: string) {
+async function canDelete(db: D1Database, userId: number, roleName: string) {
   if (roleName === 'SUPERADMIN') return true
   const permission = await db.prepare(
-    `SELECT 1 AS allowed FROM role_menu_permissions
-     WHERE role_id = ? AND menu_key = 'material-stock' AND (can_full = 1 OR can_delete = 1) LIMIT 1`,
-  ).bind(roleId).first()
+    `SELECT 1 AS allowed FROM user_special_permissions
+     WHERE user_id = ? AND permission_key = 'material-stock:delete' AND granted = 1 LIMIT 1`,
+  ).bind(userId).first()
   return Boolean(permission)
 }
 
@@ -36,7 +36,7 @@ export async function onRequestGet(context: Context): Promise<Response> {
   const user = await getAuthenticatedUser(context.request, context.env.DB)
   if (!user) return json({ error: 'Authentication required.' }, 401)
   if (!await canView(context.env.DB, user.roleId, user.roleName)) return json({ error: 'Stock Report view access is required.' }, 403)
-  const deleteAllowed = await canDelete(context.env.DB, user.roleId, user.roleName)
+  const deleteAllowed = await canDelete(context.env.DB, user.id, user.roleName)
   const editAllowed = await canEdit(context.env.DB, user.roleId, user.roleName)
   const url = new URL(context.request.url)
   const asOnDate = url.searchParams.get('as_on_date')?.trim() || new Date().toISOString().slice(0, 10)
@@ -169,9 +169,10 @@ export async function onRequestDelete(context: Context): Promise<Response> {
   if (!context.env.DB) return json({ error: 'Stock Report database is unavailable.' }, 503)
   const user = await getAuthenticatedUser(context.request, context.env.DB)
   if (!user) return json({ error: 'Authentication required.' }, 401)
-  if (!await canDelete(context.env.DB, user.roleId, user.roleName)) return json({ error: 'Material Stock delete access is required.' }, 403)
+  if (!await canView(context.env.DB, user.roleId, user.roleName)) return json({ error: 'Stock Report view access is required.' }, 403)
+  if (!await canDelete(context.env.DB, user.id, user.roleName)) return json({ error: 'Material Stock delete access is required.' }, 403)
 
-  const body = await context.request.json<{ inventory_stock_id?: unknown; reason?: unknown }>().catch(() => ({}))
+  const body: { inventory_stock_id?: unknown; reason?: unknown } = await context.request.json<{ inventory_stock_id?: unknown; reason?: unknown }>().catch(() => ({}))
   const stockId = Number(body.inventory_stock_id)
   const reason = typeof body.reason === 'string' ? body.reason.trim() : ''
   if (!Number.isInteger(stockId) || stockId <= 0) return json({ error: 'Material stock record is required.' }, 400)
