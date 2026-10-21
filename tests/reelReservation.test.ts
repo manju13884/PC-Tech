@@ -3,12 +3,13 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 test('reel reservations are additive, exclusive, auditable and released by terminal job actions', async () => {
-  const [migration, api, tracking, reportApi, reportUi] = await Promise.all([
+  const [migration, api, tracking, reportApi, reportUi, cancellation] = await Promise.all([
     readFile('migrations/0040_create_inventory_reel_reservations.sql', 'utf8'),
     readFile('functions/api/job-tracking.ts', 'utf8'),
     readFile('src/features/job-tracking/JobTracking.tsx', 'utf8'),
     readFile('functions/api/stock-report.ts', 'utf8'),
     readFile('src/features/inventory/StockReport.tsx', 'utf8'),
+    readFile('functions/lib/jobTrackingCancellation.ts', 'utf8'),
   ])
 
   assert.doesNotMatch(migration, /\b(?:DELETE|DROP|TRUNCATE|REPLACE)\b/i)
@@ -25,7 +26,9 @@ test('reel reservations are additive, exclusive, auditable and released by termi
   assert.match(api, /was reserved by another Job/)
   assert.match(api, /REEL_CHANGED/)
   assert.match(api, /REEL_REMOVED/)
-  assert.match(api, /JOB_CANCELLED/)
+  assert.match(cancellation, /job_tracking_cancellation_snapshots/)
+  assert.match(cancellation, /reel_reservations_json/)
+  assert.match(api, /jobTrackingCancellationStatements/)
   assert.match(api, /PROCESS_COMPLETED/)
   assert.match(api, /await db\.batch/)
   assert.match(api, /PRODUCTION_CONSUMPTION/)

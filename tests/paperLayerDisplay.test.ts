@@ -37,7 +37,7 @@ test('mixed layer shades remain distinct for 3, 5 and 7 ply specifications', () 
 
 test('both production grids format each existing GSM column using its own layer', async () => {
   for (const path of ['src/features/production-planning/ProductionPlanning.tsx', 'src/features/production-planned/ProductionPlanned.tsx']) {
-    const source = await readFile(path, 'utf8')
+    const source = (await readFile(path, 'utf8')).replace(/<br\s*\/?>/g, ' ')
     for (const label of ['Top', 'B Flute', 'B Liner', 'A Flute', 'A Liner', 'C Flute', 'C Liner']) {
       assert.ok(source.includes(`<th>${label} GSM (G/N)</th>`))
     }

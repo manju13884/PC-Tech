@@ -1,3 +1,4 @@
+import { jobTrackingCancellationStatements } from '../lib/jobTrackingCancellation';
 import { getAuthenticatedUser } from '../lib/authenticatedUser';
 import { jobCompletionError } from '../../src/utils/jobCompletionValidation';
 
@@ -321,7 +322,7 @@ export async function onRequestPatch(context: Context): Promise<Response> {
   const user = await getAuthenticatedUser(context.request, db);
   if (!user) return json({ error: 'Authentication required.' }, 401);
   if (!(await permission(db, user.roleId, user.roleName, true))) return json({ error: 'Job Tracking edit access is required.' }, 403);
-  const body = await context.request.json<Record<string, unknown>>().catch(() => ({}));
+  const body: Record<string, unknown> = await context.request.json<Record<string, unknown>>().catch(() => ({}));
   const jobCardId = Number(body.jobCardId);
   if (body.action === 'setProcessStatus') {
     const processName = typeof body.processName === 'string' ? body.processName.trim() : '';
@@ -769,26 +770,9 @@ export async function onRequestPatch(context: Context): Promise<Response> {
     if (!cancellation) return json({ error: 'Job Card was not found.' }, 404);
     if (cancellation.has_production_transactions)
       return json({ error: `Job Card ${cancellation.job_number} contains production/inventory transactions and cannot be cancelled until the related transactions are reversed.` }, 409);
-    const results = await db.batch([
-      db.prepare('DELETE FROM inventory_reel_reservations WHERE job_card_id=?').bind(jobCardId),
-      db.prepare('DELETE FROM job_card_process_entries WHERE job_card_id=?').bind(jobCardId),
-      db.prepare(
-        `INSERT INTO job_card_status_history (job_card_id,job_number,previous_status,new_status,reason,changed_by_user_id,changed_by_name)
-         VALUES (?,?,?,'CANCELLED','Job Tracking cancelled and returned to Job Cards',?,?)`,
-      ).bind(jobCardId, cancellation.job_number, cancellation.status, user.id, user.fullName),
-      db.prepare("UPDATE job_cards SET status='CREATED', updated_at=CURRENT_TIMESTAMP WHERE id=? AND status<>'COMPLETED'").bind(jobCardId),
-      db.prepare(
-        `UPDATE production_plans SET closure_status='OPEN',closed_at=NULL,updated_at=CURRENT_TIMESTAMP
-         WHERE id=? AND closure_status='CLOSED' AND (NOT EXISTS (
-           SELECT 1 FROM job_cards card INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
-           WHERE line.production_plan_id=production_plans.id
-         ) OR EXISTS (
-           SELECT 1 FROM job_cards card INNER JOIN production_plan_lines line ON line.id=card.production_plan_line_id
-           WHERE line.production_plan_id=production_plans.id AND card.status<>'COMPLETED'
-         ))`,
-      ).bind(cancellation.production_plan_id),
-    ]);
-    if (!results[3].meta.changes) return json({ error: 'Job Card status could not be changed.' }, 409);
+    const results = await db.batch(await jobTrackingCancellationStatements(db, jobCardId, user, cancellation));
+    if (!results[0].meta.changes || !results[4].meta.changes)
+      return json({ error: 'Job Card changed or contains production/inventory transactions. Refresh and retry.' }, 409);
     return json({
       success: true,
       reservationMessage: `Job Tracking cancelled for ${cancellation.job_number}. The Job Card is available again at the Job Cards stage.`,

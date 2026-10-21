@@ -16,8 +16,10 @@ function loadModule(path, imports = {}) {
   return exports;
 }
 const validation = loadModule('src/utils/jobCompletionValidation.ts');
+const cancellation = loadModule('functions/lib/jobTrackingCancellation.ts');
 const { onRequestPatch, completeProcess } = loadModule('functions/api/job-tracking.ts', {
   '../../src/utils/jobCompletionValidation': validation,
+  '../lib/jobTrackingCancellation': cancellation,
   '../lib/authenticatedUser': { getAuthenticatedUser: async () => ({ id: 1, roleName: 'SUPERADMIN', fullName: 'Tester', email: 'test@example.com' }) },
 });
 const stages = ['Paper Cutting', 'Corrugation', 'Pasting', 'Creasing', 'Slotting', 'RS4'];

@@ -117,7 +117,7 @@ test('Production Plan persistence is additive, audited, and concurrency guarded'
   assert.match(plannedComponent, /Sales Orders for Production/)
   assert.match(plannedComponent, /\/api\/production-plans\?view=lines/)
   assert.match(plannedComponent, /<GridColumns\s*\/>\s*<GridHeader\s*\/>/)
-  assert.match(plannedComponent, /colSpan=\{33\}/)
+  assert.match(plannedComponent, /colSpan=\{34\}/)
   for (const option of ['All Statuses', 'DRAFT', "Yesterday's Production", "Today's Production", "Tomorrow's Production", 'Custom Date Production']) assert.match(plannedComponent, new RegExp(option))
   assert.match(plannedComponent, /line\.plan_date >= customFromDate/)
   assert.match(plannedComponent, /line\.plan_date <= customToDate/)

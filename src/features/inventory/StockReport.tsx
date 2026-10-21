@@ -22,7 +22,7 @@ const today = () =>
 const n = (value: number) =>
   new Intl.NumberFormat("en-IN", { maximumFractionDigits: 3 }).format(value);
 const date = (value: string) =>
-  value ? formatIstDateTime(new Date(value)) : "—";
+  value ? formatIstDateTime(new Date(value)) : "â€”";
 const initial = () => ({
   as_on_date: today(),
   material_type: "",
@@ -292,7 +292,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
             <option value="">All</option>
             <option value="IN_STOCK">In Stock</option>
             <option value="LOW_STOCK" disabled>
-              Low Stock — threshold not configured
+              Low Stock â€” threshold not configured
             </option>
             <option value="ZERO_STOCK">Zero Stock</option>
           </select>
@@ -371,7 +371,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
         </article>
         <article>
           <span>Low Stock</span>
-          <strong title="Threshold not configured">—</strong>
+          <strong title="Threshold not configured">â€”</strong>
         </article>
       </section>
       <section className="stock-report-grid">
@@ -452,7 +452,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
                       {Boolean(v.edit_pending) ? <span className="edit-pending-badge">Edit Pending Approval</span> : <button
                         className="edit"
                         disabled={!Boolean(v.can_edit)}
-                        title={v.can_edit ? "Edit material" : "Cannot edit – material already consumed/issued."}
+                        title={v.can_edit ? "Edit material" : "Cannot edit â€“ material already consumed/issued."}
                         onClick={() => { setEditRow(v); setError(""); setNotice("") }}
                       ><Pencil size={13}/></button>}
                       <button
@@ -518,7 +518,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
               <div>
                 <h3>Stock Transactions</h3>
                 <p>
-                  {transactionTitle} · As on {filters.as_on_date}
+                  {transactionTitle} Â· As on {filters.as_on_date}
                 </p>
               </div>
               <button onClick={() => setTransactions(null)}>
@@ -583,7 +583,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
         <div className="stock-report-modal stock-delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-material-title">
           <section>
             <header>
-              <div><h3 id="delete-material-title">Delete Material Stock</h3><p>{deleteRow.material_no} · Reel {deleteRow.reel_number}</p></div>
+              <div><h3 id="delete-material-title">Delete Material Stock</h3><p>{deleteRow.material_no} Â· Reel {deleteRow.reel_number}</p></div>
               <button disabled={deleting} onClick={() => setDeleteRow(null)}><X size={15} /></button>
             </header>
             <div className="stock-delete-body">
@@ -596,7 +596,7 @@ export default function StockReport({ username, userRole = "" }: { username: str
             </div>
             <footer>
               <button className="secondary" disabled={deleting} onClick={() => setDeleteRow(null)}>Cancel</button>
-              <button className="danger" disabled={deleting || !deleteReason.trim()} onClick={() => void confirmDelete()}>{deleting ? "Deleting…" : "Delete Row"}</button>
+              <button className="danger" disabled={deleting || !deleteReason.trim()} onClick={() => void confirmDelete()}>{deleting ? "Deletingâ€¦" : "Delete Row"}</button>
             </footer>
           </section>
         </div>

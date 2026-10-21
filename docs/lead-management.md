@@ -48,8 +48,8 @@ Deploy migrations 0062 through 0067 using the existing gated workflow in DEPLOYM
 - 27 lead/special-permission integration tests pass, using isolated SQLite, real session validation, transactions and mocked Zoho calls.
 - 9 maintenance/deployment tests pass.
 - TypeScript, Vite build, Pages Functions compilation and migration checksum audit pass.
-- All 67 migrations apply in sequence to an isolated database with no foreign-key violations.
+- All 68 migrations apply in sequence to an isolated database with no foreign-key violations.
 - Browser fixtures cover lead actions, reason requirements, history changes, user grants/revocation and desktop/mobile overflow.
-- The full suite reports 320 tests: 313 pass, with seven previously documented source-pattern failures. An isolated unchanged HEAD run reports 293 tests: 286 pass and the exact same seven fail; there are no new full-suite failures. Local logs are under .local-logs/dev-release-*.
+- The current full suite reports 323 tests: all pass. The seven original baseline failures have been fixed; see regression-test-fixes.md. Local logs are under .local-logs/baseline-fix-*.
 
 Release only to DEV/main when authorized. Use the maintenance gate, backup and health verification in DEPLOYMENT.md. Production deployment requires separate authorization.

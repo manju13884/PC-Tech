@@ -41,5 +41,11 @@ test('mixed Production Planning rows isolate 2 Ply Rolls without changing other 
   assert.match(prepareApi, /spec\.attributes_json/)
   assert.match(prepareApi, /specificationAttributes: attributes/)
   assert.match(plansApi, /spec\.id = line\.approved_specification_revision_id/)
-  assert.doesNotMatch(plansApi, /INSERT INTO[^;]*paper_layers/is)
+  const insertStatements = [...plansApi.matchAll(/`([^`]*\bINSERT\s+INTO\b[^`]*)`/gi)].map(match => match[1])
+  assert.ok(insertStatements.length > 0, 'Production insert statements are inspected')
+  for (const sql of insertStatements) {
+    assert.doesNotMatch(sql, /INSERT\s+INTO\s+paper_layers\b/i)
+    const columns = sql.match(/INSERT\s+INTO\s+\w+\s*\(([^)]*)\)/i)?.[1] || ''
+    assert.doesNotMatch(columns, /\bpaper_layers\b/i)
+  }
 })

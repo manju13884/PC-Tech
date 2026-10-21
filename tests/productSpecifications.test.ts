@@ -12,7 +12,10 @@ test('product specifications use cached customers and cached Zoho items', async 
   assert.match(component, /customer\.customer_name} - \$\{customer\.gst_number}/)
   assert.match(component, />\{customerDisplayName\(value\)}<\/option>/)
   assert.match(component, /getItems\(\)/)
-  assert.match(component, /Promise\.allSettled/)
+  for (const loader of ['getCustomers', 'getItems']) {
+    assert.match(component, new RegExp(`void ${loader}\\(\\)\\.then[\\s\\S]*?\\.catch\\(reportError\\)`))
+  }
+  assert.match(component, /void loadSpecifications\(\)\.catch\(reportError\)\.finally/)
   assert.match(component, /specification\.customer_id === listCustomerId\)/)
   assert.doesNotMatch(component, /!listItemId \|\| specification\.item_id === listItemId/)
   assert.match(component, /response\.status === 401/)
