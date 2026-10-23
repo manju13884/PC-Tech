@@ -28,6 +28,7 @@ async function fixture(grant = true) {
   sqlite.exec(readFileSync('migrations/0065_user_material_stock_delete_permissions.sql', 'utf8'))
   sqlite.exec(readFileSync('migrations/0066_add_lead_hold_and_not_qualified.sql', 'utf8'))
   sqlite.exec(readFileSync('migrations/0067_add_lead_history_change_details.sql', 'utf8'))
+  sqlite.exec(readFileSync('migrations/0069_add_lead_onboarded_status.sql', 'utf8'))
   const ids = {},
     tokens = {}
   for (const [name, role] of [
@@ -796,4 +797,15 @@ test('activity history includes follow-up notes and status reason changes', asyn
   assert.equal(parseLeadChangeDetails('{bad'),null)
   assert.equal(parseLeadChangeDetails('{"action":"edit","changes":[null]}'),null)
   assert.deepEqual(parseLeadChangeDetails(JSON.stringify(details)),details)
+})
+
+test('Onboarded status can be saved, filtered, exported and audited', async () => {
+  const f = await fixture()
+  await f.request('a', '', f.create('Onboarded company'))
+  const lead = f.lead('Onboarded company')
+  assert.equal((await f.request('a', '', { action: 'status', id: lead.id, version: lead.version, status: 'Onboarded' })).status, 200)
+  assert.equal(f.lead('Onboarded company').status, 'Onboarded')
+  assert.equal((await f.request('a', '?status=Onboarded')).total, 1)
+  assert.ok((await f.request('a', '?export=csv')).csv.includes('Onboarded'))
+  assert.ok((await f.request('a', `?id=${lead.id}`)).history.some(h => h.event === 'Status' && h.new_value === 'Onboarded'))
 })

@@ -3,6 +3,7 @@ export const leadStatuses = [
   'Contacted',
   'Qualified',
   'Quotation',
+  'Onboarded',
   'On Hold',
   'Not Qualified',
   'Converted',

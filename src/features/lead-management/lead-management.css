@@ -684,3 +684,5 @@
   .lead-change-list > div { grid-template-columns: minmax(0, 1fr); }
   .lead-change-list dt { border-bottom: 1px solid #e2e8f0; }
 }
+
+.lead-status-onboarded { background: #ecfdf5; color: #047857; }
