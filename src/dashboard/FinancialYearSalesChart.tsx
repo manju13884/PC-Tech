@@ -34,10 +34,8 @@ export default function FinancialYearSalesChart({ points, loading = false }: { p
           <desc id={`${chartId}-description`}>Colored three-dimensional bars and a connecting line show the same monthly sales amounts. Select a month for its exact amount.</desc>
           <defs>
             {bars.map((bar, index) => <linearGradient key={index} id={`${chartId}-bar-${index}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={`hsl(${bar.hue} 80% 49%)`} />
-              <stop offset="55%" stopColor={`hsl(${bar.hue} 76% 46%)`} />
-              <stop offset="55%" stopColor={`hsl(${bar.hue} 65% 65%)`} />
-              <stop offset="100%" stopColor={`hsl(${bar.hue} 70% 56%)`} />
+              <stop offset="0%" stopColor={`hsl(${bar.hue} 76% 62%)`} />
+              <stop offset="100%" stopColor={`hsl(${bar.hue} 76% 43%)`} />
             </linearGradient>)}
           </defs>
           {[0, 1, 2, 3, 4].map((tick) => {
