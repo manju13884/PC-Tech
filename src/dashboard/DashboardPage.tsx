@@ -4,6 +4,7 @@ import { useDashboardData } from './hooks/useDashboardData'
 import { formatCompactIndianCurrency, formatIndianCurrency } from './utils/currencyFormatting'
 import { formatIstDateTime } from '../utils/dateTimeFormatting'
 import { getFinancialYear } from '../../lib/salesFinancialYear'
+import FinancialYearSalesChart from './FinancialYearSalesChart'
 
 interface DashboardAction {
   key: string
@@ -39,7 +40,6 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
   const sales = summary.salesOrders
   const finance = summary.invoices
   const financialYearStart = finance?.salesFinancialYearStartYear ?? getFinancialYear().startYear
-  const maxTrend = Math.max(...(finance?.salesTrend.map((point) => point.amount) ?? [0]), 1)
 
   return (
     <div className="erp-dashboard">
@@ -122,7 +122,7 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
 
       <div className="erp-analytics-grid">
         <Panel title={`Sales – FY ${financialYearStart}–${String(financialYearStart + 1).slice(-2)} (${finance ? formatIndianCurrency(finance.salesToDate) : '—'})`} icon={BarChart3}>
-          <div className="erp-trend-chart">{(finance?.salesTrend ?? []).map((point) => <div key={point.month} title={formatIndianCurrency(point.amount)}><span style={{ height: `${Math.max(4, (point.amount / maxTrend) * 100)}%` }} /><small>{point.month}</small></div>)}</div>
+          <FinancialYearSalesChart points={finance?.salesTrend ?? []} loading={loading} />
         </Panel>
         <Panel title="Top Customers" icon={Users}>
           <ol className="erp-top-customers">{(finance?.topCustomers ?? []).map((customer) => <li key={customer.customerId}><span title={customer.customerName}>{customer.customerName.length > 8 ? `${customer.customerName.slice(0, 8)}...` : customer.customerName}</span><strong title={formatIndianCurrency(customer.amount)}>{formatCompactIndianCurrency(customer.amount)}</strong></li>)}</ol>
