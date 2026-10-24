@@ -1,4 +1,5 @@
 import { zohoGet, type ZohoEnv } from './zoho'
+import { getFinancialYear, getFinancialYearSalesTrend, getFinancialYearSalesToDate } from './salesFinancialYear'
 
 export interface ZohoInvoice {
   invoice_id?: string | number
@@ -77,6 +78,8 @@ export interface InvoiceDashboardSummary {
   totalReceivables: number
   ageing: Array<{ label: string; amount: number }>
   salesTrend: Array<{ month: string; amount: number }>
+  salesFinancialYearStartYear: number
+  salesToDate: number
   topCustomers: Array<{ customerId: string; customerName: string; amount: number }>
 }
 
@@ -117,10 +120,6 @@ export async function getZohoInvoiceDashboardSummary(env?: ZohoEnv): Promise<Inv
     ageing[bucketIndex].amount += Number(invoice.balance) || 0
   }
 
-  const trendMonths = Array.from({ length: 6 }, (_, offset) => {
-    const date = new Date(today.getFullYear(), today.getMonth() - (5 - offset), 1)
-    return { key: `${date.getFullYear()}-${date.getMonth()}`, month: date.toLocaleString('en-IN', { month: 'short' }), amount: 0 }
-  })
   const customerTotals = new Map<string, { customerId: string; customerName: string; amount: number }>()
   const financialYearStart = new Date(today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1, 3, 1)
   for (const invoice of invoices) {
@@ -129,8 +128,6 @@ export async function getZohoInvoiceDashboardSummary(env?: ZohoEnv): Promise<Inv
     const invoiceDate = new Date(normalizeText(invoice.date))
     const total = Number(invoice.total) || 0
     if (Number.isFinite(invoiceDate.getTime())) {
-      const trend = trendMonths.find((month) => month.key === `${invoiceDate.getFullYear()}-${invoiceDate.getMonth()}`)
-      if (trend) trend.amount += total
       if (invoiceDate >= financialYearStart) {
         const customerId = String(invoice.customer_id ?? '').trim()
         const customerName = normalizeText(invoice.customer_name)
@@ -151,7 +148,9 @@ export async function getZohoInvoiceDashboardSummary(env?: ZohoEnv): Promise<Inv
     draftInvoiceCount: draftInvoices.length,
     totalReceivables: outstandingInvoices.reduce((sum, invoice) => sum + (Number(invoice.balance) || 0), 0),
     ageing,
-    salesTrend: trendMonths.map(({ month, amount }) => ({ month, amount })),
+    salesTrend: getFinancialYearSalesTrend(invoices, today),
+    salesFinancialYearStartYear: getFinancialYear(today).startYear,
+    salesToDate: getFinancialYearSalesToDate(invoices, today),
     topCustomers: [...customerTotals.values()].sort((left, right) => right.amount - left.amount).slice(0, 5),
   }
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getCustomerOpenSalesOrderSummary, type HomeDashboardSummary } from '../../homeDashboardService'
+import { summarizeDashboardLeads, type LeadStatusSummary } from '../utils/leadSummary'
 
 export interface PurchaseDashboardSummary {
   pendingApproval: number
@@ -10,10 +11,12 @@ export interface PurchaseDashboardSummary {
 
 const emptySummary: HomeDashboardSummary = { salesOrders: null, invoices: null, errors: { sales: null, finance: null } }
 
-export function useDashboardData(loadPurchases: boolean) {
+export function useDashboardData(loadPurchases: boolean, loadLeads = false) {
   const [summary, setSummary] = useState<HomeDashboardSummary>(emptySummary)
   const [purchases, setPurchases] = useState<PurchaseDashboardSummary | null>(null)
   const [purchaseError, setPurchaseError] = useState<string | null>(null)
+  const [leads, setLeads] = useState<ReturnType<typeof summarizeDashboardLeads> | null>(null)
+  const [leadError, setLeadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null)
 
@@ -26,7 +29,15 @@ export function useDashboardData(loadPurchases: boolean) {
         return response.json() as Promise<PurchaseDashboardSummary>
       })
       : Promise.resolve(null)
-    const [overviewResult, purchaseResult] = await Promise.allSettled([overviewPromise, purchasePromise])
+    const leadPromise = loadLeads
+      ? fetch('/api/leads?summary=1', { credentials: 'include' }).then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load lead summary.')
+        const payload = await response.json() as { summary?: LeadStatusSummary[] }
+        if (!Array.isArray(payload.summary)) throw new Error('Invalid lead summary.')
+        return summarizeDashboardLeads(payload.summary)
+      })
+      : Promise.resolve(null)
+    const [overviewResult, purchaseResult, leadResult] = await Promise.allSettled([overviewPromise, purchasePromise, leadPromise])
     if (overviewResult.status === 'fulfilled') {
       setSummary(overviewResult.value)
       setRefreshedAt(overviewResult.value.refreshedAt ? new Date(overviewResult.value.refreshedAt) : new Date())
@@ -40,10 +51,17 @@ export function useDashboardData(loadPurchases: boolean) {
     } else {
       setPurchaseError('Unable to load purchase data.')
     }
+    if (leadResult.status === 'fulfilled') {
+      setLeads(leadResult.value)
+      setLeadError(null)
+    } else {
+      setLeads(null)
+      setLeadError('Unable to load lead summary.')
+    }
     setLoading(false)
-  }, [loadPurchases])
+  }, [loadPurchases, loadLeads])
 
   useEffect(() => { void load() }, [load])
   const refresh = useCallback(() => load(true), [load])
-  return { summary, purchases, purchaseError, loading, refreshedAt, refresh }
+  return { summary, purchases, purchaseError, leads, leadError, loading, refreshedAt, refresh }
 }

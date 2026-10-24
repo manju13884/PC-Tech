@@ -666,6 +666,7 @@ export default function Dashboard({
 }) {
   const effectiveMenuAccess = userRole === 'SUPERADMIN' ? menuItems.map((item) => item.key) : menuAccess
   const [selectedKey, setSelectedKey] = useState(() => getInitialMenuKey(effectiveMenuAccess))
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [expandedMenuGroups, setExpandedMenuGroups] = useState<Set<string>>(() => {
     const activeGroupTitle = getMenuGroupTitleForKey(getInitialMenuKey(effectiveMenuAccess))
     return new Set(activeGroupTitle ? [activeGroupTitle] : [])
@@ -1610,6 +1611,7 @@ export default function Dashboard({
     }
 
     window.history.replaceState(null, '', `#${key}`)
+    setMobileMenuOpen(false)
     setSelectedKey(key)
     const groupTitle = getMenuGroupTitleForKey(key)
     if (groupTitle) {
@@ -2094,6 +2096,15 @@ export default function Dashboard({
           </div>
         </button>
         <div className="dashboard-header-actions">
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="dashboard-navigation"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            {mobileMenuOpen ? 'Close menu' : 'Menu'}
+          </button>
           <span className="dashboard-welcome">Welcome, {username}</span>
           <button className="logout-button" onClick={onLogout}>
             Logout
@@ -2101,8 +2112,18 @@ export default function Dashboard({
         </div>
       </header>
 
-      <div className="dashboard-grid">
-        <aside className="dashboard-menu">
+      <div className={`dashboard-grid${mobileMenuOpen ? ' mobile-menu-open' : ''}`}>
+        <aside
+          id="dashboard-navigation"
+          aria-label="Main navigation"
+          className="dashboard-menu"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && mobileMenuOpen) {
+              setMobileMenuOpen(false)
+              document.querySelector<HTMLButtonElement>('.mobile-menu-toggle')?.focus()
+            }
+          }}
+        >
           <button
             type="button"
             className={`menu-item menu-home-item ${selectedKey === 'home' ? 'active' : ''}`}
@@ -2178,7 +2199,7 @@ export default function Dashboard({
             <div className="dashboard-details">
               {selectedItem.key === 'home' && (
                 <DashboardPage
-                  menuAccess={menuAccess}
+                  menuAccess={effectiveMenuAccess}
                   actions={moduleMenuItems.slice(0, 8).map((item) => ({
                     key: item.key,
                     label: item.menuTitle ?? item.title,

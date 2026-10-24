@@ -74,6 +74,10 @@ export async function onRequest({ request, env }: Context): Promise<Response> {
           `SELECT status,COUNT(*) AS count,SUM(CASE WHEN next_follow_up_date=? THEN 1 ELSE 0 END) AS due,SUM(CASE WHEN next_follow_up_date<? THEN 1 ELSE 0 END) AS overdue FROM sales_leads l WHERE ${readScope.sql} GROUP BY status`,
         )
         .bind(today, today, ...readScope.values)
+      if (params.get('summary') === '1') {
+        const summary = await summaryQuery.all()
+        return json({ summary: summary.results })
+      }
       const where = [readScope.sql],
         values: (string | number)[] = [...readScope.values]
       const search = (params.get('search') || '').trim().slice(0, 200)

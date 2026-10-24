@@ -1,0 +1,70 @@
+/* Phone overrides only. Keep desktop layouts and printed documents unchanged. */
+.mobile-menu-toggle { display: none; }
+
+@media screen and (max-width: 640px) {
+  :is(.dashboard-shell, .app-shell), :is(.dashboard-shell, .app-shell) * { box-sizing: border-box; }
+  main.app-shell { overflow-y: auto; align-content: start; padding-bottom: 1rem; }
+  .login-card { box-sizing: border-box; width: 100%; }
+  .login-panel { padding: 1rem; }
+  .login-panel-copy h1 { font-size: 1.5rem; }
+  .login-stats { display: none; }
+  .login-copyright { position: static; padding: .75rem; text-align: center; }
+
+  main.dashboard-shell { --dashboard-header-height: 64px; }
+  .dashboard-header { gap: .4rem; padding-inline: .5rem; }
+  .dashboard-brand { min-width: 0; gap: .3rem; }
+  .dashboard-brand .site-logo { width: 30px; height: 30px; }
+  .portal-identity span { font-size: .8rem; }
+  .portal-identity em { font-size: .6rem; }
+  .dashboard-header-actions { gap: .35rem; }
+  .mobile-menu-toggle { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; border-radius: 5px; background: #fff; color: #1e293b; padding: .4rem .6rem; }
+  .dashboard-grid { position: relative; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .dashboard-grid > .dashboard-menu { display: none; }
+  .dashboard-grid.mobile-menu-open > .dashboard-menu {
+    display: grid; position: absolute; inset: 0 0 auto; z-index: 30;
+    height: auto; max-height: 70dvh; overflow-y: auto; padding: .5rem;
+    box-shadow: 0 12px 24px rgb(15 23 42 / 20%);
+  }
+  .dashboard-menu :is(.menu-item, .menu-group-toggle) { font-size: .875rem; }
+  .dashboard-content { overscroll-behavior-y: contain; }
+  .dashboard-content .dashboard-card { padding: .65rem; }
+  .dashboard-card > .dashboard-page-heading { padding: .5rem; }
+  .dashboard-page-heading h2 { overflow-wrap: anywhere; }
+
+  /* Override compact operational controls; 16px inputs avoid iOS focus zoom. */
+  :is(.dashboard-shell, .app-shell) :is(button, input:not([type='checkbox']):not([type='radio']):not([type='hidden']), select) {
+    min-height: 44px !important; box-sizing: border-box;
+  }
+  :is(.dashboard-shell, .app-shell) :is(input, select, textarea) { font-size: 16px !important; max-width: 100%; }
+  .dashboard-shell button { font-size: .8125rem !important; line-height: 1.3; }
+  .dashboard-shell :is(input[type='checkbox'], input[type='radio']) { min-width: 20px; min-height: 20px; }
+  .dashboard-details label { font-size: .8125rem; }
+
+  /* These are input/filter grids, never document or drawing grids. */
+  .dashboard-shell :is(.material-issue-grid, .material-issue-filters, .stock-report-filters,
+    .stock-report-summary, .stock-ledger-filters, .stock-adjustment-filters, .stock-form-grid, .inventory-paper-grid, .inventory-material-panel,
+    .product-spec-grid, .product-spec-grid.master-grid, .production-planning-filterbar,
+    .fg-dispatch-modal form, .admin-create-user-form) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dashboard-shell :is(.material-issue-material, .material-issue-remarks, .stock-form-grid .wide) { grid-column: 1 / -1; }
+  .dashboard-shell :is(.product-spec-toolbar, .production-planned-controls, .admin-panel-toolbar,
+    .stock-report-actions, .material-issue-form footer, .fg-dispatch-modal footer) {
+    flex-wrap: wrap; height: auto; gap: .5rem;
+  }
+  .dashboard-shell :is(.fg-stock-row-actions) { grid-template-rows: repeat(3, minmax(44px, auto)); }
+  .dashboard-shell .lead-grid .lead-actions { grid-auto-rows: minmax(44px, auto); }
+
+  /* Keep wide data readable and scroll inside its panel. */
+  .dashboard-shell :is(.admin-users-table-wrap, .job-cards-table-scroll, .production-lines-scroll,
+    .product-spec-table-wrap, .stock-report-scroll) {
+    max-width: 100%; overflow: auto; overscroll-behavior-x: contain;
+  }
+  .dashboard-shell :is(.job-cards-list table, .admin-users-table) { min-width: 760px; }
+  .dashboard-shell :is(th, td) { font-size: .8125rem; }
+  .dashboard-shell :is(.admin-dialog, .fg-dispatch-modal, .stock-report-modal,
+    .product-spec-editor, .product-spec-report-dialog) {
+    box-sizing: border-box; max-width: calc(100vw - 1rem); max-height: calc(100dvh - 1rem); overflow: auto;
+  }
+  .dashboard-shell .admin-dialog-backdrop { padding: .5rem; }
+}

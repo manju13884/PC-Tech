@@ -153,6 +153,22 @@ async function fixture(grant = true) {
   }
 }
 
+test('dashboard summary respects authentication, permissions and assigned lead scope without returning lead records', async () => {
+  const f = await fixture()
+  await f.request('root', '', f.create('Lead A', f.ids.a))
+  await f.request('root', '', f.create('Lead B', f.ids.b, { mobile: '9876543211' }))
+  const own = await f.request('a', '?summary=1')
+  assert.equal(own.status, 200)
+  assert.equal(own.summary.reduce((total, row) => total + row.count, 0), 1)
+  assert.equal('leads' in own, false)
+  const all = await f.request('root', '?summary=1')
+  assert.equal(all.summary.reduce((total, row) => total + row.count, 0), 2)
+  assert.equal((await f.request('missing', '?summary=1')).status, 401)
+  assert.equal((await f.request('accounts', '?summary=1')).status, 403)
+  const denied = await fixture(false)
+  assert.equal((await denied.request('a', '?summary=1')).status, 403)
+})
+
 test('default permissions grant only SUPERADMIN; view access does not grant writes', async () => {
   const f = await fixture(false)
   assert.equal((await f.request('root')).status, 200)

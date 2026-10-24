@@ -23,6 +23,8 @@ export interface InvoiceDashboardSummary {
   totalReceivables: number
   ageing: Array<{ label: string; amount: number }>
   salesTrend: Array<{ month: string; amount: number }>
+  salesFinancialYearStartYear: number
+  salesToDate: number
   topCustomers: Array<{ customerId: string; customerName: string; amount: number }>
 }
 

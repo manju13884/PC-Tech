@@ -3,6 +3,7 @@ import { AlertTriangle, BarChart3, Calculator, ChevronRight, CircleDollarSign, C
 import { useDashboardData } from './hooks/useDashboardData'
 import { formatCompactIndianCurrency, formatIndianCurrency } from './utils/currencyFormatting'
 import { formatIstDateTime } from '../utils/dateTimeFormatting'
+import { getFinancialYear } from '../../lib/salesFinancialYear'
 
 interface DashboardAction {
   key: string
@@ -17,11 +18,11 @@ interface DashboardPageProps {
   onNavigate: (key: string) => void
 }
 
-function KpiCard({ title, value, subtitle, tone = 'info', loading, icon: Icon }: { title: string; value: string; subtitle?: string; tone?: string; loading: boolean; icon?: LucideIcon }) {
+function KpiCard({ title, value, valueTitle, subtitle, tone = 'info', loading, icon: Icon }: { title: string; value: string; valueTitle?: string; subtitle?: string; tone?: string; loading: boolean; icon?: LucideIcon }) {
   return (
     <article className={`erp-kpi-card tone-${tone}`}>
-      <div className="erp-kpi-heading">{Icon && <span className="erp-kpi-icon"><Icon size={15} /></span>}<span className="erp-kpi-title">{title}</span></div>
-      {loading ? <span className="erp-skeleton erp-skeleton-value" /> : <strong title={value}>{value}</strong>}
+      <div className="erp-kpi-heading">{Icon && <span className="erp-kpi-icon" aria-hidden="true"><Icon size={15} /></span>}<span className="erp-kpi-title" title={title}>{title}</span></div>
+      {loading ? <span className="erp-skeleton erp-skeleton-value" /> : <strong title={valueTitle ?? value} aria-label={valueTitle}>{value}</strong>}
       {subtitle && <em>{subtitle}</em>}
     </article>
   )
@@ -33,9 +34,11 @@ function Panel({ title, icon: Icon, children, className = '' }: { title: string;
 
 export default function DashboardPage({ menuAccess, actions, onNavigate }: DashboardPageProps) {
   const canViewPurchases = ['paper-purchase-request', 'paper-purchase-request-approvals', 'paper-po-calculation'].some((key) => menuAccess.includes(key))
-  const { summary, purchases, purchaseError, loading, refreshedAt } = useDashboardData(canViewPurchases)
+  const canViewLeads = menuAccess.includes('lead-management')
+  const { summary, purchases, purchaseError, leads, leadError, loading, refreshedAt } = useDashboardData(canViewPurchases, canViewLeads)
   const sales = summary.salesOrders
   const finance = summary.invoices
+  const financialYearStart = finance?.salesFinancialYearStartYear ?? getFinancialYear().startYear
   const maxTrend = Math.max(...(finance?.salesTrend.map((point) => point.amount) ?? [0]), 1)
 
   return (
@@ -48,17 +51,17 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
       </header>
 
       <div className="erp-overview-grid">
-        <Panel title="Sales Overview" icon={ShoppingCart}>
+        <Panel title="Sales Overview" icon={ShoppingCart} className="erp-summary-panel erp-summary-sales">
           {summary.errors.sales && <p className="erp-section-error">{summary.errors.sales}</p>}
           <div className="erp-kpi-grid">
             <KpiCard icon={ClipboardList} title="Open SO" value={sales ? String(sales.totals.openSalesOrderCount) : '—'} tone="info" loading={loading && !sales} />
-            <KpiCard icon={BarChart3} title="Total SO Value" value={sales ? formatCompactIndianCurrency(sales.totals.totalSalesOrderAmount) : '—'} tone="finance" loading={loading && !sales} />
-            <KpiCard icon={CircleDollarSign} title="Open SO Value" value={sales ? formatCompactIndianCurrency(sales.totals.openSalesOrderValue) : '—'} subtitle="Yet to be Billed" tone="success" loading={loading && !sales} />
+            <KpiCard icon={BarChart3} title="Total SO Value" value={sales ? formatCompactIndianCurrency(sales.totals.totalSalesOrderAmount) : '—'} valueTitle={sales ? formatIndianCurrency(sales.totals.totalSalesOrderAmount) : undefined} tone="finance" loading={loading && !sales} />
+            <KpiCard icon={CircleDollarSign} title="Open SO Value" value={sales ? formatCompactIndianCurrency(sales.totals.openSalesOrderValue) : '—'} valueTitle={sales ? formatIndianCurrency(sales.totals.openSalesOrderValue) : undefined} subtitle="Yet to be billed" tone="success" loading={loading && !sales} />
             <KpiCard icon={AlertTriangle} title="Overdue Delivery" value="—" subtitle="Data not available" tone="warning" loading={false} />
           </div>
         </Panel>
 
-        <Panel title="Finance & Invoices" icon={CircleDollarSign}>
+        <Panel title="Finance & Invoices" icon={CircleDollarSign} className="erp-summary-panel erp-summary-finance">
           {summary.errors.finance && <p className="erp-section-error">{summary.errors.finance}</p>}
           <div className="erp-kpi-grid">
             <KpiCard icon={AlertTriangle} title="Overdue Invoices" value={finance ? String(finance.overdueInvoiceCount) : '—'} tone="critical" loading={loading && !finance} />
@@ -71,7 +74,7 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
 
       <div className="erp-operations-grid">
         {canViewPurchases && (
-          <Panel title="Purchases" icon={ClipboardCheck}>
+          <Panel title="Purchases" icon={ClipboardCheck} className="erp-summary-panel erp-summary-purchases">
             {purchaseError && <p className="erp-section-error">{purchaseError}</p>}
             <div className="erp-kpi-grid">
               <KpiCard icon={ClipboardCheck} title="Pending Approval" value={String(purchases?.pendingApproval ?? 0)} tone="warning" loading={loading && !purchases} />
@@ -82,18 +85,29 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
           </Panel>
         )}
 
-        <Panel title="Production" icon={PackageCheck} className="erp-production-placeholder">
+        <Panel title="Production" icon={PackageCheck} className="erp-production-placeholder erp-summary-panel erp-summary-production">
           <div className="erp-kpi-grid"><KpiCard icon={PackageCheck} title="Pending Production" value="—" loading={false} /><KpiCard icon={ClipboardCheck} title="Due Today" value="—" loading={false} /><KpiCard icon={AlertTriangle} title="Production Overdue" value="—" loading={false} /></div>
         </Panel>
       </div>
 
-      <div className="erp-secondary-grid">
+      <div className={`erp-secondary-grid${canViewLeads ? ' erp-secondary-grid-with-leads' : ''}`}>
         <Panel title="Sales Order Status" icon={ClipboardList}>
           <dl className="erp-status-list"><div><dt>Open</dt><dd>{sales?.statusCounts.open ?? '—'}</dd></div><div><dt>Partially Billed</dt><dd>{sales?.statusCounts.partiallyBilled ?? '—'}</dd></div><div><dt>Pending Dispatch</dt><dd>—</dd></div><div><dt>Overdue</dt><dd>—</dd></div></dl>
         </Panel>
         <Panel title="Receivable Ageing" icon={Clock3}>
           <dl className="erp-status-list">{(finance?.ageing ?? []).map((bucket) => <div key={bucket.label}><dt>{bucket.label}</dt><dd title={formatIndianCurrency(bucket.amount)}>{formatCompactIndianCurrency(bucket.amount)}</dd></div>)}{!finance && <div><dt>Ageing data</dt><dd>—</dd></div>}</dl>
         </Panel>
+        {canViewLeads && (
+          <Panel title="Lead Management" icon={Users}>
+            {leadError && <p className="erp-section-error" role="alert">{leadError}</p>}
+            <dl className="erp-status-list" aria-busy={loading}>
+              <div><dt>Total Leads</dt><dd>{leads?.total ?? '—'}</dd></div>
+              <div><dt>Active Leads</dt><dd>{leads?.active ?? '—'}</dd></div>
+              <div><dt>Follow-ups Due Today</dt><dd>{leads?.dueToday ?? '—'}</dd></div>
+              <div><dt>Overdue Follow-ups</dt><dd className={leads?.overdue ? 'erp-lead-overdue' : undefined}>{leads?.overdue ?? '—'}</dd></div>
+            </dl>
+          </Panel>
+        )}
       </div>
 
       <Panel title="Requires Attention" icon={AlertTriangle} className="erp-attention-panel">
@@ -107,7 +121,7 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
       </Panel>
 
       <div className="erp-analytics-grid">
-        <Panel title="Sales – Last 6 Months" icon={BarChart3}>
+        <Panel title={`Sales – FY ${financialYearStart}–${String(financialYearStart + 1).slice(-2)} (${finance ? formatIndianCurrency(finance.salesToDate) : '—'})`} icon={BarChart3}>
           <div className="erp-trend-chart">{(finance?.salesTrend ?? []).map((point) => <div key={point.month} title={formatIndianCurrency(point.amount)}><span style={{ height: `${Math.max(4, (point.amount / maxTrend) * 100)}%` }} /><small>{point.month}</small></div>)}</div>
         </Panel>
         <Panel title="Top Customers" icon={Users}>

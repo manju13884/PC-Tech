@@ -3,6 +3,7 @@ import { getZohoInvoiceDashboardSummary } from '../../lib/invoices'
 import { ZohoRequestError, type ZohoEnv } from '../../lib/zoho'
 import { getAuthenticatedUser } from '../lib/authenticatedUser'
 import { getCachedVendors } from '../../lib/vendorCache'
+import { getFinancialYear } from '../../lib/salesFinancialYear'
 
 interface PagesFunctionContext {
   request: Request
@@ -35,7 +36,9 @@ function getDashboardBusinessDate(now = new Date()): string {
 function parseSnapshot(value: string | null): DashboardPayload | null {
   if (!value) return null
   try {
-    return JSON.parse(value) as DashboardPayload
+    const payload = JSON.parse(value) as DashboardPayload
+    if (payload.invoices && (payload.invoices.salesFinancialYearStartYear !== getFinancialYear().startYear || payload.invoices.salesTrend?.length !== 12 || !Number.isFinite(payload.invoices.salesToDate))) return null
+    return payload
   } catch {
     return null
   }
@@ -44,9 +47,9 @@ function parseSnapshot(value: string | null): DashboardPayload | null {
 async function readLatestSnapshot(db: D1Database): Promise<DashboardPayload | null> {
   const row = await db.prepare(
     `SELECT payload_json FROM dashboard_snapshots
-     WHERE payload_json IS NOT NULL
+     WHERE payload_json IS NOT NULL AND snapshot_key LIKE ?
      ORDER BY business_date DESC LIMIT 1`,
-  ).first<{ payload_json: string }>()
+  ).bind(`home:fy-sales-v2:${getFinancialYear().startYear}:%`).first<{ payload_json: string }>()
   return parseSnapshot(row?.payload_json ?? null)
 }
 
@@ -105,7 +108,7 @@ export async function onRequestGet(context: PagesFunctionContext): Promise<Respo
       })
     })
     const businessDate = getDashboardBusinessDate()
-    const snapshotKey = `home:${businessDate}`
+    const snapshotKey = `home:fy-sales-v2:${getFinancialYear().startYear}:${businessDate}`
     const existing = await context.env.DB.prepare(
       'SELECT payload_json FROM dashboard_snapshots WHERE snapshot_key = ?',
     ).bind(snapshotKey).first<{ payload_json: string | null }>()
@@ -146,7 +149,7 @@ export async function onRequestPost(context: PagesFunctionContext): Promise<Resp
     }
 
     const businessDate = getDashboardBusinessDate()
-    return refreshDashboardSnapshot(context, businessDate, `home:${businessDate}`)
+    return refreshDashboardSnapshot(context, businessDate, `home:fy-sales-v2:${getFinancialYear().startYear}:${businessDate}`)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to refresh dashboard data'
     console.error('[home-sales-orders] refresh failed', { message })
