@@ -12,8 +12,8 @@ export default function FinancialYearSalesChart({ points, loading = false }: { p
 
   const maximum = Math.max(...points.map((point) => point.amount), 0)
   const scale = maximum > 0 ? maximum * 1.15 : 1
-  const base = 232
-  const plotHeight = 178
+  const base = 184
+  const plotHeight = 144
   const plotLeft = 82
   const step = 600 / points.length
   const barWidth = Math.min(27, step * .55)
@@ -29,7 +29,7 @@ export default function FinancialYearSalesChart({ points, loading = false }: { p
   return (
     <figure className="fy-sales-chart">
       <div className="fy-sales-chart-viewport">
-        <svg viewBox="0 0 720 276" className="fy-sales-chart-svg" role="group" aria-labelledby={`${chartId}-title`} aria-describedby={`${chartId}-description`}>
+        <svg viewBox="0 0 720 220" className="fy-sales-chart-svg" role="group" aria-labelledby={`${chartId}-title`} aria-describedby={`${chartId}-description`}>
           <title id={`${chartId}-title`}>Financial year sales by month</title>
           <desc id={`${chartId}-description`}>Colored three-dimensional bars and a connecting line show the same monthly sales amounts. Select a month for its exact amount.</desc>
           <defs>
@@ -58,7 +58,7 @@ export default function FinancialYearSalesChart({ points, loading = false }: { p
                 if (event.key === 'Escape') setSelected(null)
               }}>
               <title>{bar.month}: {formatIndianCurrency(bar.amount)}</title>
-              <rect x={center - step / 2 + 1} y="20" width={step - 2} height="246" rx="5" className="fy-sales-hit-area" />
+              <rect x={center - step / 2 + 1} y="18" width={step - 2} height="198" rx="5" className="fy-sales-hit-area" />
               {bar.amount > 0 && <g aria-hidden="true" className="fy-sales-bar">
                 <ellipse cx={center + depth / 2} cy={base + 4} rx={barWidth * .8} ry="4" fill="#102a43" opacity=".08" />
                 <rect x={bar.x} y={bar.y} width={barWidth} height={base - bar.y} fill={`url(#${chartId}-bar-${index})`} />
@@ -66,7 +66,7 @@ export default function FinancialYearSalesChart({ points, loading = false }: { p
                 <path d={`M${bar.x},${bar.y} l${depth},-${depth / 2} h${barWidth} l-${depth},${depth / 2} Z`} fill={`hsl(${bar.hue} 72% 65%)`} />
               </g>}
               <circle cx={center} cy={markerY} r={selected === index ? 6 : 4.5} fill="#fff" stroke={`hsl(${bar.hue} 72% 44%)`} strokeWidth="3" aria-hidden="true" />
-              <text x={center} y="260" textAnchor="middle" className="fy-sales-month-label" aria-hidden="true">{bar.month}</text>
+              <text x={center} y="208" textAnchor="middle" className="fy-sales-month-label" aria-hidden="true">{bar.month}</text>
             </g>
           })}
         </svg>

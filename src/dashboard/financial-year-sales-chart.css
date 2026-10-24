@@ -10,8 +10,9 @@
 .fy-sales-month:focus-visible .fy-sales-hit-area { stroke: #2563a6; stroke-width: 1.5; }
 .fy-sales-month-label { fill: #526176; font-size: 14px; font-weight: 500; }
 .fy-sales-month.is-selected .fy-sales-month-label { fill: #163f76; font-weight: 700; }
-.fy-sales-chart-caption { display: flex; min-height: 32px; box-sizing: border-box; align-items: center; justify-content: space-between; gap: .5rem; padding: .4rem .7rem; border-top: 1px solid #edf1f5; color: #64748b; font-size: .65rem; }
-.fy-sales-chart-caption strong { color: #24364d; font: inherit; font-variant-numeric: tabular-nums; }
+.fy-sales-chart-caption { display: flex; min-height: 24px; box-sizing: border-box; align-items: center; justify-content: space-between; gap: .4rem; padding: .2rem .65rem; border-top: 1px solid #edf1f5; color: #64748b; font-size: .6rem; }
+.fy-sales-chart-caption strong { color: #24364d; font: inherit; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fy-sales-chart-caption:has(strong) > span { font-weight: 700; }
 .dashboard-card .fy-sales-chart-empty { margin: 0; padding: 1rem; color: #64748b; font-size: .75rem; }
 @media (max-width: 640px) {
   .fy-sales-chart-caption { font-size: .75rem; }

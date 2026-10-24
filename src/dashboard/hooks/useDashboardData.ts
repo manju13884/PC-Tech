@@ -11,12 +11,14 @@ export interface PurchaseDashboardSummary {
 
 const emptySummary: HomeDashboardSummary = { salesOrders: null, invoices: null, errors: { sales: null, finance: null } }
 
-export function useDashboardData(loadPurchases: boolean, loadLeads = false) {
+export function useDashboardData(loadPurchases: boolean, loadLeads = false, loadProduction = false) {
   const [summary, setSummary] = useState<HomeDashboardSummary>(emptySummary)
   const [purchases, setPurchases] = useState<PurchaseDashboardSummary | null>(null)
   const [purchaseError, setPurchaseError] = useState<string | null>(null)
   const [leads, setLeads] = useState<ReturnType<typeof summarizeDashboardLeads> | null>(null)
   const [leadError, setLeadError] = useState<string | null>(null)
+  const [production, setProduction] = useState<{ pendingProduction: number; dueToday: number; overdue: number } | null>(null)
+  const [productionError, setProductionError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null)
 
@@ -37,7 +39,13 @@ export function useDashboardData(loadPurchases: boolean, loadLeads = false) {
         return summarizeDashboardLeads(payload.summary)
       })
       : Promise.resolve(null)
-    const [overviewResult, purchaseResult, leadResult] = await Promise.allSettled([overviewPromise, purchasePromise, leadPromise])
+    const productionPromise = loadProduction
+      ? fetch('/api/dashboard/production', { credentials: 'include' }).then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load production summary.')
+        return response.json() as Promise<{ pendingProduction: number; dueToday: number; overdue: number }>
+      })
+      : Promise.resolve(null)
+    const [overviewResult, purchaseResult, leadResult, productionResult] = await Promise.allSettled([overviewPromise, purchasePromise, leadPromise, productionPromise])
     if (overviewResult.status === 'fulfilled') {
       setSummary(overviewResult.value)
       setRefreshedAt(overviewResult.value.refreshedAt ? new Date(overviewResult.value.refreshedAt) : new Date())
@@ -58,10 +66,17 @@ export function useDashboardData(loadPurchases: boolean, loadLeads = false) {
       setLeads(null)
       setLeadError('Unable to load lead summary.')
     }
+    if (productionResult.status === 'fulfilled') {
+      setProduction(productionResult.value)
+      setProductionError(null)
+    } else {
+      setProduction(null)
+      setProductionError('Unable to load production summary.')
+    }
     setLoading(false)
-  }, [loadPurchases, loadLeads])
+  }, [loadPurchases, loadLeads, loadProduction])
 
   useEffect(() => { void load() }, [load])
   const refresh = useCallback(() => load(true), [load])
-  return { summary, purchases, purchaseError, leads, leadError, loading, refreshedAt, refresh }
+  return { summary, purchases, purchaseError, leads, leadError, production, productionError, loading, refreshedAt, refresh }
 }
