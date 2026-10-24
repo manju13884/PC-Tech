@@ -90,6 +90,15 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
         </Panel>
       </div>
 
+      <div className="erp-analytics-grid">
+        <Panel title={`Sales – FY ${financialYearStart}–${String(financialYearStart + 1).slice(-2)} (${finance ? formatIndianCurrency(finance.salesToDate) : '—'})`} icon={BarChart3}>
+          <FinancialYearSalesChart points={finance?.salesTrend ?? []} loading={loading} />
+        </Panel>
+        <Panel title="Top Customers" icon={Users}>
+          <ol className="erp-top-customers">{(finance?.topCustomers ?? []).map((customer) => <li key={customer.customerId}><span title={customer.customerName}>{customer.customerName.length > 8 ? `${customer.customerName.slice(0, 8)}...` : customer.customerName}</span><strong title={formatIndianCurrency(customer.amount)}>{formatCompactIndianCurrency(customer.amount)}</strong></li>)}</ol>
+        </Panel>
+      </div>
+
       <div className={`erp-secondary-grid${canViewLeads ? ' erp-secondary-grid-with-leads' : ''}`}>
         <Panel title="Sales Order Status" icon={ClipboardList}>
           <dl className="erp-status-list"><div><dt>Open</dt><dd>{sales?.statusCounts.open ?? '—'}</dd></div><div><dt>Partially Billed</dt><dd>{sales?.statusCounts.partiallyBilled ?? '—'}</dd></div><div><dt>Pending Dispatch</dt><dd>—</dd></div><div><dt>Overdue</dt><dd>—</dd></div></dl>
@@ -119,15 +128,6 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
           {!loading && !(finance?.overdueInvoiceCount || finance?.draftInvoiceCount || purchases?.pendingApproval || purchases?.approvedPendingPo) && <p className="erp-empty-state">No actions require attention.</p>}
         </div>
       </Panel>
-
-      <div className="erp-analytics-grid">
-        <Panel title={`Sales – FY ${financialYearStart}–${String(financialYearStart + 1).slice(-2)} (${finance ? formatIndianCurrency(finance.salesToDate) : '—'})`} icon={BarChart3}>
-          <FinancialYearSalesChart points={finance?.salesTrend ?? []} loading={loading} />
-        </Panel>
-        <Panel title="Top Customers" icon={Users}>
-          <ol className="erp-top-customers">{(finance?.topCustomers ?? []).map((customer) => <li key={customer.customerId}><span title={customer.customerName}>{customer.customerName.length > 8 ? `${customer.customerName.slice(0, 8)}...` : customer.customerName}</span><strong title={formatIndianCurrency(customer.amount)}>{formatCompactIndianCurrency(customer.amount)}</strong></li>)}</ol>
-        </Panel>
-      </div>
 
       <Panel title="Quick Actions" icon={Zap}>
         <div className="erp-quick-actions">{actions.map((action) => <button type="button" key={action.key} onClick={() => onNavigate(action.key)}><action.icon size={15} /><span><strong>{action.label}</strong><small>{action.description}</small></span><ChevronRight size={13} /></button>)}</div>
