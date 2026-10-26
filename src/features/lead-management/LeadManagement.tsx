@@ -446,14 +446,14 @@ export default function LeadManagement() {
                 coordinator,
                 follow_up: followUp,
                 sort,
-                export: 'csv',
+                export: 'excel',
               })
               const response = await fetch(`/api/leads?${query}`, { credentials: 'include' })
               if (!response.ok) throw new Error((await response.json()).error)
               const url = URL.createObjectURL(await response.blob())
               const link = document.createElement('a')
               link.href = url
-              link.download = 'sales-leads.csv'
+              link.download = 'sales-leads.xlsx'
               link.click()
               setTimeout(() => URL.revokeObjectURL(url), 1000)
             } catch (e) {
@@ -461,7 +461,7 @@ export default function LeadManagement() {
             }
           }}
         >
-          Export CSV
+          Export Excel
         </button>
         <button disabled={page === 1 || loading} onClick={() => setPage((p) => p - 1)}>
           Previous

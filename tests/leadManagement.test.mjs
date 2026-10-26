@@ -1,3 +1,4 @@
+import PizZip from 'pizzip'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
@@ -121,8 +122,11 @@ async function fixture(grant = true) {
       }),
       env: { DB: db, ...extraEnv },
     })
-    if (result.headers.get('Content-Type')?.startsWith('text/csv'))
-      return { status: result.status, csv: await result.text() }
+    if (result.headers.get('Content-Type')?.includes('spreadsheetml')) {
+      assert.match(result.headers.get('Content-Disposition'), /sales-leads\.xlsx/)
+      const zip = new PizZip(await result.arrayBuffer())
+      return { status: result.status, excel: zip.file('xl/worksheets/sheet1.xml').asText() }
+    }
     return { status: result.status, ...(await result.json()) }
   }
   const create = (company, coordinator = ids.a, extra = {}) => ({
@@ -257,9 +261,9 @@ test('visibility applies to listing, summary, search, forged filters, details an
   assert.equal((await f.request('a')).total, 1)
   assert.equal((await f.request('a')).summary[0].count, 1)
   assert.equal((await f.request('b', '?search=LD-000001')).total, 0)
-  const exported = await f.request('b', '?export=csv')
-  assert.ok(exported.csv.includes(b.lead_number))
-  assert.ok(!exported.csv.includes(a.lead_number))
+  const exported = await f.request('b', '?export=excel')
+  assert.ok(exported.excel.includes(b.lead_number))
+  assert.ok(!exported.excel.includes(a.lead_number))
   assert.equal((await f.request('b', `?coordinator=${f.ids.a}`)).leads[0].id, b.id)
   assert.equal((await f.request('b', `?id=${a.id}`)).status, 404)
   for (const action of ['edit', 'status', 'followup', 'convert'])
@@ -667,14 +671,14 @@ test('all-leads grant expands listing, summary, filters, details, export and act
   assert.equal((await f.request('a','?search=Other')).total,1)
   assert.equal((await f.request('a',`?id=${other.id}`)).lead.company,'Other')
   assert.ok((await f.request('a',`?id=${other.id}`)).history.length>0)
-  assert.ok((await f.request('a','?export=csv')).csv.includes('Other'))
-  assert.ok((await f.request('a','?export=csv')).csv.includes('Unassigned'))
+  assert.ok((await f.request('a','?export=excel')).excel.includes('Other'))
+  assert.ok((await f.request('a','?export=excel')).excel.includes('Unassigned'))
   assert.equal((await f.request('a','',{action:'status',id:other.id,version:other.version,status:'Qualified'})).status,200)
   assert.equal((await f.request('b')).total,1)
   await f.special('root',{userId:f.ids.a,permissionKey:'lead-management:view-all',granted:false})
   assert.equal((await f.request('a')).total,1)
   assert.equal((await f.request('a',`?id=${other.id}`)).status,404)
-  assert.ok(!(await f.request('a','?export=csv')).csv.includes('Other'))
+  assert.ok(!(await f.request('a','?export=excel')).excel.includes('Other'))
 })
 
 test('all-leads grant includes reassignment across coordinators', async () => {
@@ -744,7 +748,7 @@ test('On Hold and Not Qualified require reasons, appear in filters/export and re
     assert.equal(listing.summary.find(s=>s.status===status).count,1)
     const detail=await f.request('a',`?id=${lead.id}`)
     assert.ok(detail.history.some(h=>h.event==='Status'&&h.new_value===`${status}: ${status_reason}`))
-    assert.ok((await f.request('a','?export=csv')).csv.includes(status_reason))
+    assert.ok((await f.request('a','?export=excel')).excel.includes(status_reason))
     assert.throws(()=>f.sqlite.prepare("UPDATE sales_leads SET status_reason='' WHERE id=?").run(lead.id))
     assert.equal((await f.request('a','',{action:'status',id:lead.id,version:lead.version,status,status_reason:'Updated reason'})).status,200)
     assert.ok((await f.request('a',`?id=${lead.id}`)).history.some(h=>h.new_value===`${status}: Updated reason`))
@@ -822,6 +826,21 @@ test('Onboarded status can be saved, filtered, exported and audited', async () =
   assert.equal((await f.request('a', '', { action: 'status', id: lead.id, version: lead.version, status: 'Onboarded' })).status, 200)
   assert.equal(f.lead('Onboarded company').status, 'Onboarded')
   assert.equal((await f.request('a', '?status=Onboarded')).total, 1)
-  assert.ok((await f.request('a', '?export=csv')).csv.includes('Onboarded'))
+  assert.ok((await f.request('a', '?export=excel')).excel.includes('Onboarded'))
   assert.ok((await f.request('a', `?id=${lead.id}`)).history.some(h => h.event === 'Status' && h.new_value === 'Onboarded'))
+})
+
+
+test('Excel export includes lead remarks and follow-up discussion as safe text', async () => {
+  const f = await fixture()
+  await f.request('a', '', f.create('Export company', f.ids.a, { remarks: 'Initial & <remarks>' }))
+  const lead = f.lead('Export company')
+  const result = await f.request('a', '', { action: 'followup', id: lead.id, version: lead.version, contact_date: '2026-10-26', mode: 'Call', discussion: '=SUM(1,2) & <discussion>', next_follow_up_date: '2026-10-27', next_action: '' })
+  assert.equal(result.status, 200)
+  const exported = await f.request('a', '?export=excel')
+  assert.equal(exported.status, 200)
+  assert.ok(exported.excel.includes('Discussion / Remarks'))
+  assert.ok(exported.excel.includes('Initial &amp; &lt;remarks&gt;'))
+  assert.ok(exported.excel.includes('=SUM(1,2) &amp; &lt;discussion&gt;'))
+  assert.ok(!exported.excel.includes('<f>'))
 })

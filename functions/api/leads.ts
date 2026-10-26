@@ -1,3 +1,4 @@
+import { excelWorkbook } from '../lib/excelWorkbook'
 import { formatLeadDate } from '../../src/features/lead-management/leadDateFormatting'
 import { getAuthenticatedUser } from '../lib/authenticatedUser'
 import {
@@ -107,14 +108,14 @@ export async function onRequest({ request, env }: Context): Promise<Response> {
         params.get('sort') === 'follow_up'
           ? 'l.next_follow_up_date IS NULL,l.next_follow_up_date ASC,l.id DESC'
           : 'l.created_at DESC,l.id DESC'
-      if (params.get('export') === 'csv') {
+      if (params.get('export') === 'excel') {
         const count = await countQuery.first<{ total: number }>()
         if ((count?.total || 0) > 5000)
           return json({ error: 'Filter the export to 5,000 leads or fewer.' }, 400)
         const rows = await db
-          .prepare(`${selectLead} WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT 5000`)
+          .prepare(`${selectLead.replace('SELECT l.*,', "SELECT l.*,(SELECT group_concat(entry, char(10) || char(10)) FROM (SELECT a.contact_date || ' - ' || a.discussion AS entry FROM sales_lead_activities a WHERE a.lead_id=l.id ORDER BY a.contact_date DESC,a.id DESC)) AS discussion,")} WHERE ${where.join(' AND ')} ORDER BY ${sort} LIMIT 5000`)
           .bind(...values)
-          .all<Lead>()
+          .all<Lead & { discussion: string | null }>()
         const columns = [
           'lead_number',
           'company',
@@ -129,20 +130,18 @@ export async function onRequest({ request, env }: Context): Promise<Response> {
           'last_contact_date',
           'next_follow_up_date',
           'created_at',
+          'remarks',
+          'discussion',
         ] as const
-        const cell = (value: unknown) => {
-          let s = String(value ?? '')
-          if (/^[\s]*[=+@-]/.test(s)) s = `'${s}`
-          return `"${s.replaceAll('"', '""')}"`
-        }
-        const csv = [
-          columns.join(','),
-          ...rows.results.map((row) => columns.map((c) => cell(['last_contact_date', 'next_follow_up_date', 'created_at'].includes(c) ? formatLeadDate(row[c] as string | null, '') : row[c])).join(',')),
-        ].join('\r\n')
-        return new Response('\uFEFF' + csv, {
+        const headers = ['Lead Number', 'Company', 'Contact', 'Mobile', 'Email', 'City', 'Source', 'Coordinator', 'Status', 'Status Reason', 'Last Contact Date', 'Next Follow-up Date', 'Created Date', 'Remarks', 'Discussion / Remarks']
+        const workbook = excelWorkbook(headers, rows.results.map((row) => columns.map((column) =>
+          ['last_contact_date', 'next_follow_up_date', 'created_at'].includes(column)
+            ? formatLeadDate(row[column] as string | null, '') : row[column],
+        )))
+        return new Response(workbook, {
           headers: {
-            'Content-Type': 'text/csv; charset=utf-8',
-            'Content-Disposition': 'attachment; filename="sales-leads.csv"',
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition': 'attachment; filename="sales-leads.xlsx"',
             'Cache-Control': 'no-store',
           },
         })
