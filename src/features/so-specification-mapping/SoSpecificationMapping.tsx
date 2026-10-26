@@ -10,6 +10,7 @@ import {
 import '../product-specifications/product-specifications.css'
 import './so-specification-mapping.css'
 import { isMappableSalesOrder } from './salesOrderEligibility'
+import SearchableDropdown from '../paper-purchase-request/SearchableDropdown'
 
 interface ProductSpecificationOption {
   id: number
@@ -266,7 +267,17 @@ export default function SoSpecificationMapping() {
       <div className="product-spec-toolbar"><div><strong>SO Specification Mapping</strong><small className="so-mapping-status-note">Only Open or Confirmed Sales Orders are shown.</small>{detail && <span>{detail.line_items.length} item{detail.line_items.length === 1 ? '' : 's'}</span>}</div></div>
       <section className="product-spec-filterbar so-mapping-filterbar">
         <label><span>Customer</span><select value={customerId} disabled={customersLoading} onChange={(event) => setCustomerId(event.target.value)}><option value="">{customersLoading ? 'Loading customers…' : 'Select customer'}</option>{customers.map((customer) => <option key={customer.customer_id} value={customer.customer_id}>{customerDisplayName(customer)}</option>)}</select></label>
-        <label><span>Sales Order</span><select value={salesOrderId} disabled={!customerId || salesOrdersLoading} onChange={(event) => setSalesOrderId(event.target.value)}><option value="">{!customerId ? 'Select a customer first' : salesOrdersLoading ? 'Loading Sales Orders…' : 'Select Sales Order'}</option>{salesOrders.map((order) => <option key={order.salesorder_id} value={order.salesorder_id}>{order.salesorder_number}</option>)}</select></label>
+        <SearchableDropdown
+          key={customerId}
+          label="Sales Order"
+          placeholder={!customerId ? 'Select a customer first' : salesOrdersLoading ? 'Loading Sales Orders…' : 'Type to search Sales Order'}
+          options={salesOrders.map((order) => ({ id: order.salesorder_id, label: order.salesorder_number }))}
+          value={salesOrderId}
+          disabled={!customerId || salesOrdersLoading}
+          loading={salesOrdersLoading}
+          emptyMessage="No matching Sales Orders."
+          onChange={setSalesOrderId}
+        />
         {customerError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{customerError}</p>}
         {salesOrderError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{salesOrderError}</p>}
         {specificationError && <p className="so-mapping-error" role="alert"><AlertCircle size={14} />{specificationError}</p>}

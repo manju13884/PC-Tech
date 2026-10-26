@@ -1,5 +1,19 @@
 .so-mapping-workspace { display: grid; gap: .5rem; }
 .so-mapping-filterbar { grid-template-columns: repeat(2, minmax(220px, 1fr)); overflow: visible; }
+.so-mapping-filterbar .paper-search-field { position: relative; display: grid; min-width: 0; gap: .16rem; }
+.so-mapping-filterbar .paper-search-control { display: flex; align-items: center; gap: .35rem; height: 32px; box-sizing: border-box; padding: 0 .45rem; border: 1px solid #cbd5e1; border-radius: 5px; background: #fff; color: #64748b; }
+.so-mapping-filterbar .paper-search-control:focus-within { border-color: #60a5fa; box-shadow: 0 0 0 3px rgb(96 165 250 / 18%); }
+.so-mapping-filterbar .paper-search-control input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #1e293b; font: inherit; font-size: .67rem; }
+.so-mapping-filterbar .paper-search-control:has(input:disabled) { background: #f1f5f9; }
+.so-mapping-filterbar .paper-search-control input:disabled { color: #94a3b8; }
+.so-mapping-filterbar .paper-search-control > svg { flex-shrink: 0; }
+.so-mapping-filterbar .paper-search-clear { height: 24px; padding: 0 .2rem; border: 0; background: transparent; color: #64748b; }
+.so-mapping-filterbar .paper-search-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; max-height: 240px; overflow-y: auto; padding: .25rem; border: 1px solid #cbd5e1; border-radius: 5px; background: #fff; box-shadow: 0 8px 20px rgb(15 23 42 / 12%); }
+.so-mapping-filterbar .paper-search-menu > button { display: flex; justify-content: flex-start; width: 100%; border: 0; background: #fff; color: #1e293b; text-align: left; }
+.so-mapping-filterbar .paper-search-menu > button:hover,
+.so-mapping-filterbar .paper-search-menu > button:focus-visible,
+.so-mapping-filterbar .paper-search-menu > button[aria-selected="true"] { background: #eff6ff; color: #1d4ed8; }
+.so-mapping-filterbar .paper-search-message { display: flex; align-items: center; gap: .35rem; margin: 0; padding: .5rem; color: #64748b; font-size: .67rem; }
 .so-mapping-filterbar > .so-mapping-error,
 .so-mapping-filterbar > .so-mapping-empty { grid-column: 1 / -1; }
 .so-mapping-error { display: flex; align-items: center; gap: .35rem; margin: 0; color: #b42318; font-size: .63rem; }
