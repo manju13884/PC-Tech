@@ -17,11 +17,14 @@ export async function onRequest({ request, env }: Context): Promise<Response> {
         CASE WHEN r.name='SUPERADMIN' THEN 1 ELSE COALESCE(stock.granted,0) END AS deleteStock,
         CASE WHEN r.name='SUPERADMIN' THEN 1 ELSE 0 END AS inheritedDelete,
         CASE WHEN r.name IN ('SUPERADMIN','ADMIN') THEN 1 ELSE COALESCE(all_leads.granted,0) END AS viewAll,
-        CASE WHEN r.name IN ('SUPERADMIN','ADMIN') THEN 1 ELSE 0 END AS inheritedViewAll
+        CASE WHEN r.name IN ('SUPERADMIN','ADMIN') THEN 1 ELSE 0 END AS inheritedViewAll,
+        CASE WHEN r.name='SUPERADMIN' THEN 1 ELSE COALESCE(dashboard.granted,0) END AS viewDashboardCustomers,
+        CASE WHEN r.name='SUPERADMIN' THEN 1 ELSE 0 END AS inheritedDashboardCustomers
         FROM users u JOIN roles r ON r.id=u.role_id
         LEFT JOIN user_special_permissions p ON p.user_id=u.id AND p.permission_key='lead-management:reassign'
         LEFT JOIN user_special_permissions stock ON stock.user_id=u.id AND stock.permission_key='material-stock:delete'
         LEFT JOIN user_special_permissions all_leads ON all_leads.user_id=u.id AND all_leads.permission_key='lead-management:view-all'
+        LEFT JOIN user_special_permissions dashboard ON dashboard.user_id=u.id AND dashboard.permission_key='dashboard:view-customer-names'
         WHERE u.status='ACTIVE' AND r.is_active=1
         ORDER BY u.full_name,u.id`).all()
       return json({ users: users.results })
@@ -31,7 +34,7 @@ export async function onRequest({ request, env }: Context): Promise<Response> {
     if (!body || !Number.isSafeInteger(body.userId) || Number(body.userId) <= 0 || typeof body.granted !== 'boolean')
       return json({ error: 'Select a user and a valid permission.' }, 400)
     const permissionKey = body.permissionKey ?? 'lead-management:reassign'
-    if (!['lead-management:reassign', 'material-stock:delete', 'lead-management:view-all'].includes(permissionKey as string))
+    if (!['lead-management:reassign', 'material-stock:delete', 'lead-management:view-all', 'dashboard:view-customer-names'].includes(permissionKey as string))
       return json({ error: 'Select a valid permission.' }, 400)
     const target = await db.prepare(`SELECT r.name AS role FROM users u JOIN roles r ON r.id=u.role_id
       WHERE u.id=? AND u.status='ACTIVE' AND r.is_active=1`).bind(body.userId).first<{role:string}>()

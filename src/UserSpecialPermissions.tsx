@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-interface PermissionUser { id: number; fullName: string; email: string; role: string; reassign: number; inherited: number; deleteStock: number; inheritedDelete: number; viewAll: number; inheritedViewAll: number }
+interface PermissionUser { viewDashboardCustomers: number; inheritedDashboardCustomers: number; id: number; fullName: string; email: string; role: string; reassign: number; inherited: number; deleteStock: number; inheritedDelete: number; viewAll: number; inheritedViewAll: number }
 export default function UserSpecialPermissions() {
   const [users, setUsers] = useState<PermissionUser[]>([])
   const [selected, setSelected] = useState('')
@@ -33,8 +33,8 @@ export default function UserSpecialPermissions() {
       })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Unable to save permission.')
-      setUsers(current => current.map(entry => entry.id === user.id ? { ...entry, [permissionKey === 'material-stock:delete' ? 'deleteStock' : permissionKey === 'lead-management:view-all' ? 'viewAll' : 'reassign']: granted ? 1 : 0 } : entry))
-      setNotice(`${permissionKey === 'material-stock:delete' ? 'Delete Material Stock Rows' : permissionKey === 'lead-management:view-all' ? 'View all leads / companies' : 'Reassign'} permission ${granted ? 'granted to' : 'removed from'} ${user.fullName}.`)
+      setUsers(current => current.map(entry => entry.id === user.id ? { ...entry, [permissionKey === 'dashboard:view-customer-names' ? 'viewDashboardCustomers' : permissionKey === 'material-stock:delete' ? 'deleteStock' : permissionKey === 'lead-management:view-all' ? 'viewAll' : 'reassign']: granted ? 1 : 0 } : entry))
+      setNotice(`${permissionKey === 'dashboard:view-customer-names' ? 'View dashboard customer names' : permissionKey === 'material-stock:delete' ? 'Delete Material Stock Rows' : permissionKey === 'lead-management:view-all' ? 'View all leads / companies' : 'Reassign'} permission ${granted ? 'granted to' : 'removed from'} ${user.fullName}.`)
     } catch (e) { setError((e as Error).message) }
     finally { setSaving(false) }
   }
@@ -59,6 +59,10 @@ export default function UserSpecialPermissions() {
             <tr><td>Inventory / Material Stock</td><td><strong>Delete Material Stock Rows</strong><small className="user-special-note">Delete eligible, unused stock rows. Stock Report or Material Stock view access is required.</small></td>
               <td><input type="checkbox" className="admin-access-checkbox" checked={Boolean(user?.deleteStock)} disabled={!user || Boolean(user.inheritedDelete) || saving} onChange={event => void toggle(event.target.checked, 'material-stock:delete')} aria-label="Allow selected user to delete Material Stock rows" />
                 {Boolean(user?.inheritedDelete) && <small className="user-special-note">Included with SUPERADMIN role</small>}
+              </td></tr>
+            <tr><td>Dashboard</td><td><strong>View dashboard customer names</strong><small className="user-special-note">Allow revealing full customer names on the dashboard. Names are hidden by default.</small></td>
+              <td><input type="checkbox" className="admin-access-checkbox" checked={Boolean(user?.viewDashboardCustomers)} disabled={!user || Boolean(user.inheritedDashboardCustomers) || saving} onChange={event => void toggle(event.target.checked, 'dashboard:view-customer-names')} aria-label="Allow selected user to view dashboard customer names" />
+                {Boolean(user?.inheritedDashboardCustomers) && <small className="user-special-note">Included with SUPERADMIN role</small>}
               </td></tr></tbody>
         </table>
       </div>

@@ -29,6 +29,7 @@ export interface InvoiceDashboardSummary {
 }
 
 export interface HomeDashboardSummary {
+  canViewCustomerNames?: boolean
   salesOrders: OpenSalesOrderDashboardSummary | null
   invoices: InvoiceDashboardSummary | null
   errors: { sales: string | null; finance: string | null }
@@ -59,6 +60,7 @@ export async function getCustomerOpenSalesOrderSummary(refreshCache = false): Pr
     salesOrders: value.salesOrders ? { customers, totals: value.salesOrders.totals, statusCounts: value.salesOrders.statusCounts } : null,
     invoices: value.invoices ?? null,
     errors: value.errors,
+    canViewCustomerNames: value.canViewCustomerNames === true,
     cached: value.cached,
     refreshedAt: value.refreshedAt,
   }

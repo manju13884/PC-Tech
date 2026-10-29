@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import { maskDashboardCustomerName } from '../../lib/dashboardCustomerPrivacy'
 import { CalendarDays, Target, Truck } from 'lucide-react'
 import { AlertTriangle, BarChart3, Calculator, ChevronRight, IndianRupee, ClipboardCheck, ClipboardList, Clock3, FileText, PackageCheck, ShoppingCart, TrendingUp, Users, Zap, type LucideIcon } from 'lucide-react'
 import { useDashboardData } from './hooks/useDashboardData'
@@ -44,6 +46,7 @@ function StatusRow({ label, value, total, icon: Icon, tone }: { label: string; v
 }
 
 export default function DashboardPage({ menuAccess, actions, onNavigate }: DashboardPageProps) {
+  const [showCustomerNames, setShowCustomerNames] = useState(false)
   const canViewPurchases = ['paper-purchase-request', 'paper-purchase-request-approvals', 'paper-po-calculation'].some((key) => menuAccess.includes(key))
   const canViewLeads = menuAccess.includes('lead-management')
   const canViewProduction = ['production-planned', 'job-cards', 'job-tracking', 'so-production-status'].some((key) => menuAccess.includes(key))
@@ -58,6 +61,7 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
       <header className="erp-dashboard-header">
         <div><h2>Dashboard</h2><p>Operational overview across sales, finance and purchases.</p></div>
         <div className="erp-dashboard-header-actions">
+
           <span>As of {formatIstDateTime(refreshedAt).replace(/\b(am|pm)\b/g, (period) => period.toUpperCase())}</span>
           <span className="erp-dashboard-financial-year"><CalendarDays size={14} aria-hidden="true" />Financial Year {financialYearStart}-{String(financialYearStart + 1).slice(-2)}</span>
         </div>
@@ -112,15 +116,25 @@ export default function DashboardPage({ menuAccess, actions, onNavigate }: Dashb
         <Panel title={`Sales – FY ${financialYearStart}–${String(financialYearStart + 1).slice(-2)} (${finance ? formatIndianCurrency(finance.salesToDate) : '—'})`} icon={BarChart3}>
           <FinancialYearSalesChart points={finance?.salesTrend ?? []} loading={loading} />
         </Panel>
-        <Panel title="Top Customers" icon={Users} className="erp-top-customers-panel">
+        <Panel title="Top Customers" icon={Users} className="erp-top-customers-panel" action={
+            <div className="erp-customer-visibility">
+          <button type="button" disabled={!summary.canViewCustomerNames} aria-pressed={Boolean(summary.canViewCustomerNames && showCustomerNames)} title={summary.canViewCustomerNames ? undefined : 'Requires the View dashboard customer names special permission.'} onClick={() => setShowCustomerNames(current => !current)}>
+            {showCustomerNames && summary.canViewCustomerNames ? <EyeOff size={14} /> : <Eye size={14} />}
+            {showCustomerNames && summary.canViewCustomerNames ? 'Hide customer names' : 'Show customer names'}
+          </button>
+            </div>
+          }>
           <table className="erp-customer-table" aria-label="Top customers by financial year sales">
             <colgroup><col className="erp-customer-rank-col" /><col className="erp-customer-name-col" /><col className="erp-customer-bar-col" /><col className="erp-customer-value-col" /><col className="erp-customer-share-col" /></colgroup>
             <thead><tr><th scope="col">#</th><th scope="col">Customer</th><th scope="col"><span className="erp-customer-bar-label">Sales mix</span></th><th scope="col">Sales Value</th><th scope="col">Share</th></tr></thead>
             <tbody>{(finance?.topCustomers ?? []).map((customer, index) => {
               const share = finance && finance.salesToDate > 0 ? Math.max(0, customer.amount / finance.salesToDate * 100) : 0
+              const customerName = summary.canViewCustomerNames
+                ? (showCustomerNames ? customer.customerName : maskDashboardCustomerName(customer.customerName))
+                : customer.customerName
               return <tr key={customer.customerId} className={`erp-customer-tone-${index % 5}`}>
                 <td><span className="erp-customer-rank">{index + 1}</span></td>
-                <th scope="row" title={customer.customerName}><span className="erp-customer-name">{customer.customerName}</span></th>
+                <th scope="row" title={customerName}><span className="erp-customer-name">{customerName}</span></th>
                 <td><div className="erp-customer-bar" aria-hidden="true"><span style={{ width: `${Math.min(100, share)}%` }} /></div></td>
                 <td className="erp-customer-value" title={formatIndianCurrency(customer.amount)}>{formatCompactIndianCurrency(customer.amount)}</td>
                 <td><span className="erp-customer-share" title="Share of financial year sales">{share.toFixed(1)}%</span></td>

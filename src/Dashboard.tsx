@@ -3258,7 +3258,7 @@ export default function Dashboard({
                             <details className="admin-access-group" open>
                               <summary>
                                 <span>Special Permissions</span>
-                                <small>3 user permissions</small>
+                                <small>4 user permissions</small>
                               </summary>
                               <UserSpecialPermissions />
                             </details>

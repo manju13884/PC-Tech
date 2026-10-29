@@ -1,3 +1,4 @@
+import { maskDashboardCustomerName } from '../../lib/dashboardCustomerPrivacy'
 import { getZohoOpenSalesOrderSummary } from '../../lib/salesOrders'
 import { getZohoInvoiceDashboardSummary } from '../../lib/invoices'
 import { ZohoRequestError, type ZohoEnv } from '../../lib/zoho'
@@ -100,7 +101,7 @@ async function refreshDashboardSnapshot(context: PagesFunctionContext, businessD
   return Response.json(payload, { status: 200 })
 }
 
-export async function onRequestGet(context: PagesFunctionContext): Promise<Response> {
+async function getDashboardResponse(context: PagesFunctionContext): Promise<Response> {
   try {
     await getCachedVendors(context.env).catch((error) => {
       console.error('[home-sales-orders] scheduled vendor cache refresh failed', {
@@ -155,4 +156,24 @@ export async function onRequestPost(context: PagesFunctionContext): Promise<Resp
     console.error('[home-sales-orders] refresh failed', { message })
     return Response.json({ error: 'Dashboard refresh is temporarily unavailable.' }, { status: 502 })
   }
+}
+
+export async function onRequestGet(context: PagesFunctionContext): Promise<Response> {
+  const user = await getAuthenticatedUser(context.request, context.env.DB)
+  if (!user) return Response.json({ error: 'Authentication required.' }, { status: 401 })
+  const canViewCustomerNames = user.roleName === 'SUPERADMIN' || Boolean(await context.env.DB.prepare(
+    "SELECT 1 FROM user_special_permissions WHERE user_id=? AND permission_key='dashboard:view-customer-names' AND granted=1",
+  ).bind(user.id).first())
+  const response = await getDashboardResponse(context)
+  if (!response.ok) return response
+  const payload = await response.json() as DashboardPayload
+  const protectCustomer = <T extends { customerName: string }>(customer: T): T => ({
+    ...customer, customerName: canViewCustomerNames ? customer.customerName : maskDashboardCustomerName(customer.customerName),
+  })
+  return Response.json({
+    ...payload,
+    canViewCustomerNames,
+    salesOrders: payload.salesOrders ? { ...payload.salesOrders, customers: payload.salesOrders.customers.map(protectCustomer) } : null,
+    invoices: payload.invoices ? { ...payload.invoices, topCustomers: payload.invoices.topCustomers.map(protectCustomer) } : null,
+  }, { headers: { 'Cache-Control': 'no-store' } })
 }

@@ -3507,3 +3507,8 @@ main.app-shell::after {
   .erp-summary-panel .erp-kpi-title { font-size: .6rem; }
   .erp-summary-panel .erp-kpi-card em { font-size: .55rem; }
 }
+
+.erp-customer-visibility { margin-left: auto; }
+.erp-customer-visibility button { display: inline-flex; align-items: center; gap: .3rem; padding: .35rem .5rem; border: 1px solid #d9e1eb; border-radius: 5px; background: #fff; color: #35445c; font-size: .65rem; font-weight: 650; cursor: pointer; }
+.erp-customer-visibility button:hover { background: #f7faff; }
+.erp-customer-visibility button:disabled { opacity: .6; cursor: not-allowed; }
