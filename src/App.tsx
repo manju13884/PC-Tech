@@ -74,6 +74,8 @@ function App() {
       void fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'idle' }),
       }).catch(() => {
         // The login screen remains visible if the logout service is unavailable.
       })

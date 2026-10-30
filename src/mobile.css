@@ -61,6 +61,7 @@
     max-width: 100%; overflow: auto; overscroll-behavior-x: contain;
   }
   .dashboard-shell :is(.job-cards-list table, .admin-users-table) { min-width: 760px; }
+  .dashboard-shell .admin-users-table.admin-users-management-table { min-width: 0; }
   .dashboard-shell :is(th, td) { font-size: .8125rem; }
   .dashboard-shell :is(.admin-dialog, .fg-dispatch-modal, .stock-report-modal,
     .product-spec-editor, .product-spec-report-dialog) {

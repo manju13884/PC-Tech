@@ -1236,7 +1236,7 @@ main.app-shell::after {
 
 .admin-users-management-table {
   table-layout: fixed;
-  min-width: 1180px;
+  min-width: 0;
 }
 
 .admin-users-management-wrap {
@@ -1246,12 +1246,13 @@ main.app-shell::after {
   scrollbar-color: #94a3b8 #f1f5f9;
 }
 
-.admin-users-management-table th,
-.admin-users-management-table td {
-  padding-right: 0.4rem;
-  padding-left: 0.4rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.admin-users-table.admin-users-management-table th,
+.admin-users-table.admin-users-management-table td {
+  box-sizing: border-box;
+  padding-right: 0.3rem;
+  padding-left: 0.3rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .admin-access-table {
@@ -1445,47 +1446,131 @@ main.app-shell::after {
 
 .admin-users-management-table th:nth-child(1),
 .admin-users-management-table td:nth-child(1) {
-  width: 48px;
+  width: 3%;
 }
 
 .admin-users-management-table th:nth-child(2),
 .admin-users-management-table td:nth-child(2) {
-  width: 140px;
+  width: 12%;
 }
 
 .admin-users-management-table th:nth-child(3),
 .admin-users-management-table td:nth-child(3) {
-  width: 205px;
+  width: 19%;
 }
 
 .admin-users-management-table th:nth-child(4),
 .admin-users-management-table td:nth-child(4) {
-  width: 140px;
+  width: 10%;
 }
 
 .admin-users-management-table th:nth-child(5),
 .admin-users-management-table td:nth-child(5) {
-  width: 105px;
+  width: 9%;
 }
 
 .admin-users-management-table th:nth-child(6),
 .admin-users-management-table td:nth-child(6) {
-  width: 88px;
+  width: 8%;
 }
 
 .admin-users-management-table th:nth-child(7),
 .admin-users-management-table td:nth-child(7) {
-  width: 115px;
+  width: 11%;
 }
 
 .admin-users-management-table th:nth-child(8),
 .admin-users-management-table td:nth-child(8) {
-  width: 115px;
+  width: 11%;
 }
 
 .admin-users-management-table th:nth-child(9),
 .admin-users-management-table td:nth-child(9) {
-  width: 224px;
+  width: 17%;
+}
+
+.admin-users-table.admin-users-management-table th:last-child,
+.admin-users-table.admin-users-management-table td:last-child {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.admin-users-management-table .admin-row-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 96px);
+  align-content: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.admin-users-management-table .admin-row-actions button {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 5px;
+  width: 100%;
+  min-height: 26px;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #f1f5f9;
+  font-size: 0.6rem;
+  font-weight: 400;
+  white-space: normal;
+}
+
+.admin-users-management-table .admin-row-actions button span {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.admin-users-management-table .admin-row-actions button svg {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.admin-users-management-table .admin-row-actions button.secondary {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.admin-users-management-table .admin-row-actions button.secondary:last-child:not(:first-child) {
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.admin-users-management-table .admin-row-actions button.primary {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.admin-users-management-table .admin-row-actions button.danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.admin-users-management-table .admin-row-actions button {
+  font-weight: 600;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.admin-users-management-table .admin-row-actions button:not(:disabled):hover {
+  filter: brightness(0.96);
+  box-shadow: 0 2px 4px rgb(15 23 42 / 10%);
+}
+
+.admin-users-management-table .admin-row-actions button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .admin-users-management-table .admin-inline-input {

@@ -1,4 +1,5 @@
 import UserSpecialPermissions from './UserSpecialPermissions'
+import AccessReport from './AccessReport'
 import LeadManagement from './features/lead-management/LeadManagement'
 import DeckleCalculator from './features/deckle-calculator/DeckleCalculator'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
@@ -727,7 +728,7 @@ export default function Dashboard({
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState('')
   const previewRef = useRef<HTMLDivElement>(null)
-  const [adminConfigTab, setAdminConfigTab] = useState<'users' | 'roles' | 'access'>('users')
+  const [adminConfigTab, setAdminConfigTab] = useState<'users' | 'roles' | 'access' | 'reports'>('users')
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [adminUsersLoading, setAdminUsersLoading] = useState(false)
   const [adminUsersError, setAdminUsersError] = useState<string | null>(null)
@@ -2863,8 +2864,25 @@ export default function Dashboard({
                         <KeyRound size={15} aria-hidden="true" />
                         <span>Access</span>
                       </button>
+                      <button
+                        type="button"
+                        className={adminConfigTab === 'reports' ? 'active' : ''}
+                        onClick={() => setAdminConfigTab('reports')}
+                        role="tab"
+                        aria-selected={adminConfigTab === 'reports'}
+                      >
+                        <BarChart3 size={15} aria-hidden="true" />
+                        <span>Reports</span>
+                      </button>
                     </div>
                   </div>
+                  {adminConfigTab === 'reports' && (
+                    <div className="admin-config-grid">
+                      <section className="admin-config-panel admin-users-panel">
+                        <AccessReport />
+                      </section>
+                    </div>
+                  )}
                   {adminConfigTab === 'users' && (
                     <div className="admin-config-grid">
                       <section className="admin-config-panel admin-users-panel">

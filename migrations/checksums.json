@@ -67,5 +67,6 @@
   "0066_add_lead_hold_and_not_qualified.sql": "8d71556de69f3d7067c84cee8ff53f22f977c5fcca24237d0f99e1728869e573",
   "0067_add_lead_history_change_details.sql": "38d7240665e99486063c00d55e29bed8b08b2e3744bf011ef5df197d771c4d10",
   "0068_preserve_job_tracking_cancellation_details.sql": "be6994d887512a2099b9c1f7149f972c3d1e484e0ddaa41d83467aafa3939aa2",
-  "0069_add_lead_onboarded_status.sql": "0603ceeab344c825cc7031f9d069c5e1b7e639c6aeaeed0cb8fbcfbf80563946"
+  "0069_add_lead_onboarded_status.sql": "0603ceeab344c825cc7031f9d069c5e1b7e639c6aeaeed0cb8fbcfbf80563946",
+  "0070_add_session_logout_details.sql": "e187bca81cbf38b71a768821e13d0eff39942c8e8acd007b5abea252e7b6c5ef"
 }
