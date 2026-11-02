@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import Dashboard, { getDefaultPermittedMenuKey } from './Dashboard'
 import { clearIdleSession, monitorIdleSession } from './idleSession'
+import { clearLoginReturnPage, consumeLoginReturnPage, rememberLoginReturnPage } from './loginReturnPage'
 
 interface AuthenticatedUser {
   id: number
@@ -55,6 +56,7 @@ function App() {
   const [checkingSession, setCheckingSession] = useState(true)
   useEffect(() => {
     const handleSessionExpired = () => {
+      if (user) rememberLoginReturnPage(user.id)
       clearIdleSession()
       setUser(null)
       setPassword('')
@@ -62,10 +64,11 @@ function App() {
     }
     window.addEventListener('pc-tech-session-expired', handleSessionExpired)
     return () => window.removeEventListener('pc-tech-session-expired', handleSessionExpired)
-  }, [])
+  }, [user?.id])
   useEffect(() => {
     if (!user) return
     return monitorIdleSession(() => {
+      rememberLoginReturnPage(user.id)
       setUser(null)
       setPassword('')
       setChangePassword('')
@@ -154,7 +157,12 @@ function App() {
 
       if (data.success && data.user) {
         clearIdleSession()
-        navigateToDefaultAuthenticatedPage(data.user.menuAccess)
+        const returnHash = consumeLoginReturnPage(data.user.id, data.user.menuAccess)
+        if (returnHash) {
+          window.history.replaceState(null, '', returnHash)
+        } else {
+          navigateToDefaultAuthenticatedPage(data.user.menuAccess)
+        }
         setUser(data.user)
         setEmail(data.user.email)
         setMessage('')
@@ -168,6 +176,7 @@ function App() {
   }
 
   const handleLogout = async () => {
+    clearLoginReturnPage()
     clearIdleSession()
     try {
       await fetch('/api/auth/logout', {
