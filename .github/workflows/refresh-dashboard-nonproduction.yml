@@ -12,15 +12,36 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - environment: nonproduction
+            origin: https://pc-tech.pages.dev
+          - environment: production
+            origin: https://www.polarcanvas.in
+    environment: ${{ matrix.environment }}
+    env:
+      CACHE_REFRESH_TOKEN: ${{ secrets.CACHE_REFRESH_TOKEN }}
+      ORIGIN: ${{ matrix.origin }}
     steps:
-      - name: Refresh non-production dashboard snapshot
-        run: curl --fail --silent --show-error --max-time 300 https://pc-tech.pages.dev/api/home-sales-orders
+      - name: Validate scheduled refresh credential
+        run: |
+          if [ "${#CACHE_REFRESH_TOKEN}" -lt 32 ]; then
+            echo '::error::Configure CACHE_REFRESH_TOKEN (at least 32 characters) in this GitHub environment and its Cloudflare Pages project.'
+            exit 1
+          fi
 
-      - name: Refresh non-production customer cache
-        run: curl --fail --silent --show-error --max-time 300 https://pc-tech.pages.dev/api/customers
+      - name: Refresh dashboard snapshot and vendor cache
+        run: |
+          curl --fail --silent --show-error --max-time 300 \
+            --request POST --header "Authorization: Bearer $CACHE_REFRESH_TOKEN" \
+            "$ORIGIN/api/internal/daily-cache-refresh?cache=dashboard"
 
-      - name: Refresh production dashboard snapshot
-        run: curl --fail --silent --show-error --max-time 300 https://www.polarcanvas.in/api/home-sales-orders
-
-      - name: Refresh production customer cache
-        run: curl --fail --silent --show-error --max-time 300 https://www.polarcanvas.in/api/customers
+      - name: Refresh customer cache
+        if: ${{ !cancelled() && env.CACHE_REFRESH_TOKEN != '' }}
+        run: |
+          curl --fail --silent --show-error --max-time 300 \
+            --request POST --header "Authorization: Bearer $CACHE_REFRESH_TOKEN" \
+            "$ORIGIN/api/internal/daily-cache-refresh?cache=customers"

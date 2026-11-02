@@ -101,7 +101,7 @@ async function refreshDashboardSnapshot(context: PagesFunctionContext, businessD
   return Response.json(payload, { status: 200 })
 }
 
-async function getDashboardResponse(context: PagesFunctionContext): Promise<Response> {
+export async function getDashboardResponse(context: PagesFunctionContext): Promise<Response> {
   try {
     await getCachedVendors(context.env).catch((error) => {
       console.error('[home-sales-orders] scheduled vendor cache refresh failed', {
