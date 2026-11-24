@@ -39,8 +39,12 @@ export function leadFields(body: Record<string, unknown>) {
   if (!fields.company || !fields.city)
     throw new Error('Company and city are required.')
   if (!fields.mobile && !fields.email) throw new Error('Mobile or email is required.')
-  if (fields.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email))
-    throw new Error('Enter a valid email address.')
+  if (fields.email) {
+    const emails = fields.email.split(',').map((email) => email.trim())
+    if (emails.some((email) => !/^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(email)))
+      throw new Error('Enter valid email addresses separated by commas.')
+    fields.email = emails.join(', ')
+  }
   if (!leadSources.some((v) => v === fields.source)) throw new Error('Select a valid lead source.')
   return fields
 }
@@ -60,7 +64,7 @@ const phoneSql = (column: string) =>
     (sql, character) => `replace(${sql},'${character}','')`,
     column,
   )
-export const duplicatePredicate = `(lower(trim(company))=lower(?) OR (?!='' AND lower(email)=lower(?)) OR (?!='' AND EXISTS (SELECT 1 FROM json_each('[' || replace(json_quote(${phoneSql('mobile')}), ',', '","') || ']') stored JOIN json_each('[' || replace(json_quote(${phoneSql('?')}), ',', '","') || ']') incoming ON stored.value=incoming.value WHERE stored.value!='')))`
+export const duplicatePredicate = `(lower(trim(company))=lower(?) OR (?!='' AND EXISTS (SELECT 1 FROM json_each('[' || replace(json_quote(email), ',', '","') || ']') stored_email JOIN json_each('[' || replace(json_quote(?), ',', '","') || ']') incoming_email ON lower(trim(stored_email.value))=lower(trim(incoming_email.value)) WHERE trim(stored_email.value)!='')) OR (?!='' AND EXISTS (SELECT 1 FROM json_each('[' || replace(json_quote(${phoneSql('mobile')}), ',', '","') || ']') stored JOIN json_each('[' || replace(json_quote(${phoneSql('?')}), ',', '","') || ']') incoming ON stored.value=incoming.value WHERE stored.value!='')))`
 export const duplicateValues = (f: Record<string, string>) => [
   f.company,
   f.email,

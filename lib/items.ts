@@ -24,7 +24,7 @@ export interface ItemSummary {
 
 const ITEMS_PER_PAGE = 200
 
-export async function getZohoItems(env?: ZohoEnv): Promise<ItemSummary[]> {
+export async function getZohoItems(env?: ZohoEnv, options: { includeInactive?: boolean } = {}): Promise<ItemSummary[]> {
   const items: unknown[] = []
   let page = 1
   let hasMorePage = true
@@ -44,7 +44,7 @@ export async function getZohoItems(env?: ZohoEnv): Promise<ItemSummary[]> {
 
   return items
     .filter((value): value is ZohoItem => Boolean(value) && typeof value === 'object')
-    .filter((item) => !item.status || item.status.toLowerCase() === 'active')
+    .filter((item) => options.includeInactive || !item.status || item.status.toLowerCase() === 'active')
     .map((item) => ({
       item_id: item.item_id == null ? '' : String(item.item_id),
       item_name: (item.name || item.item_name || '').trim(),

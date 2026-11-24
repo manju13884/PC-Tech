@@ -1,3 +1,4 @@
+import { readProductionPlanningItems } from '../../../lib/productionPlanningItems'
 import { getZohoSalesOrderById } from '../../../lib/salesOrders'
 import { cachedSalesOrder } from '../../../lib/salesOrderCache'
 import type { ZohoEnv } from '../../../lib/zoho'
@@ -161,7 +162,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
     for (const row of previousDimensions.results ?? []) {
       if (!latestDimensions.has(row.specification_id)) latestDimensions.set(row.specification_id, row)
     }
-    const openStatuses = new Set(['open', 'partiallyinvoiced', 'overdue'])
+    const selectedItems = await readProductionPlanningItems(db)
+    const openStatuses = new Set(['open', 'confirmed', 'partiallyinvoiced'])
 
     const lines = orders.flatMap((order) => {
       const normalizedStatus = (order.status ?? '')
@@ -247,8 +249,8 @@ export async function onRequestPost(context: Context): Promise<Response> {
     return json({
       lines: lines.filter(
         (line) =>
-          line.balanceQuantity > 0 ||
-          line.productionStatus === 'SPECIFICATION_MISSING',
+          selectedItems.has(line.itemId) && (line.balanceQuantity > 0 ||
+          line.productionStatus === 'SPECIFICATION_MISSING'),
       ),
     })
   } catch (error) {

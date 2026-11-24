@@ -145,3 +145,7 @@
   body.printing-product-spec-report .product-spec-report-scroll { overflow:visible!important; padding:0!important; }
   body.printing-product-spec-report .product-spec-report-a4 { position:static!important; box-sizing:border-box!important; width:210mm!important; height:297mm!important; min-height:297mm!important; max-height:297mm!important; margin:0!important; overflow:hidden!important; box-shadow:none!important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
 }
+
+.product-spec-table-wrap .spec-code-button { display: inline-flex; align-items: center; border: 1px solid #bfdbfe; border-radius: 5px; padding: .3rem .5rem; background: #eff6ff; color: #1d4ed8; font: inherit; font-weight: 650; text-decoration: underline; cursor: pointer; }
+.product-spec-table-wrap .spec-code-button:hover { background: #dbeafe; border-color: #93c5fd; }
+.product-spec-table-wrap .spec-code-button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }

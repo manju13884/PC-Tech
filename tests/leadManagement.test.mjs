@@ -527,6 +527,14 @@ test('duplicate mobile warning matches individual numbers in comma-separated lis
   assert.equal((await f.request('admin', '', f.create('Overlap', f.ids.a, {mobile: '5555555555, 1234567890'}))).status, 409)
 })
 
+test('multiple email addresses are validated, saved and checked individually for duplicates', async () => {
+  const f = await fixture()
+  assert.equal((await f.request('admin', '', f.create('Email list', f.ids.a, { mobile: '', email: 'first@example.test, Second@example.test' }))).status, 200)
+  assert.equal(f.lead('Email list').email, 'first@example.test, Second@example.test')
+  assert.equal((await f.request('admin', '', f.create('Email overlap', f.ids.a, { mobile: '999', email: 'other@example.test, second@EXAMPLE.test' }))).status, 409)
+  assert.equal((await f.request('admin', '', f.create('Invalid email list', f.ids.a, { mobile: '888', email: 'valid@example.test, invalid' }))).status, 400)
+})
+
 test('lead date formatting uses spaces and preserves IST timestamp conversion', async () => {
   const { formatLeadDate, formatLeadDateTime } = await import('../src/features/lead-management/leadDateFormatting.ts')
   assert.equal(formatLeadDate('2026-10-21'), '21 Oct 2026')

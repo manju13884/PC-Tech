@@ -161,7 +161,7 @@ function mapSalesOrder(
   if (
     !salesOrderId ||
     !salesOrderNumber ||
-    (responseCustomerId && responseCustomerId !== customerId)
+    (customerId && responseCustomerId && responseCustomerId !== customerId)
   ) {
     return null
   }
@@ -223,6 +223,28 @@ export async function getZohoSalesOrdersByCustomer(
     .filter(
       (salesOrder): salesOrder is SalesOrderSummary => salesOrder !== null,
     )
+}
+
+export async function getProductionPlanningCustomerIds(env?: ZohoEnv): Promise<string[]> {
+  const customerIds = new Set<string>()
+  let page = 1
+  let hasMorePage = true
+  while (hasMorePage) {
+    const params = new URLSearchParams({ page: String(page), per_page: String(SALES_ORDERS_PER_PAGE) })
+    const payload = await zohoGet(`/salesorders?${params.toString()}`, env)
+    if (!payload || typeof payload !== 'object') throw new Error('Invalid sales order response')
+    const response = payload as ZohoSalesOrdersResponse
+    const pageOrders = Array.isArray(response.salesorders) ? response.salesorders : Array.isArray(response.data) ? response.data : null
+    if (!pageOrders) throw new Error('Invalid sales order response')
+    for (const value of pageOrders) {
+      const order = mapSalesOrder(value, '')
+      const status = (order?.status ?? '').toLowerCase().replace(/[^a-z]/g, '')
+      if (order?.customer_id && ['open', 'confirmed', 'partiallyinvoiced'].includes(status)) customerIds.add(order.customer_id)
+    }
+    hasMorePage = response.page_context?.has_more_page ?? pageOrders.length === SALES_ORDERS_PER_PAGE
+    page += 1
+  }
+  return [...customerIds]
 }
 
 function getListedSalesOrderFinancials(order: ZohoSalesOrder): {

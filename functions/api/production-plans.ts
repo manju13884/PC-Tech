@@ -1,4 +1,5 @@
 import { parseProductionUps } from '../../src/features/production-planning/productionUps'
+import { readProductionPlanningItems } from '../../lib/productionPlanningItems'
 import { getZohoSalesOrderById } from '../../lib/salesOrders'
 import { cachedSalesOrder } from '../../lib/salesOrderCache'
 import type { ZohoEnv } from '../../lib/zoho'
@@ -467,9 +468,12 @@ export async function onRequestPost(context: Context): Promise<Response> {
     }
     if ([...quantities.keys()].some((id) => !remoteLines.has(id)))
       return json({ error: 'A Sales Order line or Additional Product mapping changed after selection. Refresh and retry.' }, 409)
-    const allowedStatuses = new Set(['open', 'partiallyinvoiced', 'overdue'])
+    const selectedItems = await readProductionPlanningItems(db)
+    if ([...quantities.keys()].some((id) => !selectedItems.has(remoteLines.get(id)!.line.item_id)))
+      return json({ error: 'An item is no longer selected for Production Planning. Refresh and retry.' }, 409)
+    const allowedStatuses = new Set(['open', 'confirmed', 'partiallyinvoiced'])
     if (orders.some((order) => !allowedStatuses.has((order.status ?? '').toLowerCase().replace(/[^a-z]/g, ''))))
-      return json({ error: 'Only Open or Partially Invoiced Sales Orders can be pushed to production.' }, 409)
+      return json({ error: 'Only Open, Confirmed or Partially Invoiced Sales Orders can be pushed to production.' }, 409)
     for (const [lineId, quantity] of quantities) {
       const remote = remoteLines.get(lineId)!
       const remainingQuantity = Math.max(0, remote.line.quantity - remote.line.quantity_invoiced)

@@ -637,7 +637,10 @@ export default function LeadManagement() {
                         <span>Mobile Number <small id="lead-mobile-help" className="lead-field-hint">Enter multiple mobile numbers separated by commas.</small></span>
                         <input value={form.mobile || ''} maxLength={2000} aria-describedby="lead-mobile-help" onChange={(e) => change('mobile', e.target.value)} />
                       </label>
-                      {field('email', 'Email Address', false, 'email')}
+                      <label>
+                        <span>Email Address <small id="lead-email-help" className="lead-field-hint">Enter multiple email addresses separated by commas.</small></span>
+                        <input type="email" multiple value={form.email || ''} maxLength={2000} aria-describedby="lead-email-help" onChange={(e) => change('email', e.target.value)} />
+                      </label>
                       {field('city', 'Location / City', true)}
                       <label className="lead-wide">
                         Address

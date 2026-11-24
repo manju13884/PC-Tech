@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { Save } from 'lucide-react'
+import { Factory, FileText, Save } from 'lucide-react'
 import './master-data.css'
+import ProductionItems from './ProductionItems'
 import { masterDataFields, resolveMasterData, validMasterDataValue, type MasterDataValues } from './masterDataFields'
 
 export default function MasterDataForm({
@@ -10,8 +11,9 @@ export default function MasterDataForm({
 }: {
   savedValues: MasterDataValues
   canEdit: boolean
-  onSave: (values: MasterDataValues) => Promise<void>
+  onSave: (values: Partial<MasterDataValues>) => Promise<void>
 }) {
+  const [activeTab, setActiveTab] = useState<'paper' | 'production'>('paper')
   const [values, setValues] = useState(() => resolveMasterData(savedValues))
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -20,8 +22,9 @@ export default function MasterDataForm({
   async function save(event: FormEvent) {
     event.preventDefault()
     const normalized = resolveMasterData(values)
-    const invalid = masterDataFields.find(field => !validMasterDataValue(normalized[field.name], field.name))
+    const invalid = masterDataFields.find(field => field.name !== 'maximumMachineDeckle' && !validMasterDataValue(normalized[field.name], field.name))
     if (invalid) {
+      setActiveTab(invalid.name === 'maximumMachineDeckle' ? 'production' : 'paper')
       setError(invalid.name === 'maximumMachineDeckle' ? 'Maximum Machine Deckle must be greater than zero.' : `Enter a valid, non-negative ${invalid.label}.`)
       return
     }
@@ -29,7 +32,8 @@ export default function MasterDataForm({
     setError('')
     setMessage('')
     try {
-      await onSave(normalized)
+      const { maximumMachineDeckle: _maximumMachineDeckle, ...paperValues } = normalized
+      await onSave(paperValues)
       setValues(normalized)
       setMessage('Master Data saved.')
     } catch {
@@ -40,16 +44,23 @@ export default function MasterDataForm({
   }
 
   return (
-    <form className="admin-config-panel master-data-form" onSubmit={save}>
+    <div className="admin-config-page">
+      <div className="admin-config-topbar">
+        <div className="admin-config-tabs master-data-tabs" role="tablist" aria-label="Master Data sections">
+          <button type="button" role="tab" id="master-tab-paper" aria-controls="master-data-panel-paper" aria-selected={activeTab === 'paper'} className={activeTab === 'paper' ? 'active' : ''} onClick={() => setActiveTab('paper')}><FileText size={15} aria-hidden="true" /><span>Paper</span></button>
+          <button type="button" role="tab" id="master-tab-production" aria-controls="master-data-panel-production" aria-selected={activeTab === 'production'} className={activeTab === 'production' ? 'active' : ''} onClick={() => setActiveTab('production')}><Factory size={15} aria-hidden="true" /><span>Prod Planning Items</span></button>
+        </div>
+      </div>
+    <ProductionItems canEdit={canEdit} active={activeTab === 'production'} />
+    <form hidden={activeTab !== 'paper'} className="admin-config-panel master-data-form" onSubmit={save} role="tabpanel" id="master-data-panel-paper" aria-labelledby="master-tab-paper">
       <div className="master-data-grid">
-        {masterDataFields.map(field => (
+        {masterDataFields.filter(field => field.name !== 'maximumMachineDeckle').map(field => (
           <div className="coc-form-field" key={field.name}>
             <label htmlFor={`master-${field.key}`}>{field.label}</label>
             <input
               id={`master-${field.key}`}
               type="text"
               inputMode="decimal"
-              required={field.name === 'maximumMachineDeckle'}
               value={values[field.name]}
               disabled={saving || !canEdit}
               onChange={event => {
@@ -71,5 +82,6 @@ export default function MasterDataForm({
       {message && <p className="admin-user-message success" role="status">{message}</p>}
       {error && <p id="master-data-error" className="admin-user-message" role="alert">{error}</p>}
     </form>
+    </div>
   )
 }

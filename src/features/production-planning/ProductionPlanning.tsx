@@ -107,7 +107,7 @@ const customerDisplayName = (customer: Customer) => customer.gst_number
   : customer.customer_name
 const isProductionSalesOrder = (order: SalesOrder) => {
   const status = (order.status ?? '').toLowerCase().replace(/[^a-z]/g, '')
-  return status === 'open' || status === 'partiallyinvoiced' || status === 'overdue'
+  return status === 'open' || status === 'confirmed' || status === 'partiallyinvoiced'
 }
 const request = async <T,>(url: string, body: unknown): Promise<T> => {
   const response = await fetch(url, {
@@ -191,13 +191,22 @@ export default function ProductionPlanning() {
   const [viewingSpecification, setViewingSpecification] = useState<PlanLine | null>(null)
   useEffect(() => {
     let active = true
-    void getCustomers().then((v) => {
+    void Promise.all([
+      getCustomers(),
+      fetch('/api/production-planning/customers', { cache: 'no-store' }).then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load eligible customers.')
+        const ids: unknown = await response.json()
+        if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string')) throw new Error('Invalid eligible customer response.')
+        return new Set<string>(ids)
+      }),
+    ]).then(([values, eligibleIds]) => {
       if (active) {
-        setCustomers(v)
+        setCustomers(values.filter((customer) => eligibleIds.has(customer.customer_id)))
         setError(getCustomersError() ?? '')
-        setLoading(false)
       }
-    })
+    }).catch((e) => {
+      if (active) setError(e instanceof Error ? e.message : 'Unable to load customers.')
+    }).finally(() => { if (active) setLoading(false) })
     return () => {
       active = false
     }
@@ -213,7 +222,7 @@ export default function ProductionPlanning() {
     setLoading(true)
     void getSalesOrdersByCustomer(customerId)
       .then((v) => {
-        if (active) setOrders(v.filter(isProductionSalesOrder))
+        if (active) setOrders(v.filter(isProductionSalesOrder).sort((a, b) => b.salesorder_number.localeCompare(a.salesorder_number, undefined, { numeric: true, sensitivity: 'base' })))
       })
       .catch((e) => {
         if (active)
@@ -372,6 +381,7 @@ export default function ProductionPlanning() {
               ? `${selected.length} Sales Orders selected`
               : `${included.length} production lines`}
           </span>
+      {step === 'select' && <p className="production-planning-filter-note">Only customers with Open, Confirmed, or Partially Invoiced sales orders are shown. The Sales Order list includes only orders with these statuses.</p>}
         </div>
       </div>
       {error && (

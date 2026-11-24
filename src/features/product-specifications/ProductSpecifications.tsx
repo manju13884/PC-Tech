@@ -282,8 +282,10 @@ export default function ProductSpecifications() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [readOnlyMode, setReadOnlyMode] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
-  const customer = customers.find((value) => value.customer_id === customerId)
-  const item = items.find((value) => value.item_id === itemId)
+  const [reportTarget, setReportTarget] = useState<Specification | null>(null)
+  const reportEditorBackup = useRef<{ customerId: string; itemId: string; form: FormState; editingId: number | null } | null>(null)
+  const customer = customers.find((value) => value.customer_id === customerId) ?? (reportTarget ? { customer_id: reportTarget.customer_id, customer_name: reportTarget.customer_name, gst_number: '' } : undefined)
+  const item = items.find((value) => value.item_id === itemId) ?? (reportTarget ? { item_id: reportTarget.item_id, item_name: reportTarget.item_name, sku: reportTarget.item_sku, description: '' } : undefined)
   const reportSpecification = editingId ? specifications.find((value) => value.id === editingId) : undefined
   const displayedSpecifications = listCustomerId
     ? specifications.filter((specification) => specification.customer_id === listCustomerId)
@@ -388,6 +390,25 @@ export default function ProductSpecifications() {
     setEditingId(specification.id); setReadOnlyMode(Boolean(lockMessage)); setListCustomerId(specification.customer_id); setListItemId(specification.item_id); setCustomerId(specification.customer_id); setItemId(specification.item_id); setShowForm(true); setMessage(''); setError(lockMessage)
     setForm(formFromSpecification(specification))
     scrollToEditor()
+  }
+  const openSavedReport = (specification: Specification) => {
+    reportEditorBackup.current = { customerId, itemId, form, editingId }
+    setReportTarget(specification)
+    setCustomerId(specification.customer_id)
+    setItemId(specification.item_id)
+    setForm(formFromSpecification(specification))
+    setEditingId(specification.id)
+    setReportOpen(true)
+  }
+  const closeReport = () => {
+    const previous = reportEditorBackup.current
+    if (previous) {
+      setCustomerId(previous.customerId); setItemId(previous.itemId)
+      setForm(previous.form); setEditingId(previous.editingId)
+      reportEditorBackup.current = null
+    }
+    setReportTarget(null)
+    setReportOpen(false)
   }
   const clone = (specification: Specification) => {
     setEditingId(null); setReadOnlyMode(false); setListCustomerId(specification.customer_id); setListItemId(specification.item_id); setCustomerId(specification.customer_id); setItemId(specification.item_id); setShowForm(true); setError('')
@@ -541,7 +562,7 @@ export default function ProductSpecifications() {
     <section className="product-spec-list product-spec-panel">
       <header><div><h3>Saved Specifications</h3><p>Customer-wise specifications. Items are available irrespective of the selected customer.</p></div></header>
       <div className="product-spec-table-wrap"><table><thead><tr><th>#</th><th>PC Item Code</th><th>Product Name</th><th>Item</th><th>Size</th><th>Type</th><th>Print</th><th>Specification Notes</th><th>Updated</th><th aria-label="Actions" /></tr></thead><tbody>
-        {displayedSpecifications.map((specification, index) => <tr key={specification.id} className={showForm && editingId === specification.id ? 'is-current-specification' : undefined} aria-current={showForm && editingId === specification.id ? 'true' : undefined}><td>{index + 1}</td><td><strong>{specification.polar_canvas_item_code}</strong></td><td>{specification.product_name || ''}</td><td><strong>{specification.item_name}</strong>{specification.item_sku && <small>{specification.item_sku}</small>}</td><td>{specificationSize(specification)}</td><td><span className="spec-type-badge">{specification.specification_type}</span></td><td>{specification.print_required ? 'Yes' : 'No'}</td><td className="specification-notes" title={specification.notes || undefined}>{specification.notes || '—'}</td><td>{formatIstDateTime(specification.updated_at)}</td><td><div className="spec-row-actions"><button type="button" className={`spec-edit-button${specification.locked_sales_orders ? ' is-locked' : ''}`} title={specificationLockMessage(specification) || `Edit ${specification.polar_canvas_item_code}`} onClick={() => edit(specification)}>{specification.locked_sales_orders ? <Eye size={13} /> : <Pencil size={13} />} {specification.locked_sales_orders ? 'Locked' : 'Edit'}</button><button type="button" className="spec-clone-button" onClick={() => clone(specification)} title={`Clone ${specification.polar_canvas_item_code}`}><Copy size={13} /> Clone</button></div></td></tr>)}
+        {displayedSpecifications.map((specification, index) => <tr key={specification.id} className={showForm && editingId === specification.id ? 'is-current-specification' : undefined} aria-current={showForm && editingId === specification.id ? 'true' : undefined}><td>{index + 1}</td><td><button type="button" className="spec-code-button" onClick={() => openSavedReport(specification)} title={`View Product Specification Report for ${specification.polar_canvas_item_code}`}>{specification.polar_canvas_item_code}</button></td><td>{specification.product_name || ''}</td><td><strong>{specification.item_name}</strong>{specification.item_sku && <small>{specification.item_sku}</small>}</td><td>{specificationSize(specification)}</td><td><span className="spec-type-badge">{specification.specification_type}</span></td><td>{specification.print_required ? 'Yes' : 'No'}</td><td className="specification-notes" title={specification.notes || undefined}>{specification.notes || '—'}</td><td>{formatIstDateTime(specification.updated_at)}</td><td><div className="spec-row-actions"><button type="button" className={`spec-edit-button${specification.locked_sales_orders ? ' is-locked' : ''}`} title={specificationLockMessage(specification) || `Edit ${specification.polar_canvas_item_code}`} onClick={() => edit(specification)}>{specification.locked_sales_orders ? <Eye size={13} /> : <Pencil size={13} />} {specification.locked_sales_orders ? 'Locked' : 'Edit'}</button><button type="button" className="spec-clone-button" onClick={() => clone(specification)} title={`Clone ${specification.polar_canvas_item_code}`}><Copy size={13} /> Clone</button></div></td></tr>)}
         {!loading && !specificationsLoaded && <tr><td colSpan={10} className="product-spec-empty spec-error">Unable to load saved specifications. Refresh after checking the local backend.</td></tr>}
         {!loading && specificationsLoaded && !listCustomerId && <tr><td colSpan={10} className="product-spec-empty">Select a customer to display saved specifications.</td></tr>}
         {!loading && specificationsLoaded && listCustomerId && displayedSpecifications.length === 0 && <tr><td colSpan={10} className="product-spec-empty">No product specifications are saved for this customer.</td></tr>}
@@ -549,7 +570,7 @@ export default function ProductSpecifications() {
     </section>
     {reportOpen && customer && item && createPortal(<div className="product-spec-report-backdrop" role="dialog" aria-modal="true" aria-label="Product Specification Report">
       <div className="product-spec-report-dialog">
-        <header><strong>Product Specification Report</strong><div><button type="button" onClick={printReport}><Printer size={14} /> Print</button><button type="button" onClick={() => setReportOpen(false)} aria-label="Close report"><X size={16} /></button></div></header>
+        <header><strong>Product Specification Report</strong><div><button type="button" onClick={printReport}><Printer size={14} /> Print</button><button type="button" onClick={closeReport} aria-label="Close report"><X size={16} /></button></div></header>
         <div className="product-spec-report-scroll">
           <article className="product-spec-report-a4">
             <div className="spec-report-brand"><img src="/assets/Bird Logo-transparent.png" alt="Polar Canvas" /><div><h1>POLAR CANVAS</h1><p>PRODUCT SPECIFICATION</p></div><strong>Polar Canvas Item Code : {form.polar_canvas_item_code}</strong></div>
