@@ -82,11 +82,10 @@ const relativeDateIso = (days: number) => {
   return date.toISOString().slice(0, 10);
 };
 type ProductionView =
-  "all" | "planned" | "draft" | "closed" | "yesterday" | "today" | "tomorrow" | "custom";
+  "all" | "planned" | "closed" | "yesterday" | "today" | "tomorrow" | "custom";
 const productionViewLabels: Record<ProductionView, string> = {
   all: "All Statuses",
   planned: "PLANNED",
-  draft: "DRAFT",
   closed: "CLOSED",
   yesterday: "Yesterday's Production",
   today: "Today's Production",
@@ -199,7 +198,7 @@ export default function ProductionPlanned() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [productionView, setProductionView] = useState<ProductionView>("all");
+  const [productionView, setProductionView] = useState<ProductionView>("today");
   const [customFromDate, setCustomFromDate] = useState("");
   const [customToDate, setCustomToDate] = useState("");
   const [unplanTarget, setUnplanTarget] = useState<SavedPlanLine | null>(null);
@@ -274,9 +273,8 @@ export default function ProductionPlanned() {
     const term = search.trim().toLowerCase();
     return lines.filter((line) => {
       const matchesView =
-        productionView === "all" ||
+        (productionView === "all" && line.plan_status !== "DRAFT") ||
         (productionView === "planned" && line.plan_status === "PLANNED") ||
-        (productionView === "draft" && line.plan_status === "DRAFT") ||
         (productionView === "closed" && line.plan_status === "CLOSED") ||
         (productionView === "yesterday" &&
           line.plan_date === relativeDateIso(-1)) ||
@@ -374,6 +372,7 @@ export default function ProductionPlanned() {
             placeholder="Search plan, SO, customer, item"
           />
           <select
+            className="production-planned-status-filter"
             aria-label="Production view"
             value={productionView}
             onChange={(event) =>
@@ -382,7 +381,6 @@ export default function ProductionPlanned() {
           >
             <option value="all">All Statuses</option>
             <option value="planned">PLANNED</option>
-            <option value="draft">DRAFT</option>
             <option value="closed">CLOSED</option>
             <option value="yesterday">Yesterday's Production</option>
             <option value="today">Today's Production</option>

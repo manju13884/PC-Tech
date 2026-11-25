@@ -229,3 +229,6 @@
   .production-planned-print-page .production-planning-grid thead { display: table-header-group; break-inside: avoid; break-after: avoid; }
   .production-planned-print-page .production-planning-grid tr { break-inside: avoid; page-break-inside: avoid; }
 }
+
+.production-planned-controls select.production-planned-status-filter { min-width: 165px; border: 1px solid #d97706; background: #fef3c7; color: #78350f; font-weight: 700; box-shadow: 0 0 0 1px #fbbf24; cursor: pointer; }
+.production-planned-controls select.production-planned-status-filter:focus-visible { outline: 2px solid #b45309; outline-offset: 2px; }
